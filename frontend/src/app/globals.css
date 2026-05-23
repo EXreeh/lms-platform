@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+/* Cognitiax AI — design tokens derived from official logo */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Gold spectrum */
+  --gold-50: #fffbeb;
+  --gold-100: #fef3c7;
+  --gold-200: #fde68a;
+  --gold-400: #f7d060;
+  --gold-500: #fdb813;
+  --gold-600: #c5a028;
+  --gold-700: #8b6d15;
+
+  /* Green spectrum */
+  --green-50: #ecfdf5;
+  --green-100: #d1fae5;
+  --green-400: #34d399;
+  --green-500: #008037;
+  --green-600: #006400;
+  --green-700: #004d3d;
+  --green-800: #003d30;
+  --green-900: #002e1a;
+  --green-950: #051c17;
+
+  /* Teal accent (logo X transition) */
+  --teal-700: #004d40;
+
+  /* Semantic — light mode */
+  --background: #f9fafb;
+  --foreground: #0f1f1a;
+  --card: #ffffff;
+  --card-foreground: #0f1f1a;
+  --muted: #f3f4f6;
+  --muted-foreground: #4b5563;
+  --border: #e5e7eb;
+  --border-subtle: #f3f4f6;
+  --ring: #c5a028;
+  --accent: var(--gold-500);
+  --accent-foreground: #002e1a;
+
+  /* Gradients */
+  --gradient-brand: linear-gradient(135deg, #c5a028 0%, #004d3d 55%, #002e1a 100%);
+  --gradient-gold: linear-gradient(135deg, #f7d060 0%, #c5a028 50%, #8b6d15 100%);
+  --gradient-green: linear-gradient(135deg, #008037 0%, #004d3d 100%);
+  --gradient-hero: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    #f9fafb 40%,
+    rgba(236, 253, 245, 0.5) 100%
+  );
+  --gradient-mesh: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(197, 160, 40, 0.12), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(0, 77, 61, 0.08), transparent);
+}
+
+.dark {
+  --background: #0b0e14;
+  --foreground: #f3f4f6;
+  --card: #111827;
+  --card-foreground: #f9fafb;
+  --muted: #1f2937;
+  --muted-foreground: #9ca3af;
+  --border: #1f2937;
+  --border-subtle: #111827;
+  --ring: #f7d060;
+  --accent: var(--gold-400);
+  --accent-foreground: #051c17;
+
+  --gradient-hero: linear-gradient(
+    180deg,
+    #0b0e14 0%,
+    #051c17 50%,
+    #0b0e14 100%
+  );
+  --gradient-mesh: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(197, 160, 40, 0.08), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(0, 128, 55, 0.12), transparent);
+}
+
+@theme inline {
+  --color-gold-50: var(--gold-50);
+  --color-gold-100: var(--gold-100);
+  --color-gold-200: var(--gold-200);
+  --color-gold-400: var(--gold-400);
+  --color-gold-500: var(--gold-500);
+  --color-gold-600: var(--gold-600);
+  --color-gold-700: var(--gold-700);
+
+  --color-green-50: var(--green-50);
+  --color-green-100: var(--green-100);
+  --color-green-400: var(--green-400);
+  --color-green-500: var(--green-500);
+  --color-green-600: var(--green-600);
+  --color-green-700: var(--green-700);
+  --color-green-800: var(--green-800);
+  --color-green-900: var(--green-900);
+  --color-green-950: var(--green-950);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --font-sans: var(--font-geist-sans);
+  --font-serif: var(--font-playfair);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Branded utilities */
+.gradient-brand {
+  background: var(--gradient-brand);
+}
+
+.gradient-gold {
+  background: var(--gradient-gold);
+}
+
+.gradient-text-brand {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.gradient-border {
+  position: relative;
+  background: var(--card);
+  border-radius: 1rem;
+}
+
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: var(--gradient-brand);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.mesh-background {
+  background-image: var(--gradient-mesh);
+}
+
+.hero-background {
+  background: var(--gradient-hero);
+}
+
+/* Focus accessibility */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
