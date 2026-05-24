@@ -1,6 +1,7 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { prisma } from "./config/database.js";
+import { verifyEmailTransport } from "./services/email/email.service.js";
 
 const app = createApp();
 
@@ -8,6 +9,8 @@ async function start() {
   try {
     await prisma.$connect();
     console.log("Database connected");
+
+    await verifyEmailTransport();
 
     app.listen(env.PORT, () => {
       console.log(`LMS API running on http://localhost:${env.PORT}`);

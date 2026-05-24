@@ -2,21 +2,43 @@ import type { Request, Response } from "express";
 import * as authService from "./auth.service.js";
 import { ApiError } from "../../utils/api-error.js";
 import { setAuthCookie, clearAuthCookie } from "../../utils/auth-cookie.js";
-import type { RegisterInput, LoginInput } from "./auth.validation.js";
+import type {
+  LoginInput,
+  RegisterRequestOtpInput,
+  VerifyOtpInput,
+} from "./auth.validation.js";
 
-export async function register(req: Request, res: Response): Promise<void> {
-  const input = req.body as RegisterInput;
-  const result = await authService.register(input);
+export async function checkEmail(req: Request, res: Response): Promise<void> {
+  const { email } = req.query as unknown as { email: string };
+  const result = await authService.checkEmailAvailability(email);
+
+  res.json({ success: true, data: result });
+}
+
+export async function registerRequestOtp(req: Request, res: Response): Promise<void> {
+  const input = req.body as RegisterRequestOtpInput;
+  const result = await authService.requestRegistrationOtp(input);
+
+  res.json({ success: true, ...result });
+}
+
+export async function registerResendOtp(req: Request, res: Response): Promise<void> {
+  const { email } = req.body as { email: string };
+  const result = await authService.resendRegistrationOtp(email);
+
+  res.json({ success: true, ...result });
+}
+
+export async function registerVerifyOtp(req: Request, res: Response): Promise<void> {
+  const input = req.body as VerifyOtpInput;
+  const result = await authService.verifyRegistrationOtp(input);
 
   setAuthCookie(res, result.token);
 
   res.status(201).json({
     success: true,
-    message: "Registration successful",
-    data: {
-      user: result.user,
-      token: result.token,
-    },
+    message: "Account created successfully",
+    data: result,
   });
 }
 
@@ -29,10 +51,7 @@ export async function login(req: Request, res: Response): Promise<void> {
   res.json({
     success: true,
     message: "Login successful",
-    data: {
-      user: result.user,
-      token: result.token,
-    },
+    data: result,
   });
 }
 
@@ -56,4 +75,32 @@ export async function me(req: Request, res: Response): Promise<void> {
     success: true,
     data: { user },
   });
+}
+
+export async function forgotPasswordRequest(req: Request, res: Response): Promise<void> {
+  const { email } = req.body as { email: string };
+  const result = await authService.requestPasswordResetOtp(email);
+
+  res.json({ success: true, ...result });
+}
+
+export async function forgotPasswordResend(req: Request, res: Response): Promise<void> {
+  const { email } = req.body as { email: string };
+  const result = await authService.resendPasswordResetOtp(email);
+
+  res.json({ success: true, ...result });
+}
+
+export async function forgotPasswordVerify(req: Request, res: Response): Promise<void> {
+  const input = req.body as VerifyOtpInput;
+  const result = await authService.verifyPasswordResetOtp(input);
+
+  res.json({ success: true, data: result });
+}
+
+export async function resetPassword(req: Request, res: Response): Promise<void> {
+  const { resetToken, password } = req.body as { resetToken: string; password: string };
+  const result = await authService.resetPassword(resetToken, password);
+
+  res.json({ success: true, ...result });
 }

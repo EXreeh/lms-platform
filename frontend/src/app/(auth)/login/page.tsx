@@ -2,8 +2,10 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/navbar";
 import { PageBackground } from "@/components/layout/page-background";
+import { PageTransition } from "@/components/motion/page-transition";
 import { AuthFormCard } from "@/components/auth/auth-form-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -54,6 +56,7 @@ export default function LoginPage() {
     <PageBackground variant="auth">
       <Navbar />
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:py-20">
+        <PageTransition>
         <AuthFormCard
           title="Welcome back"
           subtitle="Sign in to your Cognitiax AI dashboard"
@@ -88,13 +91,23 @@ export default function LoginPage() {
               error={fieldErrors.password}
               disabled={isLoading}
             />
+            <div className="-mt-2 flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-xs font-semibold text-green-700 hover:underline dark:text-gold-400"
+              >
+                Forgot password?
+              </Link>
+            </div>
             {error ? (
-              <p
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
                 className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300"
                 role="alert"
               >
                 {error}
-              </p>
+              </motion.p>
             ) : null}
             <Button type="submit" className="w-full" isLoading={isLoading} disabled={isLoading}>
               {isLoading ? (
@@ -108,6 +121,7 @@ export default function LoginPage() {
             </Button>
           </form>
         </AuthFormCard>
+        </PageTransition>
       </div>
     </PageBackground>
   );

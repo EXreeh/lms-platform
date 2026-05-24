@@ -5,7 +5,7 @@ import { parseJwtPayload } from "@/lib/jwt";
 import { DASHBOARD_PATHS, type Role } from "@/types/auth";
 
 const AUTH_ROUTES = ["/login", "/register"];
-const PUBLIC_ROUTES = ["/", "/login", "/register"];
+const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password"];
 
 function getRoleDashboard(role: Role): string {
   return DASHBOARD_PATHS[role];

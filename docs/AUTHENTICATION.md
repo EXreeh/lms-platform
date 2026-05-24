@@ -1,48 +1,45 @@
 # Authentication — Cognitiax AI LMS
 
-## API endpoints
+## Registration (students only)
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/api/auth/register` | No | Create account |
-| POST | `/api/auth/login` | No | Sign in |
-| POST | `/api/auth/logout` | Yes | Clear session cookie |
-| GET | `/api/auth/me` | Yes | Current user profile |
+1. `POST /api/auth/register/request-otp` — validate form, store pending registration, send OTP
+2. `POST /api/auth/register/verify` — verify OTP, create **STUDENT** account
+3. `POST /api/auth/register/resend-otp` — resend code (rate limited)
 
-## Dashboard routes (protected)
+Teacher accounts are created by administrators only.
 
-| Method | Path | Role |
-|--------|------|------|
-| GET | `/api/dashboard/student` | STUDENT |
-| GET | `/api/dashboard/teacher` | TEACHER |
-| GET | `/api/dashboard/admin` | ADMIN |
+## Login / session
 
-## Security
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/auth/login` | Sign in |
+| POST | `/api/auth/logout` | Clear session |
+| GET | `/api/auth/me` | Current user |
+| GET | `/api/auth/check-email?email=` | Email availability |
 
-- Passwords hashed with **bcrypt** (12 rounds)
-- **JWT** signed with `JWT_SECRET` (min 32 characters)
-- Token stored in **httpOnly cookie** (`cognitiax_token`)
-- Readable cookie synced for Next.js middleware route guards
-- Frontend proxies `/api/*` → backend via `next.config.ts` rewrites (same-origin cookies)
+## Password reset
 
-## User model
+1. `POST /api/auth/password/forgot` — send OTP (no email enumeration)
+2. `POST /api/auth/password/verify-otp` — returns short-lived `resetToken`
+3. `POST /api/auth/password/reset` — set new password
+4. `POST /api/auth/password/resend-otp` — resend OTP
 
-| Field | Type |
-|-------|------|
-| id | cuid |
-| name | string |
-| email | string (unique) |
-| password | string (hashed) |
-| role | STUDENT \| TEACHER \| ADMIN |
-| createdAt | DateTime |
-| updatedAt | DateTime |
+## OTP security
 
-Admin accounts cannot self-register; promote via Prisma Studio or SQL.
+- 6-digit code, HMAC-SHA256 hashed at rest
+- Expires in 5 minutes (configurable)
+- Max 5 verify attempts per challenge
+- 60s resend cooldown, 5 sends/hour per email
 
-## Frontend redirects
+## Password rules
 
-| Role | Dashboard |
-|------|-----------|
-| STUDENT | `/dashboard/student` |
-| TEACHER | `/dashboard/teacher` |
-| ADMIN | `/dashboard/admin` |
+- Min 8 characters
+- 1 uppercase, 1 lowercase, 1 number, 1 special character
+
+## Email
+
+Nodemailer with branded HTML templates. In development without SMTP, OTP is logged to the console when `MAIL_DEV_LOG=true`.
+
+## Environment
+
+See `backend/.env.example` for `SMTP_*`, `OTP_*`, and `JWT_*` variables.

@@ -16,14 +16,47 @@ enum Role {
   ADMIN
 }
 
+enum OtpPurpose {
+  REGISTER
+  PASSWORD_RESET
+}
+
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(STUDENT)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  firstName     String   @map("first_name")
+  lastName      String   @map("last_name")
+  email         String   @unique
+  password      String
+  role          Role     @default(STUDENT)
+  emailVerified Boolean  @default(false) @map("email_verified")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@map("users")
+}
+
+model PendingRegistration {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  passwordHash String   @map("password_hash")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("pending_registrations")
+}
+
+model OtpChallenge {
+  id        String     @id @default(cuid())
+  email     String
+  purpose   OtpPurpose
+  codeHash  String     @map("code_hash")
+  expiresAt DateTime   @map("expires_at")
+  attempts  Int        @default(0)
+  verified  Boolean    @default(false)
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  @@index([email, purpose, createdAt])
+  @@map("otp_challenges")
 }

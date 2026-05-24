@@ -18,6 +18,25 @@ const envSchema = z.object({
     .default("false"),
   COOKIE_SAME_SITE: z.enum(["strict", "lax", "none"]).default("lax"),
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
+  OTP_SECRET: z.string().min(16).default("cognitiax-otp-secret-key"),
+  OTP_EXPIRES_MINUTES: z.coerce.number().default(5),
+  OTP_MAX_ATTEMPTS: z.coerce.number().default(5),
+  OTP_RESEND_COOLDOWN_SECONDS: z.coerce.number().default(60),
+  OTP_MAX_SENDS_PER_HOUR: z.coerce.number().default(5),
+  RESET_TOKEN_EXPIRES_IN: z.string().default("15m"),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_SECURE: z
+    .string()
+    .transform((v) => v === "true")
+    .default("false"),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  EMAIL_FROM: z.string().default("Cognitiax AI <noreply@cognitiax.ai>"),
+  MAIL_DEV_LOG: z
+    .string()
+    .transform((v) => v === "true")
+    .default("true"),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -28,3 +47,5 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+export const isEmailConfigured = Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);

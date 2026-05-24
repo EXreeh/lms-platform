@@ -2,15 +2,47 @@ import { Router } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
 import { validateBody } from "../../middleware/validate.js";
-import { registerSchema, loginSchema } from "./auth.validation.js";
+import { validateQuery } from "../../middleware/validate-query.js";
+import { otpRateLimiter, checkEmailRateLimiter } from "../../middleware/otp-rate-limit.js";
+import {
+  loginSchema,
+  checkEmailSchema,
+  registerRequestOtpSchema,
+  verifyOtpSchema,
+  resendOtpSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+} from "./auth.validation.js";
 import * as authController from "./auth.controller.js";
 
 export const authRoutes = Router();
 
+authRoutes.get(
+  "/check-email",
+  checkEmailRateLimiter,
+  validateQuery(checkEmailSchema),
+  asyncHandler(authController.checkEmail),
+);
+
 authRoutes.post(
-  "/register",
-  validateBody(registerSchema),
-  asyncHandler(authController.register),
+  "/register/request-otp",
+  otpRateLimiter,
+  validateBody(registerRequestOtpSchema),
+  asyncHandler(authController.registerRequestOtp),
+);
+
+authRoutes.post(
+  "/register/resend-otp",
+  otpRateLimiter,
+  validateBody(resendOtpSchema),
+  asyncHandler(authController.registerResendOtp),
+);
+
+authRoutes.post(
+  "/register/verify",
+  otpRateLimiter,
+  validateBody(verifyOtpSchema),
+  asyncHandler(authController.registerVerifyOtp),
 );
 
 authRoutes.post("/login", validateBody(loginSchema), asyncHandler(authController.login));
@@ -18,3 +50,31 @@ authRoutes.post("/login", validateBody(loginSchema), asyncHandler(authController
 authRoutes.post("/logout", authenticate, asyncHandler(authController.logout));
 
 authRoutes.get("/me", authenticate, asyncHandler(authController.me));
+
+authRoutes.post(
+  "/password/forgot",
+  otpRateLimiter,
+  validateBody(forgotPasswordSchema),
+  asyncHandler(authController.forgotPasswordRequest),
+);
+
+authRoutes.post(
+  "/password/resend-otp",
+  otpRateLimiter,
+  validateBody(resendOtpSchema),
+  asyncHandler(authController.forgotPasswordResend),
+);
+
+authRoutes.post(
+  "/password/verify-otp",
+  otpRateLimiter,
+  validateBody(verifyOtpSchema),
+  asyncHandler(authController.forgotPasswordVerify),
+);
+
+authRoutes.post(
+  "/password/reset",
+  otpRateLimiter,
+  validateBody(resetPasswordSchema),
+  asyncHandler(authController.resetPassword),
+);

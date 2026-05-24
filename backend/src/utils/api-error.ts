@@ -27,4 +27,12 @@ export class ApiError extends Error {
   static conflict(message: string, code?: string) {
     return new ApiError(409, message, code);
   }
+
+  static tooManyRequests(message: string, code?: string) {
+    return new ApiError(429, message, code);
+  }
+
+  static internal(message = "Internal server error", code?: string) {
+    return new ApiError(500, message, code);
+  }
 }
