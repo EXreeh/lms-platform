@@ -1,45 +1,129 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { Card } from "@/components/ui/card";
-
-const upcomingFeatures = [
-  "AI-assisted course builder",
-  "Video & content uploads",
-  "Automated quiz generation",
-  "Student engagement analytics",
-];
+import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { ActivityFeed } from "@/components/dashboard/activity-feed";
+import { CourseSection } from "@/components/dashboard/course-section";
+import { DemoBanner } from "@/components/dashboard/demo-banner";
+import { Spinner } from "@/components/ui/spinner";
+import { Button } from "@/components/ui/button";
+import { fetchTeacherDashboard } from "@/lib/dashboard-api";
+import { getDemoTeacherDashboard, isDemoCourseId } from "@/lib/demo-dashboard";
+import type { TeacherDashboardData } from "@/types/dashboard";
+import { ApiClientError } from "@/lib/api";
 
 export default function TeacherDashboardPage() {
+  const [data, setData] = useState<TeacherDashboardData | null>(null);
+  const [showDemo, setShowDemo] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetchTeacherDashboard();
+        if (res.data.isEmpty) {
+          setData(getDemoTeacherDashboard());
+          setShowDemo(true);
+        } else {
+          setData(res.data);
+        }
+      } catch (err) {
+        setError(err instanceof ApiClientError ? err.message : "Failed to load dashboard");
+        setData(getDemoTeacherDashboard());
+        setShowDemo(true);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, []);
+
   return (
     <DashboardShell
       title="Teacher Studio"
-      description="Create, manage, and optimize your courses with AI-powered tools designed for modern educators."
+      description="Create courses, track enrollments, and manage your Cognitiax AI curriculum."
       badge="Educator Portal"
     >
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="Planned modules" variant="gradient">
-          <ul className="space-y-3">
-            {upcomingFeatures.map((item) => (
-              <li key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-green-700/10 text-green-700 dark:bg-green-400/20 dark:text-green-400">
-                  →
-                </span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </Card>
-        <Card title="Your studio" variant="default">
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Upload courses, manage enrollments, and track learner outcomes — all from one
-            professional workspace powered by Cognitiax AI.
-          </p>
-          <div className="mt-6 h-2 overflow-hidden rounded-full bg-muted">
-            <div className="h-full w-1/3 rounded-full gradient-brand" />
+      <div className="flex flex-col gap-8 lg:flex-row">
+        <DashboardSidebar role="TEACHER" />
+        <div className="min-w-0 flex-1 space-y-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div />
+            <Link href="/dashboard/teacher/courses/new">
+              <Button variant="gold">+ Create course</Button>
+            </Link>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">Platform setup · 33% complete</p>
-        </Card>
+
+          {isLoading ? (
+            <div className="flex justify-center py-20">
+              <Spinner size="lg" label="Loading dashboard" />
+            </div>
+          ) : data ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+              {showDemo && <DemoBanner />}
+              {error && (
+                <p className="text-sm text-amber-600 dark:text-amber-400" role="alert">
+                  {error} — showing demo data.
+                </p>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatCard label="Total courses" value={data.stats.totalCourses} icon="📚" accent="green" />
+                <StatCard label="Published" value={data.stats.published} icon="✓" accent="gold" />
+                <StatCard label="Drafts" value={data.stats.drafts} icon="✎" />
+                <StatCard
+                  label="Total enrollments"
+                  value={data.stats.totalEnrollments}
+                  subtext={`${data.stats.totalLessons} lessons`}
+                  icon="👥"
+                  accent="green"
+                />
+              </div>
+
+              <div className="grid gap-8 lg:grid-cols-3">
+                <div className="lg:col-span-2 space-y-8">
+                  <h2 className="font-serif text-xl font-bold text-foreground">My courses</h2>
+                  <CourseSection
+                    title="Published courses"
+                    courses={data.publishedCourses}
+                    editHref={(c) =>
+                      showDemo || isDemoCourseId(c.id)
+                        ? `/courses/${c.slug}`
+                        : `/dashboard/teacher/courses/${c.id}/edit`
+                    }
+                    showStatus
+                    emptyTitle="No published courses"
+                    emptyDescription="Publish a course to make it visible to students."
+                    createHref="/dashboard/teacher/courses/new"
+                  />
+                  <CourseSection
+                    title="Draft courses"
+                    courses={data.draftCourses}
+                    editHref={(c) =>
+                      showDemo || isDemoCourseId(c.id)
+                        ? `/courses/${c.slug}`
+                        : `/dashboard/teacher/courses/${c.id}/edit`
+                    }
+                    showStatus
+                    emptyTitle="No drafts"
+                    emptyDescription="Start a new course and save as draft."
+                    createHref="/dashboard/teacher/courses/new"
+                  />
+                </div>
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <h2 className="font-serif font-bold text-foreground">Recent activity</h2>
+                  <div className="mt-4">
+                    <ActivityFeed items={data.recentActivity} />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ) : null}
+        </div>
       </div>
     </DashboardShell>
   );

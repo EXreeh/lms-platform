@@ -1,0 +1,82 @@
+import type { Course, CourseLevel, Lesson, Module, User } from "@lms/database";
+import type { Decimal } from "@prisma/client/runtime/library";
+
+type CourseWithRelations = Course & {
+  teacher?: Pick<User, "id" | "firstName" | "lastName" | "email">;
+  modules?: (Module & { lessons?: Lesson[] })[];
+};
+
+function decimalToNumber(value: Decimal | number): number {
+  return typeof value === "number" ? value : Number(value);
+}
+
+export function mapLesson(lesson: Lesson) {
+  return {
+    id: lesson.id,
+    title: lesson.title,
+    description: lesson.description,
+    videoUrl: lesson.videoUrl,
+    duration: lesson.duration,
+    order: lesson.order,
+    moduleId: lesson.moduleId,
+    createdAt: lesson.createdAt,
+  };
+}
+
+export function mapModule(module: Module & { lessons?: Lesson[] }) {
+  return {
+    id: module.id,
+    title: module.title,
+    order: module.order,
+    courseId: module.courseId,
+    createdAt: module.createdAt,
+    lessons: module.lessons?.sort((a, b) => a.order - b.order).map(mapLesson) ?? [],
+  };
+}
+
+export function mapCourse(course: CourseWithRelations, includeContent: true): ReturnType<typeof buildBase> & {
+  modules: ReturnType<typeof mapModule>[];
+};
+export function mapCourse(
+  course: CourseWithRelations,
+  includeContent?: false,
+): ReturnType<typeof buildBase>;
+export function mapCourse(course: CourseWithRelations, includeContent = false) {
+  const base = buildBase(course);
+
+  if (includeContent && course.modules) {
+    return {
+      ...base,
+      modules: course.modules.sort((a, b) => a.order - b.order).map(mapModule),
+    };
+  }
+
+  return base;
+}
+
+function buildBase(course: CourseWithRelations) {
+  return {
+    id: course.id,
+    title: course.title,
+    slug: course.slug,
+    description: course.description,
+    thumbnail: course.thumbnail,
+    price: decimalToNumber(course.price),
+    category: course.category,
+    level: course.level as CourseLevel,
+    published: course.published,
+    teacherId: course.teacherId,
+    teacher: course.teacher
+      ? {
+          id: course.teacher.id,
+          name: `${course.teacher.firstName} ${course.teacher.lastName}`.trim(),
+          email: course.teacher.email,
+        }
+      : undefined,
+    createdAt: course.createdAt,
+    updatedAt: course.updatedAt,
+    moduleCount: course.modules?.length ?? 0,
+    lessonCount:
+      course.modules?.reduce((sum, m) => sum + (m.lessons?.length ?? 0), 0) ?? 0,
+  };
+}

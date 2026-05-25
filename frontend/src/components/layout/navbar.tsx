@@ -15,6 +15,12 @@ export function Navbar({ userName, onLogout }: NavbarProps) {
         <Logo size="md" />
 
         <nav className="flex items-center gap-2 sm:gap-3" aria-label="Main navigation">
+          <Link
+            href="/courses"
+            className="hidden rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:inline"
+          >
+            Courses
+          </Link>
           <ThemeToggle />
           {userName ? (
             <>

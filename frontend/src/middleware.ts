@@ -7,6 +7,10 @@ import { DASHBOARD_PATHS, type Role } from "@/types/auth";
 const AUTH_ROUTES = ["/login", "/register"];
 const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password"];
 
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_ROUTES.includes(pathname) || pathname.startsWith("/courses");
+}
+
 function getRoleDashboard(role: Role): string {
   return DASHBOARD_PATHS[role];
 }
@@ -18,7 +22,7 @@ export function middleware(request: NextRequest) {
 
   const isAuthRoute = AUTH_ROUTES.includes(pathname);
   const isDashboard = pathname.startsWith("/dashboard");
-  const isPublic = PUBLIC_ROUTES.includes(pathname);
+  const isPublic = isPublicPath(pathname);
 
   if (isDashboard) {
     if (!token || !payload) {
@@ -27,9 +31,18 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const expectedPath = getRoleDashboard(payload.role);
-    if (pathname !== expectedPath) {
-      return NextResponse.redirect(new URL(expectedPath, request.url));
+    const roleBase: Record<Role, string> = {
+      STUDENT: "/dashboard/student",
+      TEACHER: "/dashboard/teacher",
+      ADMIN: "/dashboard/admin",
+    };
+    const allowedBase = roleBase[payload.role];
+    const canAccess =
+      pathname.startsWith(allowedBase) ||
+      (payload.role === "ADMIN" && pathname.startsWith("/dashboard/teacher"));
+
+    if (!canAccess) {
+      return NextResponse.redirect(new URL(getRoleDashboard(payload.role), request.url));
     }
   }
 

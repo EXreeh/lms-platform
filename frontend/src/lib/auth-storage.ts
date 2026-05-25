@@ -13,6 +13,7 @@ export function syncMiddlewareCookie(token: string): void {
   if (typeof document === "undefined") return;
   const maxAge = 60 * 60 * 24 * 7;
   document.cookie = `${TOKEN_COOKIE}=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  localStorage.setItem(LEGACY_KEY, token);
 }
 
 export function getAuthToken(): string | null {

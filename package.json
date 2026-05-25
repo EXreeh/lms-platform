@@ -19,6 +19,7 @@
     "db:migrate": "npm run migrate -w database",
     "db:push": "npm run push -w database",
     "db:studio": "npm run studio -w database",
+    "db:seed": "npm run seed -w database",
     "lint": "npm run lint -w frontend && npm run lint -w backend",
     "typecheck": "npm run typecheck -w frontend && npm run typecheck -w backend"
   },
