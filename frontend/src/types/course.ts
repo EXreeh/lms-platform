@@ -45,6 +45,7 @@ export interface Course {
   modules?: Module[];
   enrolled?: boolean;
   enrollmentProgress?: number;
+  enrollmentCompleted?: boolean;
 }
 
 export interface CoursesListResponse {

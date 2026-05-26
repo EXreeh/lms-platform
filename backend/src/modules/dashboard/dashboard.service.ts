@@ -1,6 +1,7 @@
 import type { Role } from "@lms/database";
 import { prisma } from "../../config/database.js";
 import { mapCourse } from "../courses/courses.mapper.js";
+import * as learningService from "../learning/learning.service.js";
 
 const teacherSelect = {
   id: true,
@@ -135,50 +136,19 @@ export async function getAdminDashboard() {
 }
 
 export async function getStudentDashboard(userId: string) {
-  const enrollments = await prisma.enrollment.findMany({
-    where: { studentId: userId },
-    include: {
-      course: {
-        include: {
-          teacher: { select: teacherSelect },
-          modules: { include: { lessons: { orderBy: { order: "asc" } } }, orderBy: { order: "asc" } },
-        },
-      },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
+  const [enrollments, analytics, continueLearning] = await Promise.all([
+    learningService.getEnrolledCourses(userId),
+    learningService.getStudentAnalytics(userId),
+    learningService.getContinueLearning(userId),
+  ]);
 
   const enrolledCourses = enrollments.map((e) => ({
     enrollmentId: e.id,
-    progress: e.progress,
-    enrolledAt: e.enrolledAt.toISOString(),
-    course: mapCourse(e.course, true),
-    lastLessonId: e.lastLessonId,
+    progress: e.progressPercentage,
+    completed: e.completed,
+    enrolledAt: e.enrolledAt,
+    course: e.course,
   }));
-
-  const inProgress = enrolledCourses.filter((e) => e.progress > 0 && e.progress < 100);
-  const completed = enrolledCourses.filter((e) => e.progress >= 100);
-
-  let continueLearning: {
-    course: ReturnType<typeof mapCourse>;
-    lessonTitle: string;
-    progress: number;
-    slug: string;
-  } | null = null;
-
-  const active = inProgress[0] ?? enrolledCourses[0];
-  if (active) {
-    const allLessons = active.course.modules?.flatMap((m) => m.lessons) ?? [];
-    const lastLesson = active.lastLessonId
-      ? allLessons.find((l) => l.id === active.lastLessonId)
-      : allLessons[0];
-    continueLearning = {
-      course: active.course,
-      lessonTitle: lastLesson?.title ?? "Start first lesson",
-      progress: active.progress,
-      slug: active.course.slug,
-    };
-  }
 
   const enrolledIds = enrollments.map((e) => e.courseId);
   const recommended = await prisma.course.findMany({
@@ -193,21 +163,26 @@ export async function getStudentDashboard(userId: string) {
 
   return {
     stats: {
-      enrolled: enrolledCourses.length,
-      inProgress: inProgress.length,
-      completed: completed.length,
-      hoursLearned: Math.round(
-        enrollments.reduce((sum, e) => {
-          const secs = e.course.modules.reduce(
-            (ms, m) => ms + m.lessons.reduce((ls, l) => ls + l.duration, 0),
-            0,
-          );
-          return sum + (secs * e.progress) / 100 / 3600;
-        }, 0),
-      ),
+      enrolled: analytics.enrolled,
+      inProgress: analytics.inProgressCourses,
+      completed: analytics.completedCourses,
+      hoursLearned: analytics.hoursLearned,
+      lessonsCompleted: analytics.totalLessonsCompleted,
+      averageProgress: analytics.averageProgress,
     },
     enrolledCourses,
-    continueLearning,
+    continueLearning: continueLearning
+      ? {
+          course: continueLearning.course,
+          lessonId: continueLearning.lesson.id,
+          lessonTitle: continueLearning.lesson.title,
+          moduleTitle: continueLearning.lesson.moduleTitle,
+          progress: continueLearning.progressPercentage,
+          slug: continueLearning.courseSlug,
+          learnHref: `/courses/${continueLearning.courseSlug}/learn?lesson=${continueLearning.lesson.id}`,
+        }
+      : null,
+    recentlyViewed: analytics.recentlyViewed,
     recommendedCourses: recommended.map((c) => mapCourse(c)),
     isEmpty: enrolledCourses.length === 0,
   };

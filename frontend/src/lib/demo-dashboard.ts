@@ -135,22 +135,47 @@ export function getDemoStudentDashboard(): StudentDashboardData {
   });
 
   return {
-    stats: { enrolled: 1, inProgress: 1, completed: 0, hoursLearned: 4 },
+    stats: {
+      enrolled: 1,
+      inProgress: 1,
+      completed: 0,
+      hoursLearned: 4,
+      lessonsCompleted: 1,
+      averageProgress: 33,
+    },
     enrolledCourses: [
       {
         enrollmentId: "demo-enroll-1",
-        progress: 35,
+        progress: 33,
+        completed: false,
         enrolledAt: new Date(Date.now() - 86400000 * 5).toISOString(),
         course,
-        lastLessonId: null,
       },
     ],
     continueLearning: {
       course,
       lessonTitle: "Types of Machine Learning",
-      progress: 35,
+      moduleTitle: "Getting Started",
+      progress: 33,
       slug: course.slug,
+      learnHref: `/courses/${course.slug}/learn`,
     },
+    recentlyViewed: [
+      {
+        lessonId: "demo-lesson-1",
+        lessonTitle: "What is Artificial Intelligence?",
+        watchedDuration: 720,
+        completed: true,
+        updatedAt: new Date(Date.now() - 3600000).toISOString(),
+      },
+      {
+        lessonId: "demo-lesson-2",
+        lessonTitle: "Types of Machine Learning",
+        watchedDuration: 420,
+        completed: false,
+        updatedAt: new Date().toISOString(),
+      },
+    ],
     recommendedCourses: [
       demoCourse({
         title: "Full-Stack Web Development",

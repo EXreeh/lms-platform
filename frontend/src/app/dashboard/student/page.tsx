@@ -8,12 +8,14 @@ import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { CourseSection } from "@/components/dashboard/course-section";
 import { DemoBanner } from "@/components/dashboard/demo-banner";
-import { CourseCard } from "@/components/courses/course-card";
-import { Spinner } from "@/components/ui/spinner";
+import { ContinueLearningCard } from "@/components/learning/continue-learning-card";
+import { CourseProgressCard } from "@/components/learning/course-progress-card";
+import { DashboardStatsSkeleton } from "@/components/learning/learning-skeleton";
 import { Button } from "@/components/ui/button";
 import { fetchStudentDashboard } from "@/lib/dashboard-api";
 import { getDemoStudentDashboard } from "@/lib/demo-dashboard";
 import type { StudentDashboardData } from "@/types/dashboard";
+import { formatWatchTime } from "@/lib/video-utils";
 
 export default function StudentDashboardPage() {
   const [data, setData] = useState<StudentDashboardData | null>(null);
@@ -49,9 +51,7 @@ export default function StudentDashboardPage() {
         <DashboardSidebar role="STUDENT" />
         <div className="min-w-0 flex-1 space-y-8">
           {isLoading ? (
-            <div className="flex justify-center py-20">
-              <Spinner size="lg" label="Loading dashboard" />
-            </div>
+            <DashboardStatsSkeleton />
           ) : data ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
               {showDemo && <DemoBanner />}
@@ -63,50 +63,71 @@ export default function StudentDashboardPage() {
                 <StatCard
                   label="Hours learned"
                   value={data.stats.hoursLearned}
-                  subtext="Estimated"
+                  subtext={
+                    data.stats.lessonsCompleted !== undefined
+                      ? `${data.stats.lessonsCompleted} lessons done`
+                      : "Estimated"
+                  }
                   icon="⏱"
                   accent="green"
                 />
               </div>
 
-              {data.continueLearning && (
-                <motion.div
-                  whileHover={{ scale: 1.005 }}
-                  className="overflow-hidden rounded-2xl border border-border gradient-border"
-                >
-                  <div className="bg-card p-6 sm:p-8">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gold-600 dark:text-gold-400">
-                      Continue learning
-                    </p>
-                    <h2 className="mt-2 font-serif text-xl font-bold text-foreground">
-                      {data.continueLearning.course.title}
-                    </h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Next: {data.continueLearning.lessonTitle}
-                    </p>
-                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
-                      <motion.div
-                        className="h-full gradient-brand"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${data.continueLearning.progress}%` }}
-                        transition={{ duration: 0.8 }}
-                      />
-                    </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {Math.round(data.continueLearning.progress)}% complete
-                    </p>
-                    <Link
-                      href={`/courses/${data.continueLearning.slug}`}
-                      className="mt-4 inline-block"
-                    >
-                      <Button variant="gold">Resume course</Button>
-                    </Link>
+              {data.stats.averageProgress !== undefined && data.stats.enrolled > 0 && (
+                <div className="rounded-2xl border border-border bg-card p-5">
+                  <h2 className="font-serif text-lg font-bold">Progress overview</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Average completion across your enrolled courses
+                  </p>
+                  <div className="mt-4 flex items-end gap-4">
+                    <span className="font-serif text-4xl font-bold text-green-700 dark:text-gold-400">
+                      {Math.round(data.stats.averageProgress)}%
+                    </span>
+                    <span className="pb-1 text-sm text-muted-foreground">average progress</span>
                   </div>
-                </motion.div>
+                </div>
+              )}
+
+              {data.continueLearning && (
+                <ContinueLearningCard
+                  courseTitle={data.continueLearning.course.title}
+                  lessonTitle={data.continueLearning.lessonTitle}
+                  moduleTitle={data.continueLearning.moduleTitle}
+                  progress={data.continueLearning.progress}
+                  href={
+                    data.continueLearning.learnHref ??
+                    `/courses/${data.continueLearning.slug}/learn`
+                  }
+                />
+              )}
+
+              {data.recentlyViewed && data.recentlyViewed.length > 0 && (
+                <section>
+                  <h2 className="mb-4 font-serif text-lg font-bold">Recently viewed lessons</h2>
+                  <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
+                    {data.recentlyViewed.map((item) => (
+                      <li key={item.lessonId} className="flex items-center justify-between px-5 py-4">
+                        <div>
+                          <p className="font-medium text-foreground">{item.lessonTitle}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatWatchTime(item.watchedDuration)} watched
+                          </p>
+                        </div>
+                        {item.completed ? (
+                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/40 dark:text-green-300">
+                            Done
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">In progress</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               )}
 
               <section>
-                <h2 className="mb-4 font-serif text-lg font-bold">My courses</h2>
+                <h2 className="mb-4 font-serif text-lg font-bold">Enrolled courses</h2>
                 {data.enrolledCourses.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-border p-8 text-center">
                     <p className="text-muted-foreground">You haven&apos;t enrolled yet.</p>
@@ -116,18 +137,14 @@ export default function StudentDashboardPage() {
                   </div>
                 ) : (
                   <div className="grid gap-5 sm:grid-cols-2">
-                    {data.enrolledCourses.map(({ course, progress }) => (
-                      <div key={course.id} className="relative">
-                        <CourseCard course={course} href={`/courses/${course.slug}`} />
-                        <div className="absolute bottom-16 left-5 right-5">
-                          <div className="h-1.5 overflow-hidden rounded-full bg-black/20">
-                            <div
-                              className="h-full bg-gold-500"
-                              style={{ width: `${progress}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
+                    {data.enrolledCourses.map(({ course, progress, completed }) => (
+                      <CourseProgressCard
+                        key={course.id}
+                        course={course}
+                        progress={progress}
+                        completed={completed}
+                        href={`/courses/${course.slug}/learn`}
+                      />
                     ))}
                   </div>
                 )}

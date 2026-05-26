@@ -61,7 +61,7 @@ export default function CourseDetailPage() {
     setEnrollMsg(null);
     try {
       await enrollInCourse(course.slug);
-      router.push("/dashboard/student");
+      router.push(`/courses/${slug}/learn`);
     } catch (err) {
       setEnrollMsg(err instanceof ApiClientError ? err.message : "Enrollment failed");
     } finally {
@@ -144,11 +144,13 @@ export default function CourseDetailPage() {
                         />
                       </div>
                       <p className="mt-2 text-center text-xs text-muted-foreground">
-                        {Math.round(course.enrollmentProgress ?? 0)}% complete
+                        {course.enrollmentCompleted
+                          ? "Course completed"
+                          : `${Math.round(course.enrollmentProgress ?? 0)}% complete`}
                       </p>
-                      <Link href="/dashboard/student" className="mt-4 block">
+                      <Link href={`/courses/${slug}/learn`} className="mt-4 block">
                         <Button className="w-full" size="lg" variant="gold">
-                          Continue learning
+                          {course.enrollmentCompleted ? "Review course" : "Continue learning"}
                         </Button>
                       </Link>
                     </>

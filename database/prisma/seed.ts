@@ -3,6 +3,18 @@ import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
+function flattenCourseLessons(
+  modules: { id: string; title: string; order: number; lessons: { id: string; order: number }[] }[],
+) {
+  return [...modules]
+    .sort((a, b) => a.order - b.order)
+    .flatMap((mod) =>
+      [...mod.lessons]
+        .sort((a, b) => a.order - b.order)
+        .map((lesson) => ({ ...lesson, moduleTitle: mod.title })),
+    );
+}
+
 async function main() {
   console.log("🌱 Seeding Cognitiax AI LMS demo data…");
 
@@ -162,19 +174,55 @@ async function main() {
   });
 
   if (publishedCourse) {
-    const firstLesson = publishedCourse.modules[0]?.lessons[0];
-    await prisma.enrollment.upsert({
+    const lessons = flattenCourseLessons(publishedCourse.modules);
+    const firstLesson = lessons[0];
+    const secondLesson = lessons[1];
+
+    const enrollment = await prisma.enrollment.upsert({
       where: {
         studentId_courseId: { studentId: student.id, courseId: publishedCourse.id },
       },
-      update: { progress: 35, lastLessonId: firstLesson?.id ?? null },
+      update: { progressPercentage: 33.3, completed: false },
       create: {
         studentId: student.id,
         courseId: publishedCourse.id,
-        progress: 35,
-        lastLessonId: firstLesson?.id ?? null,
+        progressPercentage: 33.3,
+        completed: false,
       },
     });
+
+    if (firstLesson) {
+      await prisma.lessonProgress.upsert({
+        where: {
+          studentId_lessonId: { studentId: student.id, lessonId: firstLesson.id },
+        },
+        update: { completed: true, watchedDuration: firstLesson.duration, completedAt: new Date() },
+        create: {
+          studentId: student.id,
+          lessonId: firstLesson.id,
+          completed: true,
+          watchedDuration: firstLesson.duration,
+          completedAt: new Date(),
+        },
+      });
+    }
+
+    if (secondLesson) {
+      await prisma.lessonProgress.upsert({
+        where: {
+          studentId_lessonId: { studentId: student.id, lessonId: secondLesson.id },
+        },
+        update: { completed: false, watchedDuration: 420 },
+        create: {
+          studentId: student.id,
+          lessonId: secondLesson.id,
+          completed: false,
+          watchedDuration: 420,
+        },
+      });
+    }
+
+    void enrollment;
   }
 
   console.log("✅ Seed complete!");

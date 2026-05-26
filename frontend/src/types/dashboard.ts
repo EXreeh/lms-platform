@@ -48,20 +48,32 @@ export interface StudentDashboardData {
     inProgress: number;
     completed: number;
     hoursLearned: number;
+    lessonsCompleted?: number;
+    averageProgress?: number;
   };
   enrolledCourses: {
     enrollmentId: string;
     progress: number;
+    completed?: boolean;
     enrolledAt: string;
     course: Course;
-    lastLessonId: string | null;
   }[];
   continueLearning: {
     course: Course;
+    lessonId?: string;
     lessonTitle: string;
+    moduleTitle?: string;
     progress: number;
     slug: string;
+    learnHref?: string;
   } | null;
+  recentlyViewed?: {
+    lessonId: string;
+    lessonTitle: string;
+    watchedDuration: number;
+    completed: boolean;
+    updatedAt: string;
+  }[];
   recommendedCourses: Course[];
   isEmpty: boolean;
 }

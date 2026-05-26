@@ -196,7 +196,8 @@ export async function getCourse(
     return {
       ...mapped,
       enrolled: Boolean(enrollment),
-      enrollmentProgress: enrollment?.progress,
+      enrollmentProgress: enrollment?.progressPercentage,
+      enrollmentCompleted: enrollment?.completed ?? false,
     };
   }
 
@@ -364,37 +365,9 @@ export async function getCategories() {
 }
 
 export async function enrollInCourse(studentId: string, idOrSlug: string) {
-  const course = await prisma.course.findFirst({
-    where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }], published: true },
-    include: { modules: { include: { lessons: true } } },
-  });
-
-  if (!course) {
-    throw ApiError.notFound("Course not found or not published");
-  }
-
-  const existing = await prisma.enrollment.findUnique({
-    where: { studentId_courseId: { studentId, courseId: course.id } },
-  });
-
-  if (existing) {
-    throw ApiError.conflict("Already enrolled in this course", "ALREADY_ENROLLED");
-  }
-
-  const firstLesson = course.modules
-    .sort((a, b) => a.order - b.order)
-    .flatMap((m) => m.lessons.sort((a, b) => a.order - b.order))[0];
-
-  await prisma.enrollment.create({
-    data: {
-      studentId,
-      courseId: course.id,
-      progress: 0,
-      lastLessonId: firstLesson?.id ?? null,
-    },
-  });
-
-  return { message: "Enrolled successfully", courseId: course.id };
+  const { enrollInCourse: enroll } = await import("../learning/learning.service.js");
+  const result = await enroll(studentId, idOrSlug);
+  return { message: result.message, courseId: result.enrollment.courseId };
 }
 
 export async function reorderModules(
