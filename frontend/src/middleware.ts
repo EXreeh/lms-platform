@@ -1,34 +1,51 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { TOKEN_COOKIE } from "@/lib/constants";
-import { parseJwtPayload } from "@/lib/jwt";
+import { parseJwtPayload, isTokenExpired } from "@/lib/jwt";
 import { DASHBOARD_PATHS, type Role } from "@/types/auth";
 
-const AUTH_ROUTES = ["/login", "/register"];
-const PUBLIC_ROUTES = ["/", "/login", "/register", "/forgot-password"];
+const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
+const PUBLIC_EXACT = ["/", "/login", "/register", "/forgot-password"];
 
-function isPublicPath(pathname: string): boolean {
-  return PUBLIC_ROUTES.includes(pathname) || pathname.startsWith("/courses");
+function isPublicCatalogPath(pathname: string): boolean {
+  if (pathname === "/courses") return true;
+  // /courses/[slug] only — not /learn or /quizzes
+  return /^\/courses\/[^/]+$/.test(pathname);
+}
+
+function isProtectedCoursePath(pathname: string): boolean {
+  return (
+    pathname.includes("/learn") ||
+    pathname.includes("/quizzes/")
+  );
 }
 
 function getRoleDashboard(role: Role): string {
   return DASHBOARD_PATHS[role];
 }
 
+function redirectToLogin(request: NextRequest, pathname: string) {
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set("redirect", pathname);
+  const res = NextResponse.redirect(loginUrl);
+  res.cookies.delete(TOKEN_COOKIE);
+  return res;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(TOKEN_COOKIE)?.value;
   const payload = token ? parseJwtPayload(token) : null;
+  const tokenValid = Boolean(token && payload && !isTokenExpired(token));
 
   const isAuthRoute = AUTH_ROUTES.includes(pathname);
   const isDashboard = pathname.startsWith("/dashboard");
-  const isPublic = isPublicPath(pathname);
+  const isPublic =
+    PUBLIC_EXACT.includes(pathname) || isPublicCatalogPath(pathname);
 
   if (isDashboard) {
-    if (!token || !payload) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(loginUrl);
+    if (!tokenValid) {
+      return redirectToLogin(request, pathname);
     }
 
     const roleBase: Record<Role, string> = {
@@ -36,21 +53,30 @@ export function middleware(request: NextRequest) {
       TEACHER: "/dashboard/teacher",
       ADMIN: "/dashboard/admin",
     };
-    const allowedBase = roleBase[payload.role];
+    const allowedBase = roleBase[payload!.role];
     const canAccess =
       pathname.startsWith(allowedBase) ||
-      (payload.role === "ADMIN" && pathname.startsWith("/dashboard/teacher"));
+      (payload!.role === "ADMIN" && pathname.startsWith("/dashboard/teacher"));
 
     if (!canAccess) {
-      return NextResponse.redirect(new URL(getRoleDashboard(payload.role), request.url));
+      return NextResponse.redirect(new URL(getRoleDashboard(payload!.role), request.url));
     }
   }
 
-  if (isAuthRoute && token && payload) {
-    return NextResponse.redirect(new URL(getRoleDashboard(payload.role), request.url));
+  if (isProtectedCoursePath(pathname)) {
+    if (!tokenValid) {
+      return redirectToLogin(request, pathname);
+    }
+    if (payload!.role !== "STUDENT" && pathname.includes("/quizzes/")) {
+      return NextResponse.redirect(new URL(getRoleDashboard(payload!.role), request.url));
+    }
   }
 
-  if (!isPublic && !isDashboard && !isAuthRoute) {
+  if (isAuthRoute && tokenValid) {
+    return NextResponse.redirect(new URL(getRoleDashboard(payload!.role), request.url));
+  }
+
+  if (!isPublic && !isDashboard && !isAuthRoute && !isProtectedCoursePath(pathname)) {
     return NextResponse.next();
   }
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { DemoBanner } from "@/components/dashboard/demo-banner";
@@ -47,6 +48,9 @@ export default function AdminDashboardPage() {
       description="Platform oversight, user management, and course moderation for Cognitiax AI."
       badge="Administrator"
     >
+      <div className="flex flex-col gap-8 lg:flex-row">
+        <DashboardSidebar role="ADMIN" />
+        <div className="min-w-0 flex-1">
       {isLoading ? (
         <div className="flex justify-center py-20">
           <Spinner size="lg" label="Loading admin dashboard" />
@@ -129,6 +133,8 @@ export default function AdminDashboardPage() {
           </p>
         </motion.div>
       ) : null}
+        </div>
+      </div>
     </DashboardShell>
   );
 }

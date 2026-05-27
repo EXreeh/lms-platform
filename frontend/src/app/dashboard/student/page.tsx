@@ -16,11 +16,13 @@ import { fetchStudentDashboard } from "@/lib/dashboard-api";
 import { getDemoStudentDashboard } from "@/lib/demo-dashboard";
 import type { StudentDashboardData } from "@/types/dashboard";
 import { formatWatchTime } from "@/lib/video-utils";
+import { ApiClientError } from "@/lib/api";
 
 export default function StudentDashboardPage() {
   const [data, setData] = useState<StudentDashboardData | null>(null);
   const [showDemo, setShowDemo] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -32,7 +34,8 @@ export default function StudentDashboardPage() {
         } else {
           setData(res.data);
         }
-      } catch {
+      } catch (err) {
+        setError(err instanceof ApiClientError ? err.message : "Failed to load dashboard");
         setData(getDemoStudentDashboard());
         setShowDemo(true);
       } finally {
@@ -55,6 +58,11 @@ export default function StudentDashboardPage() {
           ) : data ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
               {showDemo && <DemoBanner />}
+              {error && (
+                <p className="text-sm text-amber-600 dark:text-amber-400" role="alert">
+                  {error} — showing demo data.
+                </p>
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard label="Enrolled" value={data.stats.enrolled} icon="📖" accent="green" />
@@ -106,20 +114,25 @@ export default function StudentDashboardPage() {
                   <h2 className="mb-4 font-serif text-lg font-bold">Recently viewed lessons</h2>
                   <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
                     {data.recentlyViewed.map((item) => (
-                      <li key={item.lessonId} className="flex items-center justify-between px-5 py-4">
-                        <div>
-                          <p className="font-medium text-foreground">{item.lessonTitle}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatWatchTime(item.watchedDuration)} watched
-                          </p>
-                        </div>
-                        {item.completed ? (
-                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/40 dark:text-green-300">
-                            Done
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">In progress</span>
-                        )}
+                      <li key={item.lessonId}>
+                        <Link
+                          href={item.learnHref ?? `/courses/${item.courseSlug ?? ""}/learn?lesson=${item.lessonId}`}
+                          className="flex items-center justify-between px-5 py-4 transition-colors hover:bg-muted/50"
+                        >
+                          <div>
+                            <p className="font-medium text-foreground">{item.lessonTitle}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatWatchTime(item.watchedDuration)} watched
+                            </p>
+                          </div>
+                          {item.completed ? (
+                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/40 dark:text-green-300">
+                              Done
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">In progress</span>
+                          )}
+                        </Link>
                       </li>
                     ))}
                   </ul>

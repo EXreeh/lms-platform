@@ -3,6 +3,7 @@ import { authRoutes } from "../modules/auth/auth.routes.js";
 import { coursesRoutes } from "../modules/courses/courses.routes.js";
 import { dashboardRoutes } from "./dashboard.routes.js";
 import { learningRoutes } from "../modules/learning/learning.routes.js";
+import { quizzesRoutes, quizAttemptRoutes } from "../modules/quizzes/quizzes.routes.js";
 
 export const apiRouter = Router();
 
@@ -18,3 +19,5 @@ apiRouter.use("/auth", authRoutes);
 apiRouter.use("/courses", coursesRoutes);
 apiRouter.use("/dashboard", dashboardRoutes);
 apiRouter.use("/learning", learningRoutes);
+apiRouter.use("/quizzes", quizzesRoutes);
+apiRouter.use("/quiz-attempts", quizAttemptRoutes);

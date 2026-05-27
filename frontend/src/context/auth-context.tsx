@@ -12,13 +12,14 @@ import { useRouter } from "next/navigation";
 import type { User } from "@/types/auth";
 import { fetchCurrentUser, logoutUser } from "@/lib/auth-api";
 import { clearAuthStorage, getDashboardPathForRole, syncMiddlewareCookie } from "@/lib/auth-storage";
+import { getSafeRedirectPath } from "@/lib/safe-redirect";
 import { ApiClientError } from "@/lib/api";
 
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (user: User, token?: string) => void;
+  login: (user: User, token?: string, redirectTo?: string | null) => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -50,12 +51,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser]);
 
   const login = useCallback(
-    (nextUser: User, token?: string) => {
+    (nextUser: User, token?: string, redirectTo?: string | null) => {
       if (token) {
         syncMiddlewareCookie(token);
       }
       setUser(nextUser);
-      router.push(getDashboardPathForRole(nextUser.role));
+      const safe = getSafeRedirectPath(redirectTo ?? null);
+      router.push(safe ?? getDashboardPathForRole(nextUser.role));
     },
     [router],
   );

@@ -70,6 +70,8 @@ export interface StudentDashboardData {
   recentlyViewed?: {
     lessonId: string;
     lessonTitle: string;
+    courseSlug?: string;
+    learnHref?: string;
     watchedDuration: number;
     completed: boolean;
     updatedAt: string;

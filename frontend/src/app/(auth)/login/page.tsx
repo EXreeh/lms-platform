@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/navbar";
@@ -13,9 +14,12 @@ import { Spinner } from "@/components/ui/spinner";
 import { loginUser } from "@/lib/auth-api";
 import { useAuth } from "@/context/auth-context";
 import { ApiClientError } from "@/lib/api";
+import { getSafeRedirectPath } from "@/lib/safe-redirect";
 
-export default function LoginPage() {
+function LoginForm() {
   const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const redirectTo = getSafeRedirectPath(searchParams.get("redirect"));
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +37,7 @@ export default function LoginPage() {
         email: String(form.get("email")),
         password: String(form.get("password")),
       });
-      login(response.data.user, response.data.token);
+      login(response.data.user, response.data.token, redirectTo);
     } catch (err) {
       if (err instanceof ApiClientError) {
         setError(err.message);
@@ -124,5 +128,13 @@ export default function LoginPage() {
         </PageTransition>
       </div>
     </PageBackground>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

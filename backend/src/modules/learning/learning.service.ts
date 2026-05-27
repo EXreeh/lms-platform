@@ -348,7 +348,13 @@ export async function getStudentAnalytics(studentId: string) {
 
   const lessonProgresses = await prisma.lessonProgress.findMany({
     where: { studentId },
-    include: { lesson: true },
+    include: {
+      lesson: {
+        include: {
+          module: { include: { course: { select: { slug: true } } } },
+        },
+      },
+    },
     orderBy: { updatedAt: "desc" },
   });
 
@@ -361,13 +367,18 @@ export async function getStudentAnalytics(studentId: string) {
 
   const totalWatchSeconds = lessonProgresses.reduce((sum, p) => sum + p.watchedDuration, 0);
 
-  const recentlyViewed = lessonProgresses.slice(0, 6).map((p) => ({
-    lessonId: p.lessonId,
-    lessonTitle: p.lesson.title,
-    watchedDuration: p.watchedDuration,
-    completed: p.completed,
-    updatedAt: p.updatedAt.toISOString(),
-  }));
+  const recentlyViewed = lessonProgresses.slice(0, 6).map((p) => {
+    const courseSlug = p.lesson.module.course.slug;
+    return {
+      lessonId: p.lessonId,
+      lessonTitle: p.lesson.title,
+      courseSlug,
+      learnHref: `/courses/${courseSlug}/learn?lesson=${p.lessonId}`,
+      watchedDuration: p.watchedDuration,
+      completed: p.completed,
+      updatedAt: p.updatedAt.toISOString(),
+    };
+  });
 
   const avgProgress =
     enrollments.length > 0

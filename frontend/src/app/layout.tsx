@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Playfair_Display } from "next/font/google";
 import { AuthProvider } from "@/context/auth-context";
 import { ThemeProvider } from "@/context/theme-context";
+import { ToastProvider } from "@/context/toast-context";
 import Script from "next/script";
 import { brand } from "@/lib/design-tokens";
 import "./globals.css";
@@ -63,7 +64,9 @@ export default function RootLayout({
           {`(function(){try{var t=localStorage.getItem('cognitiax-theme');var d=t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})();`}
         </Script>
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

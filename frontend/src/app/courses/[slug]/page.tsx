@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Navbar } from "@/components/layout/navbar";
+import { AuthNavbar } from "@/components/layout/auth-navbar";
 import { PageBackground } from "@/components/layout/page-background";
 import { ModuleAccordion } from "@/components/courses/module-accordion";
 import { Spinner } from "@/components/ui/spinner";
@@ -15,12 +15,14 @@ import type { Course } from "@/types/course";
 import { formatPrice, formatDuration } from "@/types/course";
 import { ApiClientError } from "@/lib/api";
 import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/context/toast-context";
 import { useRouter } from "next/navigation";
 
 export default function CourseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const { success, error: toastError } = useToast();
   const slug = params.slug as string;
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,9 +63,15 @@ export default function CourseDetailPage() {
     setEnrollMsg(null);
     try {
       await enrollInCourse(course.slug);
+      success("Enrolled successfully!");
       router.push(`/courses/${slug}/learn`);
     } catch (err) {
+      if (err instanceof ApiClientError && err.code === "ALREADY_ENROLLED") {
+        router.push(`/courses/${slug}/learn`);
+        return;
+      }
       setEnrollMsg(err instanceof ApiClientError ? err.message : "Enrollment failed");
+      toastError(err instanceof ApiClientError ? err.message : "Enrollment failed");
     } finally {
       setIsEnrolling(false);
     }
@@ -71,7 +79,7 @@ export default function CourseDetailPage() {
 
   return (
     <PageBackground variant="default">
-      <Navbar />
+      <AuthNavbar />
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         {isLoading ? (
           <div className="flex justify-center py-24">

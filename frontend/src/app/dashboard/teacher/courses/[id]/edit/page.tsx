@@ -275,7 +275,16 @@ export default function EditCoursePage() {
           </form>
 
           <section className="rounded-2xl border border-border bg-card p-6">
-            <h2 className="font-serif text-lg font-bold">Curriculum</h2>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-serif text-lg font-bold">Curriculum</h2>
+              <Link
+                href={`/dashboard/teacher/quizzes/new?courseId=${courseId}`}
+              >
+                <Button type="button" variant="ghost" size="sm">
+                  + Add quiz to lesson
+                </Button>
+              </Link>
+            </div>
             {(course.modules?.length ?? 0) > 1 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {[...(course.modules ?? [])]

@@ -51,10 +51,12 @@ export default function TeacherDashboardPage() {
       <div className="flex flex-col gap-8 lg:flex-row">
         <DashboardSidebar role="TEACHER" />
         <div className="min-w-0 flex-1 space-y-8">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div />
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Link href="/dashboard/teacher/courses/new">
               <Button variant="gold">+ Create course</Button>
+            </Link>
+            <Link href="/dashboard/teacher/quizzes">
+              <Button variant="secondary">Manage quizzes</Button>
             </Link>
           </div>
 

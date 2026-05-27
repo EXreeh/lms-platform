@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Navbar } from "@/components/layout/navbar";
+import { AuthNavbar } from "@/components/layout/auth-navbar";
+import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { PageBackground } from "@/components/layout/page-background";
 import { VideoPlayer } from "@/components/learning/video-player";
 import { LessonSidebar, LessonSidebarMobile } from "@/components/learning/lesson-sidebar";
@@ -17,8 +18,12 @@ import {
   markLessonComplete,
   updateWatchProgress,
 } from "@/lib/learning-api";
+import { fetchLessonQuizzesStudent } from "@/lib/quizzes-api";
+import { QuizCard } from "@/components/quizzes/quiz-card";
+import type { Quiz } from "@/types/quiz";
 import type { CourseProgressData, LessonWithProgress, ModuleWithProgress } from "@/types/learning";
 import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/context/toast-context";
 import { ApiClientError } from "@/lib/api";
 
 function flattenLessons(modules: ModuleWithProgress[]): LessonWithProgress[] {
@@ -31,6 +36,7 @@ export default function CourseLearnPage() {
   const searchParams = useSearchParams();
   const slug = params.slug as string;
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { success: toastSuccess } = useToast();
 
   const [data, setData] = useState<CourseProgressData | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
@@ -38,6 +44,7 @@ export default function CourseLearnPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lessonQuizzes, setLessonQuizzes] = useState<Quiz[]>([]);
 
   const lessons = useMemo(() => (data ? flattenLessons(data.course.modules) : []), [data]);
   const activeLesson = lessons.find((l) => l.id === activeLessonId) ?? null;
@@ -75,14 +82,32 @@ export default function CourseLearnPage() {
     void loadProgress();
   }, [authLoading, isAuthenticated, user?.role, router, slug, loadProgress]);
 
+  useEffect(() => {
+    if (!activeLessonId) return;
+    void (async () => {
+      try {
+        const res = await fetchLessonQuizzesStudent(activeLessonId);
+        setLessonQuizzes(res.data.quizzes);
+      } catch {
+        setLessonQuizzes([]);
+      }
+    })();
+  }, [activeLessonId]);
+
+  function selectLesson(lessonId: string) {
+    setActiveLessonId(lessonId);
+    router.replace(`/courses/${slug}/learn?lesson=${lessonId}`, { scroll: false });
+  }
+
   async function handleMarkComplete() {
     if (!activeLessonId) return;
     setIsCompleting(true);
     try {
       await markLessonComplete(activeLessonId);
       await loadProgress();
+      toastSuccess("Lesson marked complete");
       const next = lessons[activeIndex + 1];
-      if (next) setActiveLessonId(next.id);
+      if (next) selectLesson(next.id);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Could not mark lesson complete");
     } finally {
@@ -101,13 +126,13 @@ export default function CourseLearnPage() {
 
   function goToLesson(index: number) {
     const lesson = lessons[index];
-    if (lesson) setActiveLessonId(lesson.id);
+    if (lesson) selectLesson(lesson.id);
   }
 
   if (authLoading || isLoading) {
     return (
       <PageBackground variant="default">
-        <Navbar />
+        <AuthNavbar />
         <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
           <LearningPageSkeleton />
         </main>
@@ -118,7 +143,7 @@ export default function CourseLearnPage() {
   if (error || !data) {
     return (
       <PageBackground variant="default">
-        <Navbar />
+        <AuthNavbar />
         <main className="mx-auto max-w-3xl px-4 py-20 text-center">
           <h1 className="font-serif text-2xl font-bold">Unable to load course</h1>
           <p className="mt-2 text-muted-foreground">{error}</p>
@@ -132,16 +157,18 @@ export default function CourseLearnPage() {
 
   return (
     <PageBackground variant="default">
-      <Navbar />
+      <AuthNavbar />
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
+        <Breadcrumbs
+          className="mb-4"
+          items={[
+            { label: "Courses", href: "/courses" },
+            { label: data.course.title, href: `/courses/${slug}` },
+            { label: "Learn" },
+          ]}
+        />
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <Link
-              href={`/courses/${slug}`}
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              ← {data.course.title}
-            </Link>
             <div className="mt-2 max-w-xl">
               <ProgressBar
                 value={data.enrollment.progressPercentage}
@@ -230,6 +257,24 @@ export default function CourseLearnPage() {
                         Next →
                       </Button>
                     </div>
+
+                    {lessonQuizzes.length > 0 && (
+                      <div className="mt-8 border-t border-border pt-6">
+                        <h3 className="font-serif text-lg font-bold">Lesson quizzes</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Test your knowledge before moving on
+                        </p>
+                        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                          {lessonQuizzes.map((quiz) => (
+                            <QuizCard
+                              key={quiz.id}
+                              quiz={quiz}
+                              href={`/courses/${slug}/quizzes/${quiz.id}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ) : (
@@ -242,7 +287,7 @@ export default function CourseLearnPage() {
             <LessonSidebar
               modules={data.course.modules}
               activeLessonId={activeLessonId}
-              onSelectLesson={setActiveLessonId}
+              onSelectLesson={selectLesson}
             />
           </div>
         </div>
@@ -250,7 +295,10 @@ export default function CourseLearnPage() {
         <LessonSidebarMobile
           modules={data.course.modules}
           activeLessonId={activeLessonId}
-          onSelectLesson={setActiveLessonId}
+          onSelectLesson={(id) => {
+            selectLesson(id);
+            setSidebarOpen(false);
+          }}
           open={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
