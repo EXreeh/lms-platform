@@ -16,16 +16,18 @@ import {
   fetchCourse,
   updateCourse,
   deleteCourse,
-  publishCourse,
+  submitCourseForReview,
   createModule,
   createLesson,
   deleteModule,
   deleteLesson,
   reorderModules,
   reorderLessons,
+  updateModule,
+  updateLesson,
 } from "@/lib/courses-api";
-import { COURSE_CATEGORIES, COURSE_LEVELS } from "@/types/course";
-import type { Course, CourseLevel } from "@/types/course";
+import { COURSE_CATEGORIES, COURSE_LEVELS, COURSE_STATUS_LABELS } from "@/types/course";
+import type { Course, CourseLevel, CourseStatus } from "@/types/course";
 import { ApiClientError } from "@/lib/api";
 
 export default function EditCoursePage() {
@@ -99,29 +101,39 @@ export default function EditCoursePage() {
     }
   }
 
-  async function handleTogglePublish() {
+  async function handleSubmitForReview() {
     if (!course) return;
     setIsSaving(true);
+    setError(null);
     try {
-      const res = await publishCourse(courseId, !course.published);
+      const res = await submitCourseForReview(courseId);
       setCourse(res.data.course);
-      setSuccess(course.published ? "Course unpublished" : "Course published!");
+      setSuccess("Course submitted for admin review");
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Publish failed");
+      setError(err instanceof ApiClientError ? err.message : "Submit failed");
     } finally {
       setIsSaving(false);
     }
   }
 
   async function handleDelete() {
-    if (!confirm("Delete this course permanently?")) return;
+    if (!confirm("Request deletion? An admin must approve before the course is removed.")) return;
     try {
-      await deleteCourse(courseId);
-      router.push("/dashboard/teacher");
+      const res = await deleteCourse(courseId);
+      if (res.pendingApproval) {
+        setSuccess(res.message);
+        await loadCourse();
+      } else {
+        router.push("/dashboard/teacher");
+      }
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Delete failed");
     }
   }
+
+  const status = (course?.status ?? "DRAFT") as CourseStatus;
+  const canSubmit = status === "DRAFT" || status === "REJECTED";
+  const isLocked = status === "UNDER_REVIEW" || status === "ARCHIVED";
 
   async function handleAddModule(e: React.FormEvent) {
     e.preventDefault();
@@ -204,30 +216,32 @@ export default function EditCoursePage() {
     <DashboardShell
       title={course.title}
       description="Edit details, build curriculum, and publish when ready."
-      badge={course.published ? "Published" : "Draft"}
+      badge={COURSE_STATUS_LABELS[status]}
     >
       <div className="flex flex-col gap-8 lg:flex-row">
         <DashboardSidebar role="TEACHER" />
         <div className="min-w-0 flex-1 space-y-8">
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              variant={course.published ? "secondary" : "gold"}
-              onClick={handleTogglePublish}
-              disabled={isSaving}
-            >
-              {course.published ? "Unpublish" : "Publish course"}
-            </Button>
+            {canSubmit && (
+              <Button type="button" variant="gold" onClick={() => void handleSubmitForReview()} disabled={isSaving}>
+                Submit for review
+              </Button>
+            )}
+            {status === "UNDER_REVIEW" && (
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                Awaiting admin approval
+              </span>
+            )}
             {course.published && (
               <Link href={`/courses/${course.slug}`} target="_blank">
-                <Button variant="ghost" size="sm">
-                  View live →
-                </Button>
+                <Button variant="ghost" size="sm">View in catalog →</Button>
               </Link>
             )}
-            <Button type="button" variant="ghost" size="sm" onClick={handleDelete} className="text-red-600">
-              Delete course
-            </Button>
+            {!isLocked && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => void handleDelete()} className="text-red-600">
+                Request deletion
+              </Button>
+            )}
           </div>
 
           {(error || success) && (
@@ -243,6 +257,12 @@ export default function EditCoursePage() {
 
           <form onSubmit={handleSave} className="space-y-6 rounded-2xl border border-border bg-card p-6">
             <h2 className="font-serif text-lg font-bold">Course details</h2>
+            {isLocked && (
+              <p className="text-sm text-amber-600 dark:text-amber-400">
+                This course is locked while under review or archived.
+              </p>
+            )}
+            <fieldset disabled={isLocked} className="space-y-6 disabled:opacity-60">
             <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Description</label>
@@ -269,12 +289,13 @@ export default function EditCoursePage() {
                 options={COURSE_LEVELS.map((l) => ({ value: l.value, label: l.label }))}
               />
             </div>
-            <Button type="submit" disabled={isSaving}>
+            <Button type="submit" disabled={isSaving || isLocked}>
               {isSaving ? "Saving…" : "Save changes"}
             </Button>
+            </fieldset>
           </form>
 
-          <section className="rounded-2xl border border-border bg-card p-6">
+          <section className={`rounded-2xl border border-border bg-card p-6 ${isLocked ? "opacity-60 pointer-events-none" : ""}`}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="font-serif text-lg font-bold">Curriculum</h2>
               <Link
@@ -318,6 +339,16 @@ export default function EditCoursePage() {
             <ModuleAccordion
               modules={course.modules ?? []}
               editable
+              onUpdateModule={async (id, title) => {
+                const res = await updateModule(id, { title });
+                setCourse(res.data.course);
+                setSuccess("Module updated");
+              }}
+              onUpdateLesson={async (id, data) => {
+                const res = await updateLesson(id, data);
+                setCourse(res.data.course);
+                setSuccess("Lesson updated");
+              }}
               onDeleteModule={async (id) => {
                 if (!confirm("Delete this module and all its lessons?")) return;
                 const res = await deleteModule(id);

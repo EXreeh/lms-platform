@@ -27,7 +27,8 @@ export interface ModuleWithProgress extends Omit<Module, "lessons"> {
 }
 
 export interface CourseProgressData {
-  enrollment: EnrollmentRecord;
+  preview?: boolean;
+  enrollment: EnrollmentRecord | null;
   course: Course & { modules: ModuleWithProgress[] };
   lessons: {
     id: string;

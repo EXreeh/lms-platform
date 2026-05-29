@@ -19,6 +19,7 @@ export function mapLesson(lesson: Lesson) {
     duration: lesson.duration,
     order: lesson.order,
     moduleId: lesson.moduleId,
+    deleteStatus: lesson.deleteStatus,
     createdAt: lesson.createdAt,
   };
 }
@@ -29,6 +30,7 @@ export function mapModule(module: Module & { lessons?: Lesson[] }) {
     title: module.title,
     order: module.order,
     courseId: module.courseId,
+    deleteStatus: module.deleteStatus,
     createdAt: module.createdAt,
     lessons: module.lessons?.sort((a, b) => a.order - b.order).map(mapLesson) ?? [],
   };
@@ -55,6 +57,7 @@ export function mapCourse(course: CourseWithRelations, includeContent = false) {
 }
 
 function buildBase(course: CourseWithRelations) {
+  const status = course.status;
   return {
     id: course.id,
     title: course.title,
@@ -64,7 +67,10 @@ function buildBase(course: CourseWithRelations) {
     price: decimalToNumber(course.price),
     category: course.category,
     level: course.level as CourseLevel,
-    published: course.published,
+    status,
+    published: status === "APPROVED",
+    archived: status === "ARCHIVED",
+    deleteStatus: course.deleteStatus,
     teacherId: course.teacherId,
     teacher: course.teacher
       ? {

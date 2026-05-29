@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import type { Course } from "@/types/course";
-import { formatPrice } from "@/types/course";
+import { formatPrice, COURSE_STATUS_LABELS } from "@/types/course";
 
 interface CourseCardProps {
   course: Course;
@@ -53,12 +53,16 @@ export function CourseCard({ course, href, showStatus }: CourseCardProps) {
             {showStatus && (
               <span
                 className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  course.published
+                  course.status === "APPROVED"
                     ? "bg-green-600 text-white"
-                    : "bg-muted text-muted-foreground"
+                    : course.status === "UNDER_REVIEW"
+                      ? "bg-amber-500 text-white"
+                      : course.status === "REJECTED"
+                        ? "bg-red-600 text-white"
+                        : "bg-muted text-muted-foreground"
                 }`}
               >
-                {course.published ? "Live" : "Draft"}
+                {COURSE_STATUS_LABELS[course.status] ?? course.status}
               </span>
             )}
           </div>

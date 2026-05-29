@@ -61,10 +61,10 @@ export function updateQuiz(
 }
 
 export function deleteQuiz(quizId: string) {
-  return apiRequest<{ success: boolean; message: string }>(`/quizzes/${quizId}`, {
-    method: "DELETE",
-    auth: true,
-  });
+  return apiRequest<{ success: boolean; message: string; pendingApproval?: boolean }>(
+    `/quizzes/${quizId}`,
+    { method: "DELETE", auth: true },
+  );
 }
 
 export function addQuestion(

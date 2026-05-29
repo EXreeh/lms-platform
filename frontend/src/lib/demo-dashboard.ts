@@ -19,7 +19,8 @@ const demoCourse = (overrides: Partial<Course> & Pick<Course, "title" | "slug">)
   price: overrides.price ?? 49.99,
   category: overrides.category ?? "AI & Machine Learning",
   level: overrides.level ?? "BEGINNER",
-  published: overrides.published ?? true,
+  status: overrides.status ?? "APPROVED",
+  published: overrides.published ?? (overrides.status === "APPROVED" || overrides.status === undefined),
   teacherId: "demo-teacher",
   teacher: { id: "demo-teacher", name: "Alex Morgan", email: "teacher@cognitiax.ai" },
   createdAt: new Date().toISOString(),
@@ -49,21 +50,34 @@ export function getDemoTeacherDashboard(): TeacherDashboardData {
     demoCourse({
       title: "Data Science with Python",
       slug: "data-science-python",
+      status: "DRAFT",
       published: false,
       category: "Data Science",
       level: "ADVANCED",
     }),
   ];
+  const underReview = [
+    demoCourse({
+      title: "Cloud Architecture Basics",
+      slug: "cloud-architecture-basics",
+      status: "UNDER_REVIEW",
+      published: false,
+      category: "Development",
+      level: "INTERMEDIATE",
+    }),
+  ];
 
   return {
     stats: {
-      totalCourses: 3,
+      totalCourses: 4,
       published: 2,
       drafts: 1,
+      underReview: 1,
       totalEnrollments: 24,
       totalLessons: 18,
     },
     publishedCourses: published,
+    underReviewCourses: underReview,
     draftCourses: drafts,
     recentActivity: [
       {
@@ -95,7 +109,10 @@ export function getDemoAdminDashboard(): AdminDashboardData {
       totalCourses: 3,
       publishedCourses: 2,
       pendingModeration: 1,
+      totalEnrollments: 24,
+      activeUsers: 86,
     },
+    activityFeed: [],
     recentRegistrations: [
       {
         id: "1",

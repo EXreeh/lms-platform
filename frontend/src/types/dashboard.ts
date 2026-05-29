@@ -6,10 +6,12 @@ export interface TeacherDashboardData {
     totalCourses: number;
     published: number;
     drafts: number;
+    underReview?: number;
     totalEnrollments: number;
     totalLessons: number;
   };
   publishedCourses: (Course & { enrollmentCount?: number })[];
+  underReviewCourses?: (Course & { enrollmentCount?: number })[];
   draftCourses: (Course & { enrollmentCount?: number })[];
   recentActivity: {
     id: string;
@@ -29,6 +31,8 @@ export interface AdminDashboardData {
     totalCourses: number;
     publishedCourses: number;
     pendingModeration: number;
+    totalEnrollments: number;
+    activeUsers: number;
   };
   recentRegistrations: {
     id: string;
@@ -37,7 +41,13 @@ export interface AdminDashboardData {
     role: Role;
     createdAt: string;
   }[];
-  coursesForModeration: (Course & { enrollmentCount?: number })[];
+  activityFeed: {
+    id: string;
+    type: string;
+    message: string;
+    timestamp: string;
+  }[];
+  coursesForModeration: (Course & { enrollmentCount?: number; archived?: boolean })[];
   teachers: { id: string; name: string; email: string; courseCount: number }[];
   isEmpty: boolean;
 }

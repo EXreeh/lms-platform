@@ -44,17 +44,19 @@ export default function EditQuizPage() {
 
   const load = useCallback(async () => {
     try {
-      const [quizRes, analyticsRes] = await Promise.all([
-        fetchQuiz(quizId),
-        fetchQuizAnalytics(quizId),
-      ]);
+      const quizRes = await fetchQuiz(quizId);
       const q = quizRes.data.quiz;
       setQuiz(q);
-      setAnalytics(analyticsRes.data);
       setTitle(q.title);
       setDescription(q.description ?? "");
       setTimeLimit(q.timeLimit ? String(Math.floor(q.timeLimit / 60)) : "");
       setPassingScore(String(q.passingScore));
+      try {
+        const analyticsRes = await fetchQuizAnalytics(quizId);
+        setAnalytics(analyticsRes.data);
+      } catch {
+        setAnalytics(null);
+      }
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Failed to load quiz");
     } finally {
@@ -113,9 +115,13 @@ export default function EditQuizPage() {
   }
 
   async function handleDeleteQuiz() {
-    if (!confirm("Delete this quiz permanently?")) return;
-    await deleteQuiz(quizId);
-    window.location.href = "/dashboard/teacher/quizzes";
+    if (!confirm("Request quiz deletion? Admin approval required.")) return;
+    const res = await deleteQuiz(quizId);
+    if (res.pendingApproval) {
+      setSuccess(res.message);
+    } else {
+      window.location.href = "/dashboard/teacher/quizzes";
+    }
   }
 
   if (isLoading) {

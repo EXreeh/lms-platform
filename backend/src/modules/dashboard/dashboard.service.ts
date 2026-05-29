@@ -2,6 +2,7 @@ import type { Role } from "@lms/database";
 import { prisma } from "../../config/database.js";
 import { mapCourse } from "../courses/courses.mapper.js";
 import * as learningService from "../learning/learning.service.js";
+import { getPlatformStats, listActivity } from "../admin/admin.service.js";
 
 const teacherSelect = {
   id: true,
@@ -18,7 +19,7 @@ const courseListInclude = {
 
 export async function getTeacherDashboard(userId: string) {
   const courses = await prisma.course.findMany({
-    where: { teacherId: userId },
+    where: { teacherId: userId, deleteStatus: { not: "DELETED" } },
     include: courseListInclude,
     orderBy: { updatedAt: "desc" },
   });
@@ -28,8 +29,9 @@ export async function getTeacherDashboard(userId: string) {
     enrollmentCount: c._count.enrollments,
   }));
 
-  const published = mapped.filter((c) => c.published);
-  const drafts = mapped.filter((c) => !c.published);
+  const published = mapped.filter((c) => c.status === "APPROVED");
+  const underReview = mapped.filter((c) => c.status === "UNDER_REVIEW");
+  const drafts = mapped.filter((c) => c.status === "DRAFT" || c.status === "REJECTED");
 
   const totalEnrollments = courses.reduce((sum, c) => sum + c._count.enrollments, 0);
   const totalLessons = courses.reduce(
@@ -39,10 +41,13 @@ export async function getTeacherDashboard(userId: string) {
 
   const recentActivity = courses.slice(0, 5).map((c) => ({
     id: c.id,
-    type: c.published ? ("published" as const) : ("updated" as const),
-    message: c.published
-      ? `"${c.title}" is live in the catalog`
-      : `Draft updated: "${c.title}"`,
+    type: c.status === "APPROVED" ? ("published" as const) : ("updated" as const),
+    message:
+      c.status === "APPROVED"
+        ? `"${c.title}" is live in the catalog`
+        : c.status === "UNDER_REVIEW"
+          ? `"${c.title}" is awaiting review`
+          : `Draft updated: "${c.title}"`,
     timestamp: c.updatedAt.toISOString(),
     courseId: c.id,
     courseSlug: c.slug,
@@ -53,10 +58,12 @@ export async function getTeacherDashboard(userId: string) {
       totalCourses: courses.length,
       published: published.length,
       drafts: drafts.length,
+      underReview: underReview.length,
       totalEnrollments,
       totalLessons,
     },
     publishedCourses: published,
+    underReviewCourses: underReview,
     draftCourses: drafts,
     recentActivity,
     isEmpty: courses.length === 0,
@@ -64,58 +71,61 @@ export async function getTeacherDashboard(userId: string) {
 }
 
 export async function getAdminDashboard() {
-  const [studentCount, teacherCount, courseCount, publishedCount, recentUsers, courses, teachers] =
-    await Promise.all([
-      prisma.user.count({ where: { role: "STUDENT" } }),
-      prisma.user.count({ where: { role: "TEACHER" } }),
-      prisma.course.count(),
-      prisma.course.count({ where: { published: true } }),
-      prisma.user.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 8,
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          role: true,
-          createdAt: true,
-        },
-      }),
-      prisma.course.findMany({
-        include: {
-          teacher: { select: teacherSelect },
-          modules: { include: { lessons: true } },
-          _count: { select: { enrollments: true } },
-        },
-        orderBy: { updatedAt: "desc" },
-        take: 10,
-      }),
-      prisma.user.findMany({
-        where: { role: "TEACHER" },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          _count: { select: { courses: true } },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      }),
-    ]);
+  const [stats, recentUsers, courses, teachers, activityResult] = await Promise.all([
+    getPlatformStats(),
+    prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+    }),
+    prisma.course.findMany({
+      where: { deleteStatus: "ACTIVE", status: { not: "ARCHIVED" } },
+      include: {
+        teacher: { select: teacherSelect },
+        modules: { include: { lessons: true } },
+        _count: { select: { enrollments: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 10,
+    }),
+    prisma.user.findMany({
+      where: { role: "TEACHER" },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        _count: { select: { courses: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    listActivity({ page: 1, limit: 15 }),
+  ]);
 
   const coursesForModeration = courses
-    .filter((c) => !c.published)
-    .map((c) => ({ ...mapCourse(c), enrollmentCount: c._count.enrollments }));
+    .filter((c) => c.status === "UNDER_REVIEW")
+    .map((c) => ({
+      ...mapCourse(c),
+      enrollmentCount: c._count.enrollments,
+    }));
 
   return {
     stats: {
-      totalStudents: studentCount,
-      totalTeachers: teacherCount,
-      totalCourses: courseCount,
-      publishedCourses: publishedCount,
-      pendingModeration: courseCount - publishedCount,
+      totalStudents: stats.totalStudents,
+      totalTeachers: stats.totalTeachers,
+      totalCourses: stats.totalCourses,
+      publishedCourses: stats.publishedCourses,
+      pendingModeration: stats.pendingModeration,
+      totalEnrollments: stats.totalEnrollments,
+      activeUsers: stats.activeUsers,
     },
     recentRegistrations: recentUsers.map((u) => ({
       id: u.id,
@@ -124,6 +134,12 @@ export async function getAdminDashboard() {
       role: u.role as Role,
       createdAt: u.createdAt.toISOString(),
     })),
+    activityFeed: activityResult.activities.map((a) => ({
+      id: a.id,
+      type: a.type,
+      message: a.message,
+      timestamp: a.timestamp,
+    })),
     coursesForModeration,
     teachers: teachers.map((t) => ({
       id: t.id,
@@ -131,7 +147,7 @@ export async function getAdminDashboard() {
       email: t.email,
       courseCount: t._count.courses,
     })),
-    isEmpty: courseCount === 0 && studentCount === 0,
+    isEmpty: false,
   };
 }
 
@@ -153,7 +169,8 @@ export async function getStudentDashboard(userId: string) {
   const enrolledIds = enrollments.map((e) => e.courseId);
   const recommended = await prisma.course.findMany({
     where: {
-      published: true,
+      status: "APPROVED",
+      deleteStatus: "ACTIVE",
       id: { notIn: enrolledIds.length ? enrolledIds : ["__none__"] },
     },
     include: courseListInclude,

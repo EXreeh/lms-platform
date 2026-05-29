@@ -1,6 +1,7 @@
 import type { Role } from "@lms/database";
 import { prisma } from "../../config/database.js";
 import { ApiError } from "../../utils/api-error.js";
+import { logActivity } from "../admin/activity.service.js";
 import { calculateScore, mapQuestion, mapQuiz, mapQuizAttempt } from "./quizzes.mapper.js";
 import type {
   CreateQuestionInput,
@@ -29,8 +30,8 @@ async function getLessonWithCourse(lessonId: string) {
 }
 
 async function getQuizOrThrow(quizId: string) {
-  const quiz = await prisma.quiz.findUnique({
-    where: { id: quizId },
+  const quiz = await prisma.quiz.findFirst({
+    where: { id: quizId, deleteStatus: { not: "DELETED" } },
     include: {
       questions: { orderBy: { order: "asc" } },
       lesson: { include: { module: { include: { course: true } } } },
@@ -112,8 +113,19 @@ export async function deleteQuiz(userId: string, role: Role, quizId: string) {
     throw ApiError.forbidden();
   }
 
-  await prisma.quiz.delete({ where: { id: quizId } });
-  return { message: "Quiz deleted" };
+  if (role === "ADMIN") {
+    await prisma.quiz.update({ where: { id: quizId }, data: { deleteStatus: "DELETED" } });
+    return { message: "Quiz deleted", pendingApproval: false };
+  }
+
+  await prisma.quiz.update({ where: { id: quizId }, data: { deleteStatus: "PENDING_DELETE" } });
+  await logActivity({
+    type: "DELETE_REQUESTED",
+    userId,
+    courseId: quiz.lesson.module.course.id,
+    metadata: { entityType: "quiz", entityId: quizId, title: quiz.title },
+  });
+  return { message: "Delete request submitted for admin approval", pendingApproval: true };
 }
 
 export async function getQuiz(userId: string, role: Role, quizId: string) {
@@ -136,7 +148,7 @@ export async function listQuizzesByLesson(userId: string, role: Role, lessonId: 
   }
 
   const quizzes = await prisma.quiz.findMany({
-    where: { lessonId },
+    where: { lessonId, deleteStatus: { not: "DELETED" } },
     include: quizInclude,
     orderBy: { createdAt: "desc" },
   });
@@ -151,8 +163,11 @@ export async function listTeacherQuizzes(userId: string, role: Role) {
 
   const where =
     role === "ADMIN"
-      ? {}
-      : { lesson: { module: { course: { teacherId: userId } } } };
+      ? { deleteStatus: { not: "DELETED" as const } }
+      : {
+          deleteStatus: { not: "DELETED" as const },
+          lesson: { module: { course: { teacherId: userId } } },
+        };
 
   const quizzes = await prisma.quiz.findMany({
     where,
@@ -310,7 +325,7 @@ export async function getQuizPreview(studentId: string, quizId: string) {
   const quiz = await getQuizOrThrow(quizId);
   const courseId = quiz.lesson.module.course.id;
 
-  if (!quiz.lesson.module.course.published) {
+  if (quiz.lesson.module.course.status !== "APPROVED") {
     throw ApiError.notFound("Quiz not found");
   }
 
@@ -337,7 +352,7 @@ export async function startQuiz(studentId: string, quizId: string) {
   const quiz = await getQuizOrThrow(quizId);
   const courseId = quiz.lesson.module.course.id;
 
-  if (!quiz.lesson.module.course.published) {
+  if (quiz.lesson.module.course.status !== "APPROVED") {
     throw ApiError.notFound("Quiz not found");
   }
 
@@ -465,6 +480,12 @@ export async function submitQuiz(
     }),
   ]);
 
+  await logActivity({
+    type: "QUIZ_ATTEMPT",
+    userId: studentId,
+    metadata: { score, quizId: attempt.quizId, passed },
+  });
+
   return getAttemptResult(studentId, attemptId);
 }
 
@@ -496,14 +517,14 @@ export async function getAttemptResult(studentId: string, attemptId: string) {
 
 export async function listLessonQuizzesForStudent(studentId: string, lessonId: string) {
   const lesson = await getLessonWithCourse(lessonId);
-  if (!lesson.module.course.published) {
+  if (lesson.module.course.status !== "APPROVED") {
     throw ApiError.notFound("Lesson not found");
   }
 
   await assertStudentEnrolled(studentId, lesson.module.course.id);
 
   const quizzes = await prisma.quiz.findMany({
-    where: { lessonId },
+    where: { lessonId, deleteStatus: { not: "DELETED" } },
     include: quizInclude,
     orderBy: { createdAt: "asc" },
   });

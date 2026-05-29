@@ -57,3 +57,11 @@ export async function analytics(req: Request, res: Response): Promise<void> {
   const result = await learningService.getStudentAnalytics(studentId);
   res.json({ success: true, data: result });
 }
+
+export async function previewCourse(req: Request, res: Response): Promise<void> {
+  if (!req.user || req.user.role !== "ADMIN") {
+    throw ApiError.forbidden("Admin preview only");
+  }
+  const progress = await learningService.getCoursePreview(req.params.slug);
+  res.json({ success: true, data: progress });
+}

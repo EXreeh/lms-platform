@@ -8,6 +8,7 @@ import { sendEmail } from "../../services/email/email.service.js";
 import { otpVerificationEmail } from "../../services/email/templates/otp-verification.js";
 import { passwordResetEmail } from "../../services/email/templates/password-reset.js";
 import { createAndSendOtp, verifyOtp } from "../otp/otp.service.js";
+import { logActivity } from "../admin/activity.service.js";
 import { publicUserSelect, toPublicUser, type PublicUser } from "./auth.mapper.js";
 import type {
   LoginInput,
@@ -138,11 +139,26 @@ export async function login(input: LoginInput) {
     throw ApiError.unauthorized("Invalid email or password", "INVALID_CREDENTIALS");
   }
 
+  if (user.suspended) {
+    throw ApiError.forbidden("Your account has been suspended. Contact support.", "ACCOUNT_SUSPENDED");
+  }
+
   const valid = await comparePassword(input.password, user.password);
 
   if (!valid) {
     throw ApiError.unauthorized("Invalid email or password", "INVALID_CREDENTIALS");
   }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() },
+  });
+
+  await logActivity({
+    type: "LOGIN",
+    userId: user.id,
+    metadata: { email: user.email },
+  });
 
   const token = signToken({ sub: user.id, email: user.email, role: user.role });
 

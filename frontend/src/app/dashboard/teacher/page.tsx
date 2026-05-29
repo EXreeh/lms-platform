@@ -73,9 +73,10 @@ export default function TeacherDashboardPage() {
                 </p>
               )}
 
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 <StatCard label="Total courses" value={data.stats.totalCourses} icon="📚" accent="green" />
                 <StatCard label="Published" value={data.stats.published} icon="✓" accent="gold" />
+                <StatCard label="Under review" value={data.stats.underReview ?? 0} icon="⏳" />
                 <StatCard label="Drafts" value={data.stats.drafts} icon="✎" />
                 <StatCard
                   label="Total enrollments"
@@ -99,9 +100,19 @@ export default function TeacherDashboardPage() {
                     }
                     showStatus
                     emptyTitle="No published courses"
-                    emptyDescription="Publish a course to make it visible to students."
+                    emptyDescription="Submit a course for review; an admin will publish it after approval."
                     createHref="/dashboard/teacher/courses/new"
                   />
+                  {(data.underReviewCourses?.length ?? 0) > 0 && (
+                    <CourseSection
+                      title="Under review"
+                      courses={data.underReviewCourses ?? []}
+                      editHref={(c) => `/dashboard/teacher/courses/${c.id}/edit`}
+                      showStatus
+                      emptyTitle="No courses under review"
+                      emptyDescription="Submit a draft for admin approval."
+                    />
+                  )}
                   <CourseSection
                     title="Draft courses"
                     courses={data.draftCourses}

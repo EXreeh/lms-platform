@@ -94,9 +94,16 @@ coursesRoutes.delete(
 );
 
 coursesRoutes.patch(
-  "/:idOrSlug/publish",
+  "/:idOrSlug/submit-review",
   authenticate,
   authorize("TEACHER", "ADMIN"),
+  asyncHandler(coursesController.submitForReview),
+);
+
+coursesRoutes.patch(
+  "/:idOrSlug/publish",
+  authenticate,
+  authorize("ADMIN"),
   validateBody(publishCourseSchema),
   asyncHandler(coursesController.publish),
 );

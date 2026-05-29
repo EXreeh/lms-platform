@@ -56,7 +56,8 @@ export function middleware(request: NextRequest) {
     const allowedBase = roleBase[payload!.role];
     const canAccess =
       pathname.startsWith(allowedBase) ||
-      (payload!.role === "ADMIN" && pathname.startsWith("/dashboard/teacher"));
+      (payload!.role === "ADMIN" &&
+        (pathname.startsWith("/dashboard/teacher") || pathname.startsWith("/dashboard/admin")));
 
     if (!canAccess) {
       return NextResponse.redirect(new URL(getRoleDashboard(payload!.role), request.url));
@@ -67,7 +68,7 @@ export function middleware(request: NextRequest) {
     if (!tokenValid) {
       return redirectToLogin(request, pathname);
     }
-    if (payload!.role !== "STUDENT" && pathname.includes("/quizzes/")) {
+    if (pathname.includes("/quizzes/") && payload!.role !== "STUDENT") {
       return NextResponse.redirect(new URL(getRoleDashboard(payload!.role), request.url));
     }
   }

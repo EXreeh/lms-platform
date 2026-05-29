@@ -8,7 +8,15 @@ import * as learningController from "./learning.controller.js";
 
 export const learningRoutes = Router();
 
-learningRoutes.use(authenticate, authorize("STUDENT"));
+learningRoutes.use(authenticate);
+
+learningRoutes.get(
+  "/preview/:slug",
+  authorize("ADMIN"),
+  asyncHandler(learningController.previewCourse),
+);
+
+learningRoutes.use(authorize("STUDENT"));
 
 learningRoutes.post("/courses/:slug/enroll", asyncHandler(learningController.enroll));
 

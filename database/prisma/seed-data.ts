@@ -20,7 +20,7 @@ export interface SeedCourse {
   price: number;
   category: string;
   level: CourseLevel;
-  published: boolean;
+  status: "DRAFT" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "ARCHIVED";
   teacherEmail: string;
   modules: SeedModule[];
 }
@@ -67,7 +67,7 @@ export const seedCourses: SeedCourse[] = [
     price: 49.99,
     category: "AI & Machine Learning",
     level: "BEGINNER",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "teacher@cognitiax.ai",
     modules: [
       mod("Foundations", [
@@ -90,7 +90,7 @@ export const seedCourses: SeedCourse[] = [
     price: 79.99,
     category: "AI & Machine Learning",
     level: "ADVANCED",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "priya@cognitiax.ai",
     modules: [
       mod("Neural Networks", [
@@ -112,7 +112,7 @@ export const seedCourses: SeedCourse[] = [
     price: 59.99,
     category: "Web Development",
     level: "INTERMEDIATE",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "teacher@cognitiax.ai",
     modules: [
       mod("Frontend", [
@@ -134,7 +134,7 @@ export const seedCourses: SeedCourse[] = [
     price: 39.99,
     category: "Web Development",
     level: "BEGINNER",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "marcus@cognitiax.ai",
     modules: [
       mod("Core Concepts", [
@@ -152,7 +152,7 @@ export const seedCourses: SeedCourse[] = [
     price: 44.99,
     category: "Cloud Computing",
     level: "BEGINNER",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "elena@cognitiax.ai",
     modules: [
       mod("Cloud Fundamentals", [
@@ -174,7 +174,7 @@ export const seedCourses: SeedCourse[] = [
     price: 69.99,
     category: "Cloud Computing",
     level: "ADVANCED",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "james@cognitiax.ai",
     modules: [
       mod("K8s Basics", [
@@ -192,7 +192,7 @@ export const seedCourses: SeedCourse[] = [
     price: 34.99,
     category: "DevOps",
     level: "INTERMEDIATE",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "james@cognitiax.ai",
     modules: [
       mod("Automation", [
@@ -210,7 +210,7 @@ export const seedCourses: SeedCourse[] = [
     price: 42.99,
     category: "DevOps",
     level: "BEGINNER",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "james@cognitiax.ai",
     modules: [
       mod("Docker", [
@@ -228,7 +228,7 @@ export const seedCourses: SeedCourse[] = [
     price: 54.99,
     category: "Data Science",
     level: "INTERMEDIATE",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "priya@cognitiax.ai",
     modules: [
       mod("Analysis", [
@@ -250,7 +250,7 @@ export const seedCourses: SeedCourse[] = [
     price: 29.99,
     category: "Data Science",
     level: "BEGINNER",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "priya@cognitiax.ai",
     modules: [
       mod("Querying", [
@@ -268,7 +268,7 @@ export const seedCourses: SeedCourse[] = [
     price: 44.99,
     category: "UI/UX Design",
     level: "BEGINNER",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "elena@cognitiax.ai",
     modules: [
       mod("Design Process", [
@@ -290,7 +290,7 @@ export const seedCourses: SeedCourse[] = [
     price: 49.99,
     category: "UI/UX Design",
     level: "INTERMEDIATE",
-    published: false,
+    status: "UNDER_REVIEW",
     teacherEmail: "elena@cognitiax.ai",
     modules: [
       mod("EdTech UX", [
@@ -307,7 +307,7 @@ export const seedCourses: SeedCourse[] = [
     price: 59.99,
     category: "Cybersecurity",
     level: "BEGINNER",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "marcus@cognitiax.ai",
     modules: [
       mod("Security Basics", [
@@ -329,7 +329,7 @@ export const seedCourses: SeedCourse[] = [
     price: 89.99,
     category: "Cybersecurity",
     level: "ADVANCED",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "marcus@cognitiax.ai",
     modules: [
       mod("Pen Testing", [
@@ -347,7 +347,7 @@ export const seedCourses: SeedCourse[] = [
     price: 64.99,
     category: "Mobile Development",
     level: "INTERMEDIATE",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "marcus@cognitiax.ai",
     modules: [
       mod("Getting Started", [
@@ -368,7 +368,7 @@ export const seedCourses: SeedCourse[] = [
     price: 54.99,
     category: "Mobile Development",
     level: "BEGINNER",
-    published: true,
+    status: "APPROVED",
     teacherEmail: "james@cognitiax.ai",
     modules: [
       mod("Flutter Basics", [
@@ -386,7 +386,7 @@ export const seedCourses: SeedCourse[] = [
     price: 39.99,
     category: "AI & Machine Learning",
     level: "BEGINNER",
-    published: false,
+    status: "DRAFT",
     teacherEmail: "teacher@cognitiax.ai",
     modules: [],
   },

@@ -14,6 +14,24 @@ interface ActivityFeedProps {
   emptyMessage?: string;
 }
 
+function activityDot(type?: string): string {
+  switch (type) {
+    case "LOGIN":
+      return "bg-blue-500";
+    case "COURSE_CREATED":
+    case "COURSE_PUBLISHED":
+      return "bg-green-500";
+    case "COURSE_ARCHIVED":
+    case "USER_SUSPENDED":
+      return "bg-red-500";
+    case "ENROLLMENT":
+    case "QUIZ_ATTEMPT":
+      return "bg-gold-500";
+    default:
+      return "bg-muted-foreground";
+  }
+}
+
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const hours = Math.floor(diff / 3600000);
@@ -38,9 +56,7 @@ export function ActivityFeed({ items, emptyMessage = "No recent activity" }: Act
           className="flex gap-3 rounded-lg bg-muted/40 px-4 py-3"
         >
           <span
-            className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${
-              item.type === "published" ? "bg-green-500" : "bg-gold-500"
-            }`}
+            className={`mt-0.5 h-2 w-2 shrink-0 rounded-full ${activityDot(item.type)}`}
             aria-hidden
           />
           <div className="min-w-0 flex-1">

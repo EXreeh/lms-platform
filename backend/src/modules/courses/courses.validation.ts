@@ -13,14 +13,19 @@ export const createCourseSchema = z.object({
 
 export const updateCourseSchema = createCourseSchema.partial();
 
+export const courseStatusEnum = z.enum([
+  "DRAFT",
+  "UNDER_REVIEW",
+  "APPROVED",
+  "REJECTED",
+  "ARCHIVED",
+]);
+
 export const listCoursesQuerySchema = z.object({
   search: z.string().optional(),
   category: z.string().optional(),
   level: courseLevelEnum.optional(),
-  published: z
-    .enum(["true", "false"])
-    .optional()
-    .transform((v) => (v === undefined ? undefined : v === "true")),
+  status: courseStatusEnum.optional(),
   mine: z
     .enum(["true", "false"])
     .optional()

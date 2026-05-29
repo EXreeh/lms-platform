@@ -1,6 +1,7 @@
 import type {
   Course,
   CourseLevel,
+  CourseStatus,
   CoursesListResponse,
   CourseResponse,
   CategoriesResponse,
@@ -11,7 +12,7 @@ export interface CourseFilters {
   search?: string;
   category?: string;
   level?: CourseLevel;
-  published?: boolean;
+  status?: CourseStatus;
   mine?: boolean;
 }
 
@@ -20,7 +21,7 @@ function buildQuery(filters: CourseFilters): string {
   if (filters.search) params.set("search", filters.search);
   if (filters.category) params.set("category", filters.category);
   if (filters.level) params.set("level", filters.level);
-  if (filters.published !== undefined) params.set("published", String(filters.published));
+  if (filters.status) params.set("status", filters.status);
   if (filters.mine) params.set("mine", "true");
   const qs = params.toString();
   return qs ? `?${qs}` : "";
@@ -59,16 +60,48 @@ export function updateCourse(idOrSlug: string, data: Record<string, unknown>) {
 }
 
 export function deleteCourse(idOrSlug: string) {
-  return apiRequest<{ success: boolean; message: string }>(`/courses/${idOrSlug}`, {
-    method: "DELETE",
-    auth: true,
-  });
+  return apiRequest<{ success: boolean; message: string; pendingApproval?: boolean }>(
+    `/courses/${idOrSlug}`,
+    { method: "DELETE", auth: true },
+  );
 }
 
 export function publishCourse(idOrSlug: string, published: boolean) {
   return apiRequest<CourseResponse>(`/courses/${idOrSlug}/publish`, {
     method: "PATCH",
     body: { published },
+    auth: true,
+  });
+}
+
+export function submitCourseForReview(idOrSlug: string) {
+  return apiRequest<CourseResponse>(`/courses/${idOrSlug}/submit-review`, {
+    method: "PATCH",
+    auth: true,
+  });
+}
+
+export function updateModule(moduleId: string, data: { title?: string; order?: number }) {
+  return apiRequest<CourseResponse>(`/courses/modules/${moduleId}`, {
+    method: "PATCH",
+    body: data,
+    auth: true,
+  });
+}
+
+export function updateLesson(
+  lessonId: string,
+  data: {
+    title?: string;
+    description?: string;
+    videoUrl?: string;
+    duration?: number;
+    order?: number;
+  },
+) {
+  return apiRequest<CourseResponse>(`/courses/lessons/${lessonId}`, {
+    method: "PATCH",
+    body: data,
     auth: true,
   });
 }

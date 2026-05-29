@@ -55,6 +55,10 @@ export default function CourseDetailPage() {
       router.push(`/login?redirect=/courses/${slug}`);
       return;
     }
+    if (user?.role === "ADMIN") {
+      router.push(`/courses/${slug}/learn`);
+      return;
+    }
     if (user?.role !== "STUDENT") {
       setEnrollMsg("Only students can enroll. Sign in with a student account.");
       return;
@@ -142,8 +146,21 @@ export default function CourseDetailPage() {
 
               <div className="lg:col-span-1">
                 <div className="sticky top-24 rounded-2xl border border-border bg-card p-6 shadow-lg">
-                  <p className="text-3xl font-bold text-foreground">{formatPrice(course.price)}</p>
-                  {course.enrolled ? (
+                  {user?.role === "ADMIN" || course.adminPreview ? (
+                    <>
+                      <p className="text-sm font-medium text-green-700 dark:text-gold-400">
+                        Admin preview mode
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Full course access without enrollment
+                      </p>
+                      <Link href={`/courses/${slug}/learn`} className="mt-4 block">
+                        <Button className="w-full" size="lg" variant="gold">
+                          Preview course content
+                        </Button>
+                      </Link>
+                    </>
+                  ) : course.enrolled ? (
                     <>
                       <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
                         <div
@@ -164,6 +181,7 @@ export default function CourseDetailPage() {
                     </>
                   ) : (
                     <>
+                      <p className="text-3xl font-bold text-foreground">{formatPrice(course.price)}</p>
                       <Button
                         className="mt-4 w-full"
                         size="lg"

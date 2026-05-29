@@ -1,5 +1,8 @@
 export type CourseLevel = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
 
+export type CourseStatus = "DRAFT" | "UNDER_REVIEW" | "APPROVED" | "REJECTED" | "ARCHIVED";
+export type EntityStatus = "ACTIVE" | "PENDING_DELETE" | "DELETED";
+
 export interface CourseTeacher {
   id: string;
   name: string;
@@ -35,9 +38,14 @@ export interface Course {
   price: number;
   category: string;
   level: CourseLevel;
+  status: CourseStatus;
   published: boolean;
+  archived?: boolean;
+  deleteStatus?: EntityStatus;
   teacherId: string;
   teacher?: CourseTeacher;
+  isOwner?: boolean;
+  readOnly?: boolean;
   createdAt: string;
   updatedAt: string;
   moduleCount?: number;
@@ -46,6 +54,8 @@ export interface Course {
   enrolled?: boolean;
   enrollmentProgress?: number;
   enrollmentCompleted?: boolean;
+  adminPreview?: boolean;
+  canAccessLearn?: boolean;
 }
 
 export interface CoursesListResponse {
@@ -68,6 +78,14 @@ export const COURSE_LEVELS: { value: CourseLevel; label: string }[] = [
   { value: "INTERMEDIATE", label: "Intermediate" },
   { value: "ADVANCED", label: "Advanced" },
 ];
+
+export const COURSE_STATUS_LABELS: Record<CourseStatus, string> = {
+  DRAFT: "Draft",
+  UNDER_REVIEW: "Under review",
+  APPROVED: "Approved",
+  REJECTED: "Rejected",
+  ARCHIVED: "Archived",
+};
 
 export const COURSE_CATEGORIES = [
   "Development",

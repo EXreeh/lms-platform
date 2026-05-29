@@ -81,7 +81,11 @@ quizzesRoutes.post(
   asyncHandler(quizzesController.addQuestion),
 );
 
-quizzesRoutes.get("/:quizId", asyncHandler(quizzesController.getOne));
+quizzesRoutes.get(
+  "/:quizId",
+  authorize("TEACHER", "ADMIN"),
+  asyncHandler(quizzesController.getOne),
+);
 
 quizzesRoutes.patch(
   "/:quizId",

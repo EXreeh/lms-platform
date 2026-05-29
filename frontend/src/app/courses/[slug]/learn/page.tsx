@@ -13,11 +13,8 @@ import { ProgressBar } from "@/components/learning/progress-bar";
 import { LearningPageSkeleton } from "@/components/learning/learning-skeleton";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  fetchCourseProgress,
-  markLessonComplete,
-  updateWatchProgress,
-} from "@/lib/learning-api";
+import { fetchCourseProgress, markLessonComplete, updateWatchProgress } from "@/lib/learning-api";
+import { fetchCoursePreview } from "@/lib/admin-api";
 import { fetchLessonQuizzesStudent } from "@/lib/quizzes-api";
 import { QuizCard } from "@/components/quizzes/quiz-card";
 import type { Quiz } from "@/types/quiz";
@@ -50,9 +47,13 @@ export default function CourseLearnPage() {
   const activeLesson = lessons.find((l) => l.id === activeLessonId) ?? null;
   const activeIndex = lessons.findIndex((l) => l.id === activeLessonId);
 
+  const isAdminPreview = user?.role === "ADMIN";
+
   const loadProgress = useCallback(async () => {
     try {
-      const res = await fetchCourseProgress(slug);
+      const res = isAdminPreview
+        ? await fetchCoursePreview(slug)
+        : await fetchCourseProgress(slug);
       setData(res.data);
 
       const queryLesson = searchParams.get("lesson");
@@ -71,19 +72,23 @@ export default function CourseLearnPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [slug, searchParams]);
+  }, [slug, searchParams, isAdminPreview]);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!isAuthenticated || user?.role !== "STUDENT") {
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=/courses/${slug}/learn`);
+      return;
+    }
+    if (!isAdminPreview && user?.role !== "STUDENT") {
       router.push(`/login?redirect=/courses/${slug}/learn`);
       return;
     }
     void loadProgress();
-  }, [authLoading, isAuthenticated, user?.role, router, slug, loadProgress]);
+  }, [authLoading, isAuthenticated, isAdminPreview, user?.role, router, slug, loadProgress]);
 
   useEffect(() => {
-    if (!activeLessonId) return;
+    if (!activeLessonId || isAdminPreview) return;
     void (async () => {
       try {
         const res = await fetchLessonQuizzesStudent(activeLessonId);
@@ -92,7 +97,7 @@ export default function CourseLearnPage() {
         setLessonQuizzes([]);
       }
     })();
-  }, [activeLessonId]);
+  }, [activeLessonId, isAdminPreview]);
 
   function selectLesson(lessonId: string) {
     setActiveLessonId(lessonId);
@@ -100,7 +105,7 @@ export default function CourseLearnPage() {
   }
 
   async function handleMarkComplete() {
-    if (!activeLessonId) return;
+    if (!activeLessonId || isAdminPreview) return;
     setIsCompleting(true);
     try {
       await markLessonComplete(activeLessonId);
@@ -116,7 +121,7 @@ export default function CourseLearnPage() {
   }
 
   async function handleWatchUpdate(watchedDuration: number) {
-    if (!activeLessonId) return;
+    if (!activeLessonId || isAdminPreview) return;
     try {
       await updateWatchProgress(activeLessonId, watchedDuration);
     } catch {
@@ -167,23 +172,32 @@ export default function CourseLearnPage() {
             { label: "Learn" },
           ]}
         />
+        {isAdminPreview && (
+          <div className="mb-4 rounded-xl border border-gold-500/30 bg-gold-500/10 px-4 py-3 text-sm text-foreground">
+            Admin preview — read-only access without enrollment or progress tracking.
+          </div>
+        )}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="mt-2 max-w-xl">
-              <ProgressBar
-                value={data.enrollment.progressPercentage}
-                label={`${data.completedLessons} of ${data.totalLessons} lessons complete`}
-              />
-            </div>
+            {!isAdminPreview && data.enrollment && (
+              <div className="mt-2 max-w-xl">
+                <ProgressBar
+                  value={data.enrollment.progressPercentage}
+                  label={`${data.completedLessons} of ${data.totalLessons} lessons complete`}
+                />
+              </div>
+            )}
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            Lessons ({data.completedLessons}/{data.totalLessons})
-          </Button>
+          {!isAdminPreview && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              Lessons ({data.completedLessons}/{data.totalLessons})
+            </Button>
+          )}
         </div>
 
         <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
@@ -203,10 +217,14 @@ export default function CourseLearnPage() {
                     title={activeLesson.title}
                     duration={activeLesson.duration}
                     initialWatchedDuration={activeLesson.progress?.watchedDuration ?? 0}
-                    onWatchUpdate={handleWatchUpdate}
-                    onComplete={() => {
-                      if (!activeLesson.progress?.completed) void handleMarkComplete();
-                    }}
+                    onWatchUpdate={isAdminPreview ? undefined : handleWatchUpdate}
+                    onComplete={
+                      isAdminPreview
+                        ? undefined
+                        : () => {
+                            if (!activeLesson.progress?.completed) void handleMarkComplete();
+                          }
+                    }
                   />
 
                   <div className="rounded-2xl border border-border bg-card p-6">
@@ -228,37 +246,57 @@ export default function CourseLearnPage() {
                       )}
                     </div>
 
-                    <div className="mt-6 flex flex-wrap gap-3">
-                      <Button
-                        variant="gold"
-                        onClick={() => void handleMarkComplete()}
-                        disabled={isCompleting || activeLesson.progress?.completed}
-                      >
-                        {isCompleting ? (
-                          <Spinner size="sm" />
-                        ) : activeLesson.progress?.completed ? (
-                          "Lesson completed"
-                        ) : (
-                          "Mark as complete"
-                        )}
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        disabled={activeIndex <= 0}
-                        onClick={() => goToLesson(activeIndex - 1)}
-                      >
-                        ← Previous
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        disabled={activeIndex >= lessons.length - 1}
-                        onClick={() => goToLesson(activeIndex + 1)}
-                      >
-                        Next →
-                      </Button>
-                    </div>
+                    {!isAdminPreview && (
+                      <div className="mt-6 flex flex-wrap gap-3">
+                        <Button
+                          variant="gold"
+                          onClick={() => void handleMarkComplete()}
+                          disabled={isCompleting || activeLesson.progress?.completed}
+                        >
+                          {isCompleting ? (
+                            <Spinner size="sm" />
+                          ) : activeLesson.progress?.completed ? (
+                            "Lesson completed"
+                          ) : (
+                            "Mark as complete"
+                          )}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          disabled={activeIndex <= 0}
+                          onClick={() => goToLesson(activeIndex - 1)}
+                        >
+                          ← Previous
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          disabled={activeIndex >= lessons.length - 1}
+                          onClick={() => goToLesson(activeIndex + 1)}
+                        >
+                          Next →
+                        </Button>
+                      </div>
+                    )}
+                    {isAdminPreview && (
+                      <div className="mt-6 flex flex-wrap gap-3">
+                        <Button
+                          variant="secondary"
+                          disabled={activeIndex <= 0}
+                          onClick={() => goToLesson(activeIndex - 1)}
+                        >
+                          ← Previous
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          disabled={activeIndex >= lessons.length - 1}
+                          onClick={() => goToLesson(activeIndex + 1)}
+                        >
+                          Next →
+                        </Button>
+                      </div>
+                    )}
 
-                    {lessonQuizzes.length > 0 && (
+                    {!isAdminPreview && lessonQuizzes.length > 0 && (
                       <div className="mt-8 border-t border-border pt-6">
                         <h3 className="font-serif text-lg font-bold">Lesson quizzes</h3>
                         <p className="mt-1 text-sm text-muted-foreground">

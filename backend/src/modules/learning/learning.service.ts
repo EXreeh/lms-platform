@@ -1,5 +1,6 @@
 import { prisma } from "../../config/database.js";
 import { ApiError } from "../../utils/api-error.js";
+import { logActivity } from "../admin/activity.service.js";
 import { mapCourse } from "../courses/courses.mapper.js";
 import {
   buildLessonProgressMap,
@@ -27,7 +28,8 @@ async function getPublishedCourseOrThrow(idOrSlug: string) {
   const course = await prisma.course.findFirst({
     where: {
       OR: [{ id: idOrSlug }, { slug: idOrSlug }],
-      published: true,
+      status: "APPROVED",
+      deleteStatus: "ACTIVE",
     },
     include: courseInclude,
   });
@@ -122,6 +124,21 @@ export async function enrollInCourse(studentId: string, idOrSlug: string) {
     },
   });
 
+  const student = await prisma.user.findUnique({
+    where: { id: studentId },
+    select: { firstName: true, lastName: true },
+  });
+
+  await logActivity({
+    type: "ENROLLMENT",
+    userId: studentId,
+    courseId: course.id,
+    metadata: {
+      title: course.title,
+      userName: student ? `${student.firstName} ${student.lastName}`.trim() : undefined,
+    },
+  });
+
   return {
     message: "Enrolled successfully",
     enrollment: mapEnrollment(enrollment),
@@ -196,7 +213,7 @@ export async function markLessonCompleted(studentId: string, lessonId: string) {
   const lesson = await getLessonWithCourse(lessonId);
   const course = lesson.module.course;
 
-  if (!course.published) {
+  if (course.status !== "APPROVED" || course.deleteStatus !== "ACTIVE") {
     throw ApiError.notFound("Course not found");
   }
 
@@ -240,7 +257,7 @@ export async function updateWatchedDuration(
   const lesson = await getLessonWithCourse(lessonId);
   const course = lesson.module.course;
 
-  if (!course.published) {
+  if (course.status !== "APPROVED" || course.deleteStatus !== "ACTIVE") {
     throw ApiError.notFound("Course not found");
   }
 
@@ -396,5 +413,53 @@ export async function getStudentAnalytics(studentId: string) {
     hoursLearned: Math.round((totalWatchSeconds / 3600) * 10) / 10,
     averageProgress: avgProgress,
     recentlyViewed,
+  };
+}
+
+export async function getCoursePreview(idOrSlug: string) {
+  const course = await prisma.course.findFirst({
+    where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+    include: courseInclude,
+  });
+
+  if (!course) {
+    throw ApiError.notFound("Course not found");
+  }
+
+  const allLessons = flattenCourseLessons(course.modules);
+
+  const modulesWithLessons = course.modules.map((mod) => ({
+    id: mod.id,
+    title: mod.title,
+    order: mod.order,
+    lessons: mod.lessons.map((lesson) => ({
+      id: lesson.id,
+      title: lesson.title,
+      description: lesson.description,
+      videoUrl: lesson.videoUrl,
+      duration: lesson.duration,
+      order: lesson.order,
+      moduleId: lesson.moduleId,
+      progress: null,
+    })),
+  }));
+
+  return {
+    preview: true,
+    enrollment: null,
+    course: {
+      ...mapCourse(course, true),
+      modules: modulesWithLessons,
+    },
+    lessons: allLessons.map((lesson) => ({
+      id: lesson.id,
+      title: lesson.title,
+      moduleId: lesson.moduleId,
+      moduleTitle: lesson.moduleTitle,
+      order: lesson.order,
+      progress: null,
+    })),
+    completedLessons: 0,
+    totalLessons: allLessons.length,
   };
 }

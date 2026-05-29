@@ -6,47 +6,66 @@ import { motion } from "framer-motion";
 import { CourseCard } from "@/components/courses/course-card";
 import { EmptyState } from "@/components/courses/empty-state";
 import { Button } from "@/components/ui/button";
-import { publishCourse } from "@/lib/courses-api";
+import { approveCourse, rejectCourse } from "@/lib/admin-api";
 import { isDemoCourseId } from "@/lib/demo-dashboard";
 import type { Course } from "@/types/course";
 import { ApiClientError } from "@/lib/api";
 
 interface ModerationSectionProps {
   courses: Course[];
-  demoMode?: boolean;
-  onPublished?: () => void;
+  onUpdated?: () => void;
 }
 
-export function ModerationSection({ courses, demoMode, onPublished }: ModerationSectionProps) {
-  const [publishingId, setPublishingId] = useState<string | null>(null);
+export function ModerationSection({ courses, onUpdated }: ModerationSectionProps) {
+  const [actionId, setActionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handlePublish(course: Course) {
-    if (demoMode || isDemoCourseId(course.id)) return;
-    setPublishingId(course.id);
+  async function handleApprove(course: Course) {
+    if (isDemoCourseId(course.id)) return;
+    setActionId(course.id);
     setError(null);
     try {
-      await publishCourse(course.id, true);
-      onPublished?.();
+      await approveCourse(course.id);
+      onUpdated?.();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to publish course");
+      setError(err instanceof ApiClientError ? err.message : "Failed to approve course");
     } finally {
-      setPublishingId(null);
+      setActionId(null);
+    }
+  }
+
+  async function handleReject(course: Course) {
+    if (isDemoCourseId(course.id)) return;
+    if (!confirm(`Reject "${course.title}"?`)) return;
+    setActionId(course.id);
+    setError(null);
+    try {
+      await rejectCourse(course.id);
+      onUpdated?.();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Failed to reject course");
+    } finally {
+      setActionId(null);
     }
   }
 
   return (
     <section>
-      <h2 className="mb-4 font-serif text-lg font-bold text-foreground">
-        Course moderation (drafts awaiting review)
-      </h2>
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h2 className="font-serif text-lg font-bold text-foreground">
+          Courses awaiting review
+        </h2>
+        <Link href="/dashboard/admin/review" className="text-sm font-medium text-green-700 dark:text-gold-400">
+          Open review queue →
+        </Link>
+      </div>
       {error && (
         <p className="mb-4 text-sm text-red-600 dark:text-red-400" role="alert">
           {error}
         </p>
       )}
       {courses.length === 0 ? (
-        <EmptyState title="All clear" description="No draft courses pending moderation." icon="✓" />
+        <EmptyState title="All clear" description="No courses pending review." icon="✓" />
       ) : (
         <div className="grid gap-5 sm:grid-cols-2">
           {courses.map((course, i) => (
@@ -59,29 +78,28 @@ export function ModerationSection({ courses, demoMode, onPublished }: Moderation
             >
               <CourseCard
                 course={course}
-                href={
-                  demoMode || isDemoCourseId(course.id)
-                    ? `/courses/${course.slug}`
-                    : `/dashboard/teacher/courses/${course.id}/edit`
-                }
+                href={`/dashboard/teacher/courses/${course.id}/edit`}
                 showStatus
               />
               <div className="flex flex-wrap gap-2 px-1">
-                {!demoMode && !isDemoCourseId(course.id) && (
+                {!isDemoCourseId(course.id) && (
                   <>
                     <Button
                       size="sm"
                       variant="gold"
-                      disabled={publishingId === course.id}
-                      onClick={() => void handlePublish(course)}
+                      disabled={actionId === course.id}
+                      onClick={() => void handleApprove(course)}
                     >
-                      {publishingId === course.id ? "Publishing…" : "Approve & publish"}
+                      {actionId === course.id ? "Processing…" : "Approve & publish"}
                     </Button>
-                    <Link href={`/dashboard/teacher/courses/${course.id}/edit`}>
-                      <Button size="sm" variant="secondary">
-                        Review
-                      </Button>
-                    </Link>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={actionId === course.id}
+                      onClick={() => void handleReject(course)}
+                    >
+                      Reject
+                    </Button>
                   </>
                 )}
               </div>

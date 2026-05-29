@@ -59,15 +59,25 @@ export async function getOne(req: Request, res: Response): Promise<void> {
   res.json({ success: true, data: { course } });
 }
 
-export async function publish(req: Request, res: Response): Promise<void> {
+export async function submitForReview(req: Request, res: Response): Promise<void> {
   if (!req.user) throw ApiError.unauthorized();
-  const { published } = req.body as { published: boolean };
-  const course = await coursesService.publishCourse(
+  const course = await coursesService.submitCourseForReview(
     req.user.id,
     req.user.role,
     req.params.idOrSlug,
-    published,
   );
+  res.json({ success: true, data: { course } });
+}
+
+export async function publish(req: Request, res: Response): Promise<void> {
+  if (!req.user) throw ApiError.unauthorized();
+  if (req.user.role !== "ADMIN") {
+    throw ApiError.forbidden("Only administrators can publish courses");
+  }
+  const { published } = req.body as { published: boolean };
+  const course = published
+    ? await coursesService.adminApproveCourse(req.user.id, req.params.idOrSlug)
+    : await coursesService.adminUnpublishCourse(req.user.id, req.params.idOrSlug);
   res.json({ success: true, data: { course } });
 }
 

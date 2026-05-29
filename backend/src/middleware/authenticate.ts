@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { env } from "../config/env.js";
+import { prisma } from "../config/database.js";
 import { ApiError } from "../utils/api-error.js";
 import { verifyToken } from "../utils/jwt.js";
 
@@ -25,15 +26,32 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
     return;
   }
 
-  try {
-    const payload = verifyToken(token);
-    req.user = {
-      id: payload.sub,
-      email: payload.email,
-      role: payload.role,
-    };
-    next();
-  } catch {
-    next(ApiError.unauthorized("Invalid or expired token"));
-  }
+  void (async () => {
+    try {
+      const payload = verifyToken(token);
+      const user = await prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { id: true, email: true, role: true, suspended: true },
+      });
+
+      if (!user) {
+        next(ApiError.unauthorized("Invalid or expired token"));
+        return;
+      }
+
+      if (user.suspended) {
+        next(ApiError.forbidden("Your account has been suspended"));
+        return;
+      }
+
+      req.user = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      };
+      next();
+    } catch {
+      next(ApiError.unauthorized("Invalid or expired token"));
+    }
+  })();
 }

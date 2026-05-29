@@ -24,6 +24,7 @@ const teacherNav: NavItem[] = [
     icon: "📚",
     match: (p) => p.startsWith("/dashboard/teacher/courses"),
   },
+  { href: "/courses", label: "Marketplace", icon: "◎" },
   {
     href: "/dashboard/teacher/quizzes",
     label: "Quizzes",
@@ -56,13 +57,31 @@ const adminNav: NavItem[] = [
     icon: "◈",
     match: (p) => p === "/dashboard/admin",
   },
-  { href: "/courses", label: "Catalog", icon: "◎" },
   {
-    href: "/dashboard/teacher/quizzes",
-    label: "Quizzes",
-    icon: "?",
-    match: (p) => p.startsWith("/dashboard/teacher/quizzes"),
+    href: "/dashboard/admin/review",
+    label: "Review",
+    icon: "✓",
+    match: (p) => p.startsWith("/dashboard/admin/review"),
   },
+  {
+    href: "/dashboard/admin/users",
+    label: "Users",
+    icon: "👥",
+    match: (p) => p.startsWith("/dashboard/admin/users"),
+  },
+  {
+    href: "/dashboard/admin/courses",
+    label: "Courses",
+    icon: "📚",
+    match: (p) => p.startsWith("/dashboard/admin/courses"),
+  },
+  {
+    href: "/dashboard/admin/activity",
+    label: "Activity",
+    icon: "◎",
+    match: (p) => p.startsWith("/dashboard/admin/activity"),
+  },
+  { href: "/courses", label: "Catalog", icon: "◇" },
 ];
 
 interface DashboardSidebarProps {
