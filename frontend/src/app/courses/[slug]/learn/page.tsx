@@ -16,12 +16,16 @@ import { Spinner } from "@/components/ui/spinner";
 import { fetchCourseProgress, markLessonComplete, updateWatchProgress } from "@/lib/learning-api";
 import { fetchCoursePreview } from "@/lib/admin-api";
 import { fetchLessonQuizzesStudent } from "@/lib/quizzes-api";
+import { fetchCourseResourcesStudent, fetchLessonResourcesStudent } from "@/lib/resources-api";
+import { ResourceList } from "@/components/resources/resource-list";
+import type { Resource } from "@/types/resource";
 import { QuizCard } from "@/components/quizzes/quiz-card";
 import type { Quiz } from "@/types/quiz";
 import type { CourseProgressData, LessonWithProgress, ModuleWithProgress } from "@/types/learning";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { ApiClientError } from "@/lib/api";
+import { layout } from "@/lib/layout";
 
 function flattenLessons(modules: ModuleWithProgress[]): LessonWithProgress[] {
   return modules.flatMap((m) => m.lessons);
@@ -42,6 +46,8 @@ export default function CourseLearnPage() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lessonQuizzes, setLessonQuizzes] = useState<Quiz[]>([]);
+  const [courseResources, setCourseResources] = useState<Resource[]>([]);
+  const [lessonResources, setLessonResources] = useState<Resource[]>([]);
 
   const lessons = useMemo(() => (data ? flattenLessons(data.course.modules) : []), [data]);
   const activeLesson = lessons.find((l) => l.id === activeLessonId) ?? null;
@@ -88,13 +94,30 @@ export default function CourseLearnPage() {
   }, [authLoading, isAuthenticated, isAdminPreview, user?.role, router, slug, loadProgress]);
 
   useEffect(() => {
+    if (!data?.course.id || isAdminPreview) return;
+    void (async () => {
+      try {
+        const res = await fetchCourseResourcesStudent(data.course.id);
+        setCourseResources(res.data?.resources ?? []);
+      } catch {
+        setCourseResources([]);
+      }
+    })();
+  }, [data?.course.id, isAdminPreview]);
+
+  useEffect(() => {
     if (!activeLessonId || isAdminPreview) return;
     void (async () => {
       try {
-        const res = await fetchLessonQuizzesStudent(activeLessonId);
-        setLessonQuizzes(res.data.quizzes);
+        const [quizRes, resRes] = await Promise.all([
+          fetchLessonQuizzesStudent(activeLessonId),
+          fetchLessonResourcesStudent(activeLessonId),
+        ]);
+        setLessonQuizzes(quizRes.data.quizzes);
+        setLessonResources(resRes.data?.resources ?? []);
       } catch {
         setLessonQuizzes([]);
+        setLessonResources([]);
       }
     })();
   }, [activeLessonId, isAdminPreview]);
@@ -138,7 +161,7 @@ export default function CourseLearnPage() {
     return (
       <PageBackground variant="default">
         <AuthNavbar />
-        <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+        <main className={`${layout.wide} py-10`}>
           <LearningPageSkeleton />
         </main>
       </PageBackground>
@@ -163,7 +186,7 @@ export default function CourseLearnPage() {
   return (
     <PageBackground variant="default">
       <AuthNavbar />
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
+      <main className={`${layout.wide} py-6 lg:py-8`}>
         <Breadcrumbs
           className="mb-4"
           items={[
@@ -185,6 +208,12 @@ export default function CourseLearnPage() {
                   value={data.enrollment.progressPercentage}
                   label={`${data.completedLessons} of ${data.totalLessons} lessons complete`}
                 />
+                <Link
+                  href={`/courses/${slug}/certificate`}
+                  className="mt-2 inline-block text-sm font-medium text-green-700 hover:underline dark:text-green-400"
+                >
+                  View certificate progress →
+                </Link>
               </div>
             )}
           </div>
@@ -218,13 +247,6 @@ export default function CourseLearnPage() {
                     duration={activeLesson.duration}
                     initialWatchedDuration={activeLesson.progress?.watchedDuration ?? 0}
                     onWatchUpdate={isAdminPreview ? undefined : handleWatchUpdate}
-                    onComplete={
-                      isAdminPreview
-                        ? undefined
-                        : () => {
-                            if (!activeLesson.progress?.completed) void handleMarkComplete();
-                          }
-                    }
                   />
 
                   <div className="rounded-2xl border border-border bg-card p-6">
@@ -296,6 +318,15 @@ export default function CourseLearnPage() {
                       </div>
                     )}
 
+                    {!isAdminPreview && lessonResources.length > 0 && (
+                      <div className="mt-8 border-t border-border pt-6">
+                        <h3 className="font-serif text-lg font-bold">Lesson resources</h3>
+                        <div className="mt-4">
+                          <ResourceList resources={lessonResources} />
+                        </div>
+                      </div>
+                    )}
+
                     {!isAdminPreview && lessonQuizzes.length > 0 && (
                       <div className="mt-8 border-t border-border pt-6">
                         <h3 className="font-serif text-lg font-bold">Lesson quizzes</h3>
@@ -322,6 +353,14 @@ export default function CourseLearnPage() {
           </div>
 
           <div className="hidden rounded-2xl border border-border bg-card lg:block">
+            {courseResources.length > 0 && (
+              <div className="border-b border-border p-4">
+                <h3 className="font-serif text-sm font-bold">Course resources</h3>
+                <div className="mt-3">
+                  <ResourceList resources={courseResources} />
+                </div>
+              </div>
+            )}
             <LessonSidebar
               modules={data.course.modules}
               activeLessonId={activeLessonId}

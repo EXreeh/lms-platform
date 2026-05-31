@@ -1,4 +1,4 @@
-# Setup Guide — Cognitiax AI LMS
+# Setup Guide — CognitiaX AI LMS
 
 ## Prerequisites
 
@@ -55,7 +55,7 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your@gmail.com
 SMTP_PASS=xxxx xxxx xxxx xxxx   # 16-char App Password (no spaces in .env)
-EMAIL_FROM="Cognitiax AI <your@gmail.com>"
+EMAIL_FROM="CognitiaX AI <your@gmail.com>"
 ```
 
 1. Enable [2-Step Verification](https://myaccount.google.com/security) on the Google account.

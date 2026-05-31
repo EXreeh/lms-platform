@@ -51,3 +51,13 @@ adminRoutes.patch("/courses/:courseId/archive", asyncHandler(adminController.arc
 adminRoutes.delete("/courses/:courseId", asyncHandler(adminController.deleteCourse));
 
 adminRoutes.get("/activity", asyncHandler(adminController.listActivity));
+
+adminRoutes.get("/resources", asyncHandler(adminController.listResources));
+adminRoutes.delete("/resources/:resourceId", asyncHandler(adminController.removeResource));
+adminRoutes.patch("/resources/:resourceId/restore", asyncHandler(adminController.restoreResource));
+
+adminRoutes.get("/certificates", asyncHandler(adminController.listCertificates));
+adminRoutes.get(
+  "/certificates/:certificateId/download",
+  asyncHandler(adminController.downloadCertificate),
+);

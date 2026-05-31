@@ -1,9 +1,9 @@
 /**
- * Cognitiax AI design tokens — derived from official logo palette.
+ * CognitiaX AI design tokens — derived from official logo palette.
  * Gold: innovation, premium · Green: education, trust · Teal: AI/tech bridge
  */
 export const brand = {
-  name: "Cognitiax AI",
+  name: "CognitiaX AI",
   tagline: "AI-powered learning for the next generation",
   logo: "/brand/cognitiax-logo.png",
 } as const;

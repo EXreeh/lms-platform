@@ -14,9 +14,11 @@ function isPublicCatalogPath(pathname: string): boolean {
 }
 
 function isProtectedCoursePath(pathname: string): boolean {
+  if (pathname.startsWith("/api")) return false;
   return (
-    pathname.includes("/learn") ||
-    pathname.includes("/quizzes/")
+    /^\/courses\/[^/]+\/learn(\/|$)/.test(pathname) ||
+    /^\/courses\/[^/]+\/quizzes(\/|$)/.test(pathname) ||
+    /^\/courses\/[^/]+\/certificate(\/|$)/.test(pathname)
   );
 }
 
@@ -85,5 +87,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/|.*\\..*).*)"],
 };

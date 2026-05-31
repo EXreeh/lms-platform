@@ -45,7 +45,7 @@ export default function TeacherDashboardPage() {
   return (
     <DashboardShell
       title="Teacher Studio"
-      description="Create courses, track enrollments, and manage your Cognitiax AI curriculum."
+      description="Create courses, track enrollments, and manage your CognitiaX AI curriculum."
       badge="Educator Portal"
     >
       <div className="flex flex-col gap-8 lg:flex-row">

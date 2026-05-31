@@ -17,6 +17,7 @@ export interface Lesson {
   duration: number;
   order: number;
   moduleId: string;
+  deleteStatus?: EntityStatus;
   createdAt: string;
 }
 
@@ -25,6 +26,7 @@ export interface Module {
   title: string;
   order: number;
   courseId: string;
+  deleteStatus?: EntityStatus;
   createdAt: string;
   lessons: Lesson[];
 }
@@ -107,5 +109,9 @@ export function formatDuration(seconds: number): string {
 
 export function formatPrice(price: number): string {
   if (price === 0) return "Free";
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(price);
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(price);
+}
+
+export function isFreeCourse(price: number): boolean {
+  return price <= 0;
 }

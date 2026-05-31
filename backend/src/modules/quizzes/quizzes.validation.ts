@@ -6,7 +6,9 @@ export const createQuizSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().max(5000).optional(),
   lessonId: z.string().min(1),
-  timeLimit: z.coerce.number().int().min(60).max(7200).optional().nullable(),
+  timeLimit: z
+    .union([z.coerce.number().int().min(60).max(7200), z.null()])
+    .optional(),
   passingScore: z.coerce.number().min(0).max(100).default(70),
 });
 

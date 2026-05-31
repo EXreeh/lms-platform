@@ -3,6 +3,7 @@ import { prisma } from "../../config/database.js";
 import { ApiError } from "../../utils/api-error.js";
 import { logActivity } from "../admin/activity.service.js";
 import { calculateScore, mapQuestion, mapQuiz, mapQuizAttempt } from "./quizzes.mapper.js";
+import { logAction } from "../../utils/logger.js";
 import type {
   CreateQuestionInput,
   CreateQuizInput,
@@ -29,9 +30,12 @@ async function getLessonWithCourse(lessonId: string) {
   return lesson;
 }
 
-async function getQuizOrThrow(quizId: string) {
+async function getQuizOrThrow(quizId: string, requireActive = false) {
   const quiz = await prisma.quiz.findFirst({
-    where: { id: quizId, deleteStatus: { not: "DELETED" } },
+    where: {
+      id: quizId,
+      deleteStatus: requireActive ? "ACTIVE" : { not: "DELETED" },
+    },
     include: {
       questions: { orderBy: { order: "asc" } },
       lesson: { include: { module: { include: { course: true } } } },
@@ -78,6 +82,8 @@ export async function createQuiz(userId: string, role: Role, input: CreateQuizIn
     },
     include: quizInclude,
   });
+
+  logAction("quiz.create", { userId, quizId: quiz.id, lessonId: input.lessonId, title: input.title });
 
   return mapQuiz(quiz, true);
 }
@@ -223,6 +229,8 @@ export async function addQuestion(
     },
   });
 
+  logAction("quiz.add_question", { userId, quizId, questionId: question.id });
+
   return mapQuestion(question, true);
 }
 
@@ -322,7 +330,7 @@ export async function getQuizAnalytics(userId: string, role: Role, quizId: strin
 }
 
 export async function getQuizPreview(studentId: string, quizId: string) {
-  const quiz = await getQuizOrThrow(quizId);
+  const quiz = await getQuizOrThrow(quizId, true);
   const courseId = quiz.lesson.module.course.id;
 
   if (quiz.lesson.module.course.status !== "APPROVED") {
@@ -349,7 +357,7 @@ export async function getQuizPreview(studentId: string, quizId: string) {
 }
 
 export async function startQuiz(studentId: string, quizId: string) {
-  const quiz = await getQuizOrThrow(quizId);
+  const quiz = await getQuizOrThrow(quizId, true);
   const courseId = quiz.lesson.module.course.id;
 
   if (quiz.lesson.module.course.status !== "APPROVED") {
@@ -524,7 +532,7 @@ export async function listLessonQuizzesForStudent(studentId: string, lessonId: s
   await assertStudentEnrolled(studentId, lesson.module.course.id);
 
   const quizzes = await prisma.quiz.findMany({
-    where: { lessonId, deleteStatus: { not: "DELETED" } },
+    where: { lessonId, deleteStatus: "ACTIVE" },
     include: quizInclude,
     orderBy: { createdAt: "asc" },
   });

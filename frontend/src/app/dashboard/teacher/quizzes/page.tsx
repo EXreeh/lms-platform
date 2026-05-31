@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
@@ -9,26 +9,47 @@ import { QuizCard } from "@/components/quizzes/quiz-card";
 import { QuizSkeleton } from "@/components/quizzes/progress-indicator";
 import { Button } from "@/components/ui/button";
 import { fetchTeacherQuizzes } from "@/lib/quizzes-api";
+import { formatApiError } from "@/lib/format-api-error";
 import type { TeacherQuiz } from "@/types/quiz";
 import { ApiClientError } from "@/lib/api";
+import { useToast } from "@/context/toast-context";
+import { useAuth } from "@/context/auth-context";
 
 export default function TeacherQuizzesPage() {
+  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const { error: toastError } = useToast();
   const [quizzes, setQuizzes] = useState<TeacherQuiz[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetchTeacherQuizzes();
-        setQuizzes(res.data.quizzes);
-      } catch (err) {
-        setError(err instanceof ApiClientError ? err.message : "Failed to load quizzes");
-      } finally {
-        setIsLoading(false);
+  const loadQuizzes = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetchTeacherQuizzes();
+      const list = res.data?.quizzes ?? [];
+      if (process.env.NODE_ENV === "development") {
+        console.info("[Quiz] list loaded", { count: list.length });
       }
-    })();
-  }, []);
+      setQuizzes(list);
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        const status = err instanceof ApiClientError ? err.status : "unknown";
+        console.error("[Quiz] list failed", { status, err });
+      }
+      const msg = formatApiError(err, "Failed to load quizzes");
+      setError(msg);
+      toastError(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toastError]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) return;
+    void loadQuizzes();
+  }, [authLoading, isAuthenticated, loadQuizzes]);
 
   return (
     <DashboardShell
@@ -45,10 +66,15 @@ export default function TeacherQuizzesPage() {
             </Link>
           </div>
 
-          {isLoading ? (
+          {isLoading || authLoading ? (
             <QuizSkeleton />
           ) : error ? (
-            <p className="text-red-600">{error}</p>
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-6 dark:border-red-900 dark:bg-red-950/40">
+              <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+              <Button variant="secondary" size="sm" className="mt-4" onClick={() => void loadQuizzes()}>
+                Retry
+              </Button>
+            </div>
           ) : quizzes.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-12 text-center">
               <p className="text-4xl">📝</p>

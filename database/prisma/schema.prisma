@@ -1,4 +1,4 @@
-// Cognitiax AI LMS — Prisma schema
+// CognitiaX AI LMS — Prisma schema
 
 generator client {
   provider = "prisma-client-js"
@@ -47,6 +47,10 @@ enum ActivityType {
   USER_ROLE_CHANGED
   USER_SUSPENDED
   USER_CREATED
+  RESOURCE_CREATED
+  RESOURCE_REMOVED
+  CERTIFICATE_ISSUED
+  PAYMENT_COMPLETED
 }
 
 enum CourseStatus {
@@ -61,6 +65,21 @@ enum EntityStatus {
   ACTIVE
   PENDING_DELETE
   DELETED
+}
+
+enum ResourceType {
+  PDF
+  NOTE
+  LINK
+  ASSIGNMENT
+  OTHER
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  CAPTURED
+  FAILED
 }
 
 model User {
@@ -81,6 +100,9 @@ model User {
   lessonProgress  LessonProgress[]
   quizAttempts    QuizAttempt[]
   activities      ActivityLog[]
+  resources       Resource[]
+  certificates    Certificate[]
+  payments        Payment[]
 
   @@index([role, suspended])
   @@map("users")
@@ -102,6 +124,9 @@ model Course {
   modules     Module[]
   enrollments Enrollment[]
   activities  ActivityLog[]
+  resources   Resource[]
+  certificates Certificate[]
+  payments    Payment[]
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
@@ -136,6 +161,7 @@ model Lesson {
   module       Module       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   progress     LessonProgress[]
   quizzes      Quiz[]
+  resources    Resource[]
   createdAt    DateTime     @default(now()) @map("created_at")
 
   @@index([moduleId, order])
@@ -283,4 +309,68 @@ model ActivityLog {
   @@index([type, createdAt])
   @@index([userId, createdAt])
   @@map("activity_logs")
+}
+
+model Resource {
+  id           String       @id @default(cuid())
+  title        String
+  description  String?      @db.Text
+  type         ResourceType
+  url          String
+  fileName     String?      @map("file_name")
+  courseId     String       @map("course_id")
+  lessonId     String?      @map("lesson_id")
+  uploadedById String       @map("uploaded_by_id")
+  deleteStatus EntityStatus @default(ACTIVE) @map("delete_status")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  course     Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson     Lesson? @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  uploadedBy User    @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([courseId, deleteStatus])
+  @@index([lessonId, deleteStatus])
+  @@index([uploadedById])
+  @@map("resources")
+}
+
+model Certificate {
+  id                String   @id @default(cuid())
+  studentId         String   @map("student_id")
+  courseId          String   @map("course_id")
+  certificateNumber String   @unique @map("certificate_number")
+  verificationCode  String   @unique @map("verification_code")
+  issuedAt          DateTime @default(now()) @map("issued_at")
+  pdfUrl            String?  @map("pdf_url")
+
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId])
+  @@index([verificationCode])
+  @@index([courseId])
+  @@map("certificates")
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  studentId         String        @map("student_id")
+  courseId          String        @map("course_id")
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("INR")
+  razorpayOrderId   String        @unique @map("razorpay_order_id")
+  razorpayPaymentId String?       @unique @map("razorpay_payment_id")
+  razorpaySignature String?       @map("razorpay_signature")
+  status            PaymentStatus @default(CREATED)
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  student User   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course  Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, createdAt])
+  @@index([courseId])
+  @@index([status, createdAt])
+  @@map("payments")
 }

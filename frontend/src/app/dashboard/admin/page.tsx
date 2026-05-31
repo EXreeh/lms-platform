@@ -40,7 +40,7 @@ export default function AdminDashboardPage() {
   return (
     <DashboardShell
       title="Admin Command Center"
-      description="Platform oversight, user management, and course moderation for Cognitiax AI."
+      description="Platform oversight, user management, and course moderation for CognitiaX AI."
       badge="Administrator"
     >
       <div className="flex flex-col gap-8 lg:flex-row">
@@ -78,6 +78,9 @@ export default function AdminDashboardPage() {
                 </Link>
                 <Link href="/dashboard/admin/activity">
                   <Button variant="secondary">View activity</Button>
+                </Link>
+                <Link href="/dashboard/admin/payments">
+                  <Button variant="secondary">Revenue & payments</Button>
                 </Link>
               </div>
 

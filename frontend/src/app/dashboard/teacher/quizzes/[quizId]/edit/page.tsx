@@ -20,10 +20,13 @@ import {
 } from "@/lib/quizzes-api";
 import type { Quiz, QuizAnalytics } from "@/types/quiz";
 import { ApiClientError } from "@/lib/api";
+import { formatApiError } from "@/lib/format-api-error";
+import { useToast } from "@/context/toast-context";
 
 export default function EditQuizPage() {
   const params = useParams();
   const quizId = params.quizId as string;
+  const { success: toastSuccess, error: toastError } = useToast();
 
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [analytics, setAnalytics] = useState<QuizAnalytics | null>(null);
@@ -58,7 +61,9 @@ export default function EditQuizPage() {
         setAnalytics(null);
       }
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to load quiz");
+      const msg = formatApiError(err, "Failed to load quiz");
+      setError(msg);
+      toastError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -81,7 +86,7 @@ export default function EditQuizPage() {
       setQuiz(res.data.quiz);
       setSuccess("Quiz settings saved");
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Save failed");
+      toastError(formatApiError(err, "Save failed"));
     } finally {
       setIsSaving(false);
     }
@@ -90,7 +95,18 @@ export default function EditQuizPage() {
   async function handleAddQuestion(e: React.FormEvent) {
     e.preventDefault();
     const validOptions = options.map((o) => o.trim()).filter(Boolean);
-    if (!questionText.trim() || validOptions.length < 2 || !correctAnswer) return;
+    if (!questionText.trim() || validOptions.length < 2 || !correctAnswer) {
+      toastError("Enter a question (min 5 chars), at least 2 options, and select the correct answer");
+      return;
+    }
+    if (questionText.trim().length < 5) {
+      toastError("Question text must be at least 5 characters");
+      return;
+    }
+    if (!validOptions.includes(correctAnswer)) {
+      toastError("Correct answer must match one of the options");
+      return;
+    }
     try {
       await addQuestion(quizId, {
         question: questionText.trim(),
@@ -102,9 +118,12 @@ export default function EditQuizPage() {
       setOptions(["", "", "", ""]);
       setCorrectAnswer("");
       setSuccess("Question added");
+      toastSuccess("Question added");
       await load();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to add question");
+      const msg = formatApiError(err, "Failed to add question");
+      setError(msg);
+      toastError(msg);
     }
   }
 

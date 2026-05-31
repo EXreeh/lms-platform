@@ -567,3 +567,32 @@ export async function getPlatformStats() {
     pendingModeration,
   };
 }
+
+export async function listAdminResources() {
+  const { listAdminResources: list } = await import("../resources/resources.service.js");
+  return list();
+}
+
+export async function adminRemoveResource(adminId: string, resourceId: string) {
+  const { adminRemoveResource: remove } = await import("../resources/resources.service.js");
+  return remove(adminId, resourceId);
+}
+
+export async function adminRestoreResource(resourceId: string) {
+  const { adminRestoreResource: restore } = await import("../resources/resources.service.js");
+  return restore(resourceId);
+}
+
+export async function listAdminCertificates() {
+  const { listAdminCertificates: list } = await import("../certificates/certificates.service.js");
+  return list();
+}
+
+export async function streamCertificatePdfAdmin(
+  res: import("express").Response,
+  certificateId: string,
+  adminId: string,
+) {
+  const { streamCertificatePdfAdmin: stream } = await import("../certificates/certificates.service.js");
+  return stream(res, certificateId, adminId);
+}

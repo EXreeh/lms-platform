@@ -43,6 +43,9 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[API]", path, { status: response.status, body: data });
+    }
     throw new ApiClientError(
       data.message ?? "Request failed",
       response.status,

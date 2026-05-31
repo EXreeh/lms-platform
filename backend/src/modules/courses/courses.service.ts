@@ -5,6 +5,7 @@ import { slugify, uniqueSlug } from "../../utils/slug.js";
 import { logActivity } from "../admin/activity.service.js";
 import {
   assertTeacherOwnsOrAdmin,
+  assertCanRequestDelete,
   canSubmitForReview,
   canTeacherEditCourse,
   courseNotDeletedFilter,
@@ -12,6 +13,7 @@ import {
   isCatalogVisible,
 } from "./courses.helpers.js";
 import { mapCourse } from "./courses.mapper.js";
+import { logAction } from "../../utils/logger.js";
 import type {
   CreateCourseInput,
   UpdateCourseInput,
@@ -162,7 +164,13 @@ export async function submitCourseForReview(userId: string, role: Role, idOrSlug
     throw ApiError.badRequest("Only draft or rejected courses can be submitted for review");
   }
 
-  const lessonCount = existing.modules.reduce((s, m) => s + m.lessons.length, 0);
+  const lessonCount = await prisma.lesson.count({
+    where: {
+      deleteStatus: "ACTIVE",
+      module: { courseId: existing.id, deleteStatus: "ACTIVE" },
+    },
+  });
+
   if (lessonCount === 0) {
     throw ApiError.badRequest("Add at least one lesson before submitting for review");
   }
@@ -179,6 +187,8 @@ export async function submitCourseForReview(userId: string, role: Role, idOrSlug
     courseId: course.id,
     metadata: { title: course.title },
   });
+
+  logAction("course.submit_review", { userId, courseId: course.id, title: course.title });
 
   return mapCourse(course);
 }
@@ -208,6 +218,8 @@ export async function deleteCourse(userId: string, role: Role, idOrSlug: string)
     courseId: existing.id,
     metadata: { entityType: "course", title: existing.title },
   });
+
+  logAction("delete.request", { userId, entityType: "course", entityId: existing.id });
 
   return { message: "Delete request submitted for admin approval", pendingApproval: true };
 }
@@ -520,22 +532,39 @@ export async function deleteModule(userId: string, role: Role, moduleId: string)
 
   if (!module) throw ApiError.notFound("Module not found");
   if (!canManageCourse(userId, role, module.course.teacherId)) throw ApiError.forbidden();
-  assertEditable(module.course, role);
+  assertCanRequestDelete(module.course, role);
 
   if (role === "ADMIN") {
     await prisma.module.update({ where: { id: moduleId }, data: { deleteStatus: "DELETED" } });
-  } else {
-    await prisma.module.update({ where: { id: moduleId }, data: { deleteStatus: "PENDING_DELETE" } });
-    await requestEntityDelete(userId, role, "module", moduleId, module.courseId, module.title);
+    logAction("delete.approved", { userId, entityType: "module", entityId: moduleId, byAdmin: true });
+    return {
+      course: mapCourse(
+        await prisma.course.findUniqueOrThrow({
+          where: { id: module.courseId },
+          include: buildCourseInclude("manage"),
+        }),
+        true,
+      ),
+      pendingApproval: false,
+      message: "Module deleted",
+    };
   }
 
-  return mapCourse(
-    await prisma.course.findUniqueOrThrow({
-      where: { id: module.courseId },
-      include: buildCourseInclude("manage"),
-    }),
-    true,
-  );
+  await prisma.module.update({ where: { id: moduleId }, data: { deleteStatus: "PENDING_DELETE" } });
+  await requestEntityDelete(userId, role, "module", moduleId, module.courseId, module.title);
+  logAction("delete.request", { userId, entityType: "module", entityId: moduleId, courseId: module.courseId });
+
+  return {
+    course: mapCourse(
+      await prisma.course.findUniqueOrThrow({
+        where: { id: module.courseId },
+        include: buildCourseInclude("manage"),
+      }),
+      true,
+    ),
+    pendingApproval: true,
+    message: "Delete request submitted for admin approval",
+  };
 }
 
 export async function deleteLesson(userId: string, role: Role, lessonId: string) {
@@ -546,22 +575,39 @@ export async function deleteLesson(userId: string, role: Role, lessonId: string)
 
   if (!lesson) throw ApiError.notFound("Lesson not found");
   if (!canManageCourse(userId, role, lesson.module.course.teacherId)) throw ApiError.forbidden();
-  assertEditable(lesson.module.course, role);
+  assertCanRequestDelete(lesson.module.course, role);
 
   if (role === "ADMIN") {
     await prisma.lesson.update({ where: { id: lessonId }, data: { deleteStatus: "DELETED" } });
-  } else {
-    await prisma.lesson.update({ where: { id: lessonId }, data: { deleteStatus: "PENDING_DELETE" } });
-    await requestEntityDelete(userId, role, "lesson", lessonId, lesson.module.courseId, lesson.title);
+    logAction("delete.approved", { userId, entityType: "lesson", entityId: lessonId, byAdmin: true });
+    return {
+      course: mapCourse(
+        await prisma.course.findUniqueOrThrow({
+          where: { id: lesson.module.courseId },
+          include: buildCourseInclude("manage"),
+        }),
+        true,
+      ),
+      pendingApproval: false,
+      message: "Lesson deleted",
+    };
   }
 
-  return mapCourse(
-    await prisma.course.findUniqueOrThrow({
-      where: { id: lesson.module.courseId },
-      include: buildCourseInclude("manage"),
-    }),
-    true,
-  );
+  await prisma.lesson.update({ where: { id: lessonId }, data: { deleteStatus: "PENDING_DELETE" } });
+  await requestEntityDelete(userId, role, "lesson", lessonId, lesson.module.courseId, lesson.title);
+  logAction("delete.request", { userId, entityType: "lesson", entityId: lessonId, courseId: lesson.module.courseId });
+
+  return {
+    course: mapCourse(
+      await prisma.course.findUniqueOrThrow({
+        where: { id: lesson.module.courseId },
+        include: buildCourseInclude("manage"),
+      }),
+      true,
+    ),
+    pendingApproval: true,
+    message: "Delete request submitted for admin approval",
+  };
 }
 
 export async function getCategories() {

@@ -57,6 +57,14 @@ export function activityMessage(
       return `${meta.userName ?? "User"} account was suspended`;
     case "USER_CREATED":
       return `${meta.userName ?? "User"} account created as ${meta.role ?? "user"}`;
+    case "RESOURCE_CREATED":
+      return `Resource added to "${meta.courseTitle ?? "course"}"`;
+    case "RESOURCE_REMOVED":
+      return `Resource removed from "${meta.courseTitle ?? "course"}"`;
+    case "CERTIFICATE_ISSUED":
+      return `Certificate issued for "${meta.courseTitle ?? "course"}"`;
+    case "PAYMENT_COMPLETED":
+      return `${meta.userName ?? "Student"} completed payment for "${meta.courseTitle ?? "a course"}"`;
     default:
       return "Platform activity recorded";
   }

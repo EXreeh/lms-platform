@@ -32,11 +32,13 @@ const envSchema = z.object({
     .default("false"),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
-  EMAIL_FROM: z.string().default("Cognitiax AI <noreply@cognitiax.ai>"),
+  EMAIL_FROM: z.string().default("CognitiaX AI <noreply@cognitiax.ai>"),
   MAIL_DEV_LOG: z
     .string()
     .transform((v) => v === "true")
     .default("true"),
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -49,3 +51,4 @@ if (!parsed.success) {
 export const env = parsed.data;
 
 export const isEmailConfigured = Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+export const isRazorpayConfigured = Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET);

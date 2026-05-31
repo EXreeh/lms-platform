@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Cognitiax AI — design tokens derived from official logo */
+/* CognitiaX AI — design tokens derived from official logo */
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {

@@ -15,6 +15,8 @@ import { loginUser } from "@/lib/auth-api";
 import { useAuth } from "@/context/auth-context";
 import { ApiClientError } from "@/lib/api";
 import { getSafeRedirectPath } from "@/lib/safe-redirect";
+import { brand } from "@/lib/design-tokens";
+import { layout } from "@/lib/layout";
 
 function LoginForm() {
   const { login } = useAuth();
@@ -59,11 +61,11 @@ function LoginForm() {
   return (
     <PageBackground variant="auth">
       <Navbar />
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:py-20">
+      <div className={`${layout.page} py-12 lg:py-20`}>
         <PageTransition>
         <AuthFormCard
           title="Welcome back"
-          subtitle="Sign in to your Cognitiax AI dashboard"
+          subtitle={`Sign in to your ${brand.name} dashboard`}
           footer={
             <>
               Don&apos;t have an account?{" "}

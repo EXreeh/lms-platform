@@ -176,3 +176,52 @@ export function fetchCoursePreview(slug: string) {
     { auth: true },
   );
 }
+
+export function fetchAdminResources() {
+  return apiRequest<{ success: boolean; data: { resources: import("@/types/resource").Resource[] } }>(
+    "/admin/resources",
+    { auth: true },
+  );
+}
+
+export function removeAdminResource(resourceId: string) {
+  return apiRequest<{ success: boolean; message: string }>(`/admin/resources/${resourceId}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}
+
+export function restoreAdminResource(resourceId: string) {
+  return apiRequest<{ success: boolean; message: string }>(
+    `/admin/resources/${resourceId}/restore`,
+    { method: "PATCH", auth: true },
+  );
+}
+
+export function fetchAdminCertificates() {
+  return apiRequest<{ success: boolean; data: { certificates: import("@/types/certificate").Certificate[] } }>(
+    "/admin/certificates",
+    { auth: true },
+  );
+}
+
+export async function downloadAdminCertificate(certificateId: string, filename: string) {
+  const { getAuthToken } = await import("./auth-storage");
+  const { API_URL } = await import("./constants");
+  const token = getAuthToken();
+  const res = await fetch(`${API_URL}/admin/certificates/${certificateId}/download`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { message?: string }).message ?? "Download failed");
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

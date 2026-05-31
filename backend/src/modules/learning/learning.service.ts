@@ -2,6 +2,8 @@ import { prisma } from "../../config/database.js";
 import { ApiError } from "../../utils/api-error.js";
 import { logActivity } from "../admin/activity.service.js";
 import { mapCourse } from "../courses/courses.mapper.js";
+import { activeEntityFilter } from "../courses/courses.helpers.js";
+import { logAction } from "../../utils/logger.js";
 import {
   buildLessonProgressMap,
   flattenCourseLessons,
@@ -19,8 +21,14 @@ const teacherSelect = {
 const courseInclude = {
   teacher: { select: teacherSelect },
   modules: {
+    where: activeEntityFilter(),
     orderBy: { order: "asc" as const },
-    include: { lessons: { orderBy: { order: "asc" as const } } },
+    include: {
+      lessons: {
+        where: activeEntityFilter(),
+        orderBy: { order: "asc" as const },
+      },
+    },
   },
 } as const;
 
@@ -75,13 +83,19 @@ async function getLessonWithCourse(lessonId: string) {
 async function recalculateEnrollmentProgress(studentId: string, courseId: string) {
   const course = await prisma.course.findUnique({
     where: { id: courseId },
-    include: { modules: { include: { lessons: true } } },
+    include: {
+      modules: {
+        where: activeEntityFilter(),
+        include: { lessons: { where: activeEntityFilter() } },
+      },
+    },
   });
 
   if (!course) return;
 
   const allLessons = flattenCourseLessons(course.modules);
   const total = allLessons.length;
+  const lessonIds = allLessons.map((l) => l.id);
 
   if (total === 0) {
     await prisma.enrollment.update({
@@ -92,7 +106,7 @@ async function recalculateEnrollmentProgress(studentId: string, courseId: string
   }
 
   const completedCount = await prisma.lessonProgress.count({
-    where: { studentId, completed: true, lessonId: { in: allLessons.map((l) => l.id) } },
+    where: { studentId, completed: true, lessonId: { in: lessonIds } },
   });
 
   const progressPercentage = Math.round((completedCount / total) * 1000) / 10;
@@ -102,6 +116,8 @@ async function recalculateEnrollmentProgress(studentId: string, courseId: string
     where: { studentId_courseId: { studentId, courseId } },
     data: { progressPercentage, completed },
   });
+
+  logAction("progress.recalculate", { studentId, courseId, completedCount, total, progressPercentage });
 }
 
 export async function enrollInCourse(studentId: string, idOrSlug: string) {
@@ -114,6 +130,9 @@ export async function enrollInCourse(studentId: string, idOrSlug: string) {
   if (existing) {
     throw ApiError.conflict("Already enrolled in this course", "ALREADY_ENROLLED");
   }
+
+  const { assertPaidEnrollment } = await import("../payments/payments.service.js");
+  await assertPaidEnrollment(studentId, course.id, Number(course.price));
 
   const enrollment = await prisma.enrollment.create({
     data: {
@@ -204,7 +223,7 @@ export async function getCourseProgress(studentId: string, idOrSlug: string) {
       order: lesson.order,
       progress: progressMap.get(lesson.id) ?? null,
     })),
-    completedLessons: progresses.filter((p) => p.completed).length,
+    completedLessons: progresses.filter((p) => p.completed && lessonIds.includes(p.lessonId)).length,
     totalLessons: allLessons.length,
   };
 }
@@ -237,6 +256,8 @@ export async function markLessonCompleted(studentId: string, lessonId: string) {
 
   await recalculateEnrollmentProgress(studentId, course.id);
 
+  logAction("progress.lesson_complete", { studentId, lessonId, courseId: course.id });
+
   const updatedEnrollment = await prisma.enrollment.findUniqueOrThrow({
     where: { studentId_courseId: { studentId, courseId: course.id } },
   });
@@ -263,28 +284,20 @@ export async function updateWatchedDuration(
 
   await getEnrollmentOrThrow(studentId, course.id);
 
-  const shouldAutoComplete =
-    lesson.duration > 0 && watchedDuration >= Math.floor(lesson.duration * 0.9);
-
   const progress = await prisma.lessonProgress.upsert({
     where: { studentId_lessonId: { studentId, lessonId } },
     create: {
       studentId,
       lessonId,
       watchedDuration,
-      completed: shouldAutoComplete,
-      completedAt: shouldAutoComplete ? new Date() : null,
+      completed: false,
     },
     update: {
       watchedDuration: Math.max(watchedDuration, 0),
-      ...(shouldAutoComplete && {
-        completed: true,
-        completedAt: new Date(),
-      }),
     },
   });
 
-  await recalculateEnrollmentProgress(studentId, course.id);
+  logAction("progress.watch_update", { studentId, lessonId, watchedDuration });
 
   const updatedEnrollment = await prisma.enrollment.findUniqueOrThrow({
     where: { studentId_courseId: { studentId, courseId: course.id } },

@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { PageBackground } from "@/components/layout/page-background";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { layout } from "@/lib/layout";
 import { brand } from "@/lib/design-tokens";
 
 const features = [
@@ -46,7 +47,7 @@ export default function LandingPage() {
 
       <main>
         {/* Hero */}
-        <section className="mx-auto max-w-6xl px-4 pb-20 pt-16 sm:px-6 lg:pt-24">
+        <section className={`${layout.page} pb-20 pt-16 lg:pt-24`}>
           <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
             <div>
               <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-green-700/20 bg-green-50 px-4 py-1.5 text-sm font-medium text-green-800 dark:border-green-600/30 dark:bg-green-950/50 dark:text-green-300">
@@ -55,7 +56,7 @@ export default function LandingPage() {
               </p>
               <h1 className="font-serif text-4xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-5xl lg:text-[3.25rem]">
                 Learn smarter with{" "}
-                <span className="gradient-text-brand">Cognitiax AI</span>
+                <span className="gradient-text-brand">{brand.name}</span>
               </h1>
               <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
                 {brand.tagline}. A premium learning experience built for students, educators,
@@ -100,7 +101,7 @@ export default function LandingPage() {
 
         {/* Features */}
         <section className="border-y border-border bg-card/50 py-20 backdrop-blur-sm">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className={layout.page}>
             <div className="max-w-2xl">
               <h2 className="font-serif text-3xl font-bold text-foreground">
                 Built for every role
@@ -129,14 +130,14 @@ export default function LandingPage() {
         </section>
 
         {/* CTA */}
-        <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+        <section className={`${layout.page} py-20`}>
           <div className="relative overflow-hidden rounded-3xl gradient-brand px-8 py-14 text-center sm:px-16">
             <div className="absolute inset-0 bg-[url('/brand/cognitiax-logo.png')] bg-center bg-no-repeat opacity-[0.04] bg-[length:40%]" aria-hidden />
             <h2 className="relative font-serif text-3xl font-bold text-white sm:text-4xl">
               Ready to transform learning?
             </h2>
             <p className="relative mx-auto mt-4 max-w-xl text-green-50/90">
-              Join Cognitiax AI — courses, video lessons, quizzes, and progress tracking
+              Join {brand.name} — courses, video lessons, quizzes, and progress tracking
               coming in upcoming releases.
             </p>
             <div className="relative mt-8 flex flex-wrap justify-center gap-3">
@@ -151,7 +152,7 @@ export default function LandingPage() {
 
         {/* Footer */}
         <footer className="border-t border-border py-10">
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
+          <div className={`${layout.page} flex flex-col items-center justify-between gap-4 sm:flex-row`}>
             <p className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} {brand.name}. All rights reserved.
             </p>

@@ -10,13 +10,15 @@ import { PageBackground } from "@/components/layout/page-background";
 import { ModuleAccordion } from "@/components/courses/module-accordion";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
-import { fetchCourse, enrollInCourse } from "@/lib/courses-api";
+import { fetchCourse } from "@/lib/courses-api";
 import type { Course } from "@/types/course";
-import { formatPrice, formatDuration } from "@/types/course";
+import { formatPrice, formatDuration, isFreeCourse } from "@/types/course";
 import { ApiClientError } from "@/lib/api";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
+import { useCoursePurchase } from "@/hooks/use-course-purchase";
 import { useRouter } from "next/navigation";
+import { layout } from "@/lib/layout";
 
 export default function CourseDetailPage() {
   const params = useParams();
@@ -26,9 +28,22 @@ export default function CourseDetailPage() {
   const slug = params.slug as string;
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEnrolling, setIsEnrolling] = useState(false);
   const [enrollMsg, setEnrollMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const { isProcessing, handlePurchase } = useCoursePurchase({
+    courseId: course?.id ?? "",
+    courseSlug: slug,
+    courseTitle: course?.title ?? "",
+    price: course?.price ?? 0,
+    userName: user ? `${user.firstName} ${user.lastName}`.trim() : undefined,
+    userEmail: user?.email,
+    toastSuccess: success,
+    toastError: (msg) => {
+      setEnrollMsg(msg);
+      toastError(msg);
+    },
+  });
 
   useEffect(() => {
     void (async () => {
@@ -63,28 +78,16 @@ export default function CourseDetailPage() {
       setEnrollMsg("Only students can enroll. Sign in with a student account.");
       return;
     }
-    setIsEnrolling(true);
     setEnrollMsg(null);
-    try {
-      await enrollInCourse(course.slug);
-      success("Enrolled successfully!");
-      router.push(`/courses/${slug}/learn`);
-    } catch (err) {
-      if (err instanceof ApiClientError && err.code === "ALREADY_ENROLLED") {
-        router.push(`/courses/${slug}/learn`);
-        return;
-      }
-      setEnrollMsg(err instanceof ApiClientError ? err.message : "Enrollment failed");
-      toastError(err instanceof ApiClientError ? err.message : "Enrollment failed");
-    } finally {
-      setIsEnrolling(false);
-    }
+    await handlePurchase();
   }
+
+  const isPaid = course ? !isFreeCourse(course.price) : false;
 
   return (
     <PageBackground variant="default">
       <AuthNavbar />
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <main className={`${layout.page} py-10`}>
         {isLoading ? (
           <div className="flex justify-center py-24">
             <Spinner size="lg" label="Loading course" />
@@ -187,9 +190,15 @@ export default function CourseDetailPage() {
                         size="lg"
                         variant="gold"
                         onClick={handleEnroll}
-                        disabled={isEnrolling}
+                        disabled={isProcessing}
                       >
-                        {isEnrolling ? "Enrolling…" : "Enroll now"}
+                        {isProcessing
+                          ? isPaid
+                            ? "Processing…"
+                            : "Enrolling…"
+                          : isPaid
+                            ? "Buy now"
+                            : "Enroll now"}
                       </Button>
                       {enrollMsg ? (
                         <p className="mt-2 text-center text-xs text-red-600 dark:text-red-400" role="alert">
@@ -197,7 +206,7 @@ export default function CourseDetailPage() {
                         </p>
                       ) : (
                         <p className="mt-2 text-center text-xs text-muted-foreground">
-                          Full access after enrollment
+                          {isPaid ? "Secure checkout via Razorpay" : "Full access after enrollment"}
                         </p>
                       )}
                     </>

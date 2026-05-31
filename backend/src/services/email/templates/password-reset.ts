@@ -4,12 +4,12 @@ export function passwordResetEmail(params: {
   otp: string;
   expiresMinutes: number;
 }): { subject: string; html: string; text: string } {
-  const subject = `${params.otp} — Reset your Cognitiax AI password`;
+  const subject = `${params.otp} — Reset your CognitiaX AI password`;
 
   const content = `
     <p style="margin:0 0 16px;font-size:15px;">Hello,</p>
     <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
-      We received a request to reset your <strong>Cognitiax AI</strong> password. Use the code below to continue:
+      We received a request to reset your <strong>CognitiaX AI</strong> password. Use the code below to continue:
     </p>
     <div style="text-align:center;margin:0 0 28px;">
       <div style="display:inline-block;padding:4px;border-radius:14px;background:linear-gradient(135deg,#008037,#004d3d);">
@@ -26,12 +26,12 @@ export function passwordResetEmail(params: {
       </tr>
     </table>
     <p style="margin:0;color:#6b7280;font-size:13px;">
-      For security, never share this code. Cognitiax AI will never ask for it by phone or chat.
+      For security, never share this code. CognitiaX AI will never ask for it by phone or chat.
     </p>
   `;
 
   const text = [
-    `Your Cognitiax AI password reset code is: ${params.otp}`,
+    `Your CognitiaX AI password reset code is: ${params.otp}`,
     ``,
     `Expires in ${params.expiresMinutes} minutes.`,
     ``,

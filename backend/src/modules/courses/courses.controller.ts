@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import * as coursesService from "./courses.service.js";
 import { ApiError } from "../../utils/api-error.js";
+import { logAction } from "../../utils/logger.js";
 import {
   listCoursesQuerySchema,
   type CreateCourseInput,
@@ -61,6 +62,7 @@ export async function getOne(req: Request, res: Response): Promise<void> {
 
 export async function submitForReview(req: Request, res: Response): Promise<void> {
   if (!req.user) throw ApiError.unauthorized();
+  logAction("course.submit_review.request", { userId: req.user.id, courseId: req.params.idOrSlug });
   const course = await coursesService.submitCourseForReview(
     req.user.id,
     req.user.role,
@@ -105,22 +107,22 @@ export async function addLesson(req: Request, res: Response): Promise<void> {
 
 export async function removeModule(req: Request, res: Response): Promise<void> {
   if (!req.user) throw ApiError.unauthorized();
-  const course = await coursesService.deleteModule(
+  const result = await coursesService.deleteModule(
     req.user.id,
     req.user.role,
     req.params.moduleId,
   );
-  res.json({ success: true, data: { course } });
+  res.json({ success: true, data: { course: result.course }, pendingApproval: result.pendingApproval, message: result.message });
 }
 
 export async function removeLesson(req: Request, res: Response): Promise<void> {
   if (!req.user) throw ApiError.unauthorized();
-  const course = await coursesService.deleteLesson(
+  const result = await coursesService.deleteLesson(
     req.user.id,
     req.user.role,
     req.params.lessonId,
   );
-  res.json({ success: true, data: { course } });
+  res.json({ success: true, data: { course: result.course }, pendingApproval: result.pendingApproval, message: result.message });
 }
 
 export async function categories(_req: Request, res: Response): Promise<void> {

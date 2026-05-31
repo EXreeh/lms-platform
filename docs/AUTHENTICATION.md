@@ -1,4 +1,4 @@
-# Authentication — Cognitiax AI LMS
+# Authentication — CognitiaX AI LMS
 
 ## Registration (students only)
 

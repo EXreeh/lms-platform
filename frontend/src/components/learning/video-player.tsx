@@ -38,22 +38,22 @@ export function VideoPlayer({
         lastReported.current = seconds;
         onWatchUpdate?.(seconds);
       }
-      if (duration > 0 && seconds >= duration * 0.9) {
-        onComplete?.();
-      }
     },
-    [duration, onComplete, onWatchUpdate],
+    [onWatchUpdate],
   );
 
   useEffect(() => {
     if (type !== "youtube" && type !== "vimeo") return;
 
     const interval = setInterval(() => {
-      reportProgress(lastReported.current + 15);
+      const next = lastReported.current + 15;
+      lastReported.current = next;
+      setWatched(next);
+      onWatchUpdate?.(next);
     }, 15000);
 
     return () => clearInterval(interval);
-  }, [type, videoUrl, reportProgress]);
+  }, [type, videoUrl, onWatchUpdate]);
 
   if (!embedUrl) {
     return (

@@ -115,10 +115,10 @@ export function createModule(courseId: string, data: { title: string; order?: nu
 }
 
 export function deleteModule(moduleId: string) {
-  return apiRequest<CourseResponse>(`/courses/modules/${moduleId}`, {
-    method: "DELETE",
-    auth: true,
-  });
+  return apiRequest<CourseResponse & { pendingApproval?: boolean; message?: string }>(
+    `/courses/modules/${moduleId}`,
+    { method: "DELETE", auth: true },
+  );
 }
 
 export function createLesson(
@@ -162,8 +162,8 @@ export function reorderLessons(moduleId: string, ids: string[]) {
 }
 
 export function deleteLesson(lessonId: string) {
-  return apiRequest<CourseResponse>(`/courses/lessons/${lessonId}`, {
-    method: "DELETE",
-    auth: true,
-  });
+  return apiRequest<CourseResponse & { pendingApproval?: boolean; message?: string }>(
+    `/courses/lessons/${lessonId}`,
+    { method: "DELETE", auth: true },
+  );
 }

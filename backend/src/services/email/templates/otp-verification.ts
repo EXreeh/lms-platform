@@ -5,12 +5,12 @@ export function otpVerificationEmail(params: {
   otp: string;
   expiresMinutes: number;
 }): { subject: string; html: string; text: string } {
-  const subject = `${params.otp} — Cognitiax AI verification code`;
+  const subject = `${params.otp} — CognitiaX AI verification code`;
 
   const content = `
     <p style="margin:0 0 16px;font-size:15px;">Hi <strong>${escapeHtml(params.firstName)}</strong>,</p>
     <p style="margin:0 0 24px;color:#374151;font-size:15px;line-height:1.6;">
-      Welcome to <strong>Cognitiax AI</strong>. Enter this verification code to complete your student registration:
+      Welcome to <strong>CognitiaX AI</strong>. Enter this verification code to complete your student registration:
     </p>
     <div style="text-align:center;margin:0 0 28px;">
       <div style="display:inline-block;padding:4px;border-radius:14px;background:linear-gradient(135deg,#c5a028,#004d3d);">
@@ -27,14 +27,14 @@ export function otpVerificationEmail(params: {
       </tr>
     </table>
     <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.5;">
-      If you didn't create a Cognitiax AI account, you can safely ignore this email.
+      If you didn't create a CognitiaX AI account, you can safely ignore this email.
     </p>
   `;
 
   const text = [
     `Hi ${params.firstName},`,
     ``,
-    `Your Cognitiax AI verification code is: ${params.otp}`,
+    `Your CognitiaX AI verification code is: ${params.otp}`,
     ``,
     `This code expires in ${params.expiresMinutes} minutes.`,
     ``,

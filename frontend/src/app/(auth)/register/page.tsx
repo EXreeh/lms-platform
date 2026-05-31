@@ -105,7 +105,7 @@ export default function RegisterPage() {
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:py-16">
         <PageTransition>
           <AuthFormCard
-            title="Join Cognitiax AI"
+            title="Join CognitiaX AI"
             subtitle="Student registration — verify your email to activate your account"
             footer={
               <>

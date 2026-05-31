@@ -3,6 +3,7 @@
 import { Navbar } from "@/components/layout/navbar";
 import { PageBackground } from "@/components/layout/page-background";
 import { AuthLoading } from "@/components/auth/auth-loading";
+import { layout } from "@/lib/layout";
 import { useAuth } from "@/context/auth-context";
 
 interface DashboardShellProps {
@@ -19,7 +20,7 @@ const roleBadgeColors: Record<string, string> = {
 };
 
 export function DashboardShell({ title, description, badge, children }: DashboardShellProps) {
-  const { user, logout, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const role = user?.role ?? "STUDENT";
 
   if (isLoading) {
@@ -33,8 +34,8 @@ export function DashboardShell({ title, description, badge, children }: Dashboar
 
   return (
     <PageBackground variant="dashboard">
-      <Navbar userName={user?.name} onLogout={() => void logout()} />
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <Navbar />
+      <main className={`${layout.dashboard} py-10`}>
         <div className="mb-10">
           <span
             className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${roleBadgeColors[role]}`}

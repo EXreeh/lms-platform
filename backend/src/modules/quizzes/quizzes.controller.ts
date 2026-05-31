@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { ApiError } from "../../utils/api-error.js";
 import * as quizzesService from "./quizzes.service.js";
+import { logAction } from "../../utils/logger.js";
 import type {
   CreateQuestionInput,
   CreateQuizInput,
@@ -32,6 +33,7 @@ function requireStudent(req: Request) {
 
 export async function create(req: Request, res: Response): Promise<void> {
   const user = requireStaff(req);
+  logAction("quiz.create.request", { userId: user.id, body: req.body });
   const quiz = await quizzesService.createQuiz(user.id, user.role, req.body as CreateQuizInput);
   res.status(201).json({ success: true, data: { quiz } });
 }
@@ -61,8 +63,26 @@ export async function getOne(req: Request, res: Response): Promise<void> {
 
 export async function listMine(req: Request, res: Response): Promise<void> {
   const user = requireStaff(req);
-  const quizzes = await quizzesService.listTeacherQuizzes(user.id, user.role);
-  res.json({ success: true, data: { quizzes } });
+  logAction("[Quiz] list teacher quizzes request", {
+    userId: user.id,
+    role: user.role,
+  });
+  try {
+    const quizzes = await quizzesService.listTeacherQuizzes(user.id, user.role);
+    logAction("[Quiz] list teacher quizzes success", {
+      userId: user.id,
+      role: user.role,
+      count: quizzes.length,
+    });
+    res.json({ success: true, data: { quizzes } });
+  } catch (err) {
+    logAction("[Quiz] list teacher quizzes error", {
+      userId: user.id,
+      role: user.role,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
 }
 
 export async function listByLesson(req: Request, res: Response): Promise<void> {

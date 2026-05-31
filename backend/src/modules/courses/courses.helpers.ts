@@ -1,4 +1,9 @@
 import type { CourseStatus, EntityStatus, Role } from "@lms/database";
+import { ApiError } from "../../utils/api-error.js";
+
+export function activeEntityFilter() {
+  return { deleteStatus: "ACTIVE" as const };
+}
 
 export function isCatalogVisible(status: CourseStatus, deleteStatus: EntityStatus): boolean {
   return status === "APPROVED" && deleteStatus === "ACTIVE";
@@ -22,6 +27,19 @@ export function canTeacherEditCourse(status: CourseStatus): boolean {
 
 export function canSubmitForReview(status: CourseStatus): boolean {
   return status === "DRAFT" || status === "REJECTED";
+}
+
+export function assertCanRequestDelete(
+  course: { status: CourseStatus; deleteStatus: EntityStatus },
+  role: Role,
+): void {
+  if (role === "ADMIN") return;
+  if (course.status === "ARCHIVED") {
+    throw ApiError.badRequest("Archived courses cannot be modified");
+  }
+  if (course.deleteStatus === "PENDING_DELETE") {
+    throw ApiError.badRequest("A delete request is already pending for this course");
+  }
 }
 
 export function assertTeacherOwnsOrAdmin(

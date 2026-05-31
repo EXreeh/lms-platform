@@ -1,0 +1,29 @@
+import type { Resource, User } from "@lms/database";
+
+type ResourceWithUploader = Resource & {
+  uploadedBy?: Pick<User, "id" | "firstName" | "lastName" | "email">;
+};
+
+export function mapResource(resource: ResourceWithUploader) {
+  return {
+    id: resource.id,
+    title: resource.title,
+    description: resource.description,
+    type: resource.type,
+    url: resource.url,
+    fileName: resource.fileName,
+    courseId: resource.courseId,
+    lessonId: resource.lessonId,
+    uploadedById: resource.uploadedById,
+    deleteStatus: resource.deleteStatus,
+    createdAt: resource.createdAt.toISOString(),
+    updatedAt: resource.updatedAt.toISOString(),
+    uploadedBy: resource.uploadedBy
+      ? {
+          id: resource.uploadedBy.id,
+          name: `${resource.uploadedBy.firstName} ${resource.uploadedBy.lastName}`.trim(),
+          email: resource.uploadedBy.email,
+        }
+      : undefined,
+  };
+}

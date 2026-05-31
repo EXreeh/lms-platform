@@ -1,6 +1,6 @@
-# Cognitiax AI — LMS Platform
+# CognitiaX AI — LMS Platform
 
-A production-ready Learning Management System monorepo powered by **Cognitiax AI** branding, with authentication, role-based access, and a scalable foundation for future LMS features.
+A production-ready Learning Management System monorepo powered by **CognitiaX AI** branding, with authentication, role-based access, and a scalable foundation for future LMS features.
 
 ## Tech stack
 

@@ -1,6 +1,6 @@
-# Cognitiax AI Design System
+# CognitiaX AI Design System
 
-Brand identity derived from the official Cognitiax AI logo.
+Brand identity derived from the official CognitiaX AI logo.
 
 ## Color palette
 

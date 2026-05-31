@@ -5,7 +5,7 @@ export function emailLayout(content: string): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cognitiax AI</title>
+  <title>CognitiaX AI</title>
 </head>
 <body style="margin:0;padding:0;background:#f9fafb;font-family:Georgia,'Times New Roman',serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;padding:40px 16px;">
@@ -26,7 +26,7 @@ export function emailLayout(content: string): string {
           <tr>
             <td style="padding:20px 32px;background:#051c17;text-align:center;">
               <p style="margin:0;font-size:12px;color:#9ca3af;font-family:system-ui,sans-serif;">
-                © ${new Date().getFullYear()} Cognitiax AI. All rights reserved.
+                © ${new Date().getFullYear()} CognitiaX AI. All rights reserved.
               </p>
             </td>
           </tr>

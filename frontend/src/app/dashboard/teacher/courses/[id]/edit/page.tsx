@@ -8,6 +8,7 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ThumbnailInput } from "@/components/courses/thumbnail-input";
 import { ModuleAccordion } from "@/components/courses/module-accordion";
+import { CourseResourcesSection } from "@/components/courses/course-resources-section";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -29,11 +30,15 @@ import {
 import { COURSE_CATEGORIES, COURSE_LEVELS, COURSE_STATUS_LABELS } from "@/types/course";
 import type { Course, CourseLevel, CourseStatus } from "@/types/course";
 import { ApiClientError } from "@/lib/api";
+import { formatApiError } from "@/lib/format-api-error";
+import { activeCurriculumModules, countActiveLessons } from "@/lib/course-curriculum";
+import { useToast } from "@/context/toast-context";
 
 export default function EditCoursePage() {
   const params = useParams();
   const router = useRouter();
   const courseId = params.id as string;
+  const { success: toastSuccess, error: toastError } = useToast();
 
   const [course, setCourse] = useState<Course | null>(null);
   const [title, setTitle] = useState("");
@@ -103,14 +108,24 @@ export default function EditCoursePage() {
 
   async function handleSubmitForReview() {
     if (!course) return;
+    const lessonCount = countActiveLessons(course);
+    if (lessonCount === 0) {
+      toastError("Add at least one lesson before submitting for review");
+      return;
+    }
     setIsSaving(true);
     setError(null);
+    setSuccess(null);
     try {
       const res = await submitCourseForReview(courseId);
       setCourse(res.data.course);
       setSuccess("Course submitted for admin review");
+      toastSuccess("Course submitted for admin review");
+      await loadCourse();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Submit failed");
+      const msg = formatApiError(err, "Submit failed");
+      setError(msg);
+      toastError(msg);
     } finally {
       setIsSaving(false);
     }
@@ -122,12 +137,15 @@ export default function EditCoursePage() {
       const res = await deleteCourse(courseId);
       if (res.pendingApproval) {
         setSuccess(res.message);
+        toastSuccess(res.message);
         await loadCourse();
       } else {
         router.push("/dashboard/teacher");
       }
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Delete failed");
+      const msg = formatApiError(err, "Delete failed");
+      setError(msg);
+      toastError(msg);
     }
   }
 
@@ -337,26 +355,35 @@ export default function EditCoursePage() {
               </div>
             )}
             <ModuleAccordion
-              modules={course.modules ?? []}
+              modules={activeCurriculumModules(course.modules)}
               editable
               onUpdateModule={async (id, title) => {
                 const res = await updateModule(id, { title });
                 setCourse(res.data.course);
                 setSuccess("Module updated");
+                toastSuccess("Module updated");
               }}
               onUpdateLesson={async (id, data) => {
                 const res = await updateLesson(id, data);
                 setCourse(res.data.course);
                 setSuccess("Lesson updated");
+                toastSuccess("Lesson updated");
               }}
               onDeleteModule={async (id) => {
-                if (!confirm("Delete this module and all its lessons?")) return;
+                if (!confirm("Request module deletion? An admin must approve.")) return;
                 const res = await deleteModule(id);
                 setCourse(res.data.course);
+                const msg = res.message ?? (res.pendingApproval ? "Delete request submitted" : "Module deleted");
+                setSuccess(msg);
+                toastSuccess(msg);
               }}
               onDeleteLesson={async (id) => {
+                if (!confirm("Request lesson deletion? An admin must approve.")) return;
                 const res = await deleteLesson(id);
                 setCourse(res.data.course);
+                const msg = res.message ?? (res.pendingApproval ? "Delete request submitted" : "Lesson deleted");
+                setSuccess(msg);
+                toastSuccess(msg);
               }}
             />
 
@@ -426,6 +453,8 @@ export default function EditCoursePage() {
               </form>
             )}
           </section>
+
+          <CourseResourcesSection course={course} disabled={isLocked} />
         </div>
       </div>
     </DashboardShell>

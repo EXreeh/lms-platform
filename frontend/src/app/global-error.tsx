@@ -10,7 +10,7 @@ export default function GlobalError({
     <html lang="en">
       <body className="flex min-h-screen items-center justify-center bg-[#051c17] px-4 text-center text-white">
         <div>
-          <h1 className="text-2xl font-bold">Cognitiax AI</h1>
+          <h1 className="text-2xl font-bold">CognitiaX AI</h1>
           <p className="mt-2 text-white/70">A critical error occurred.</p>
           <button
             type="button"

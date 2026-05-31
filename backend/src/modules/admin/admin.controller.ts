@@ -146,3 +146,32 @@ export async function platformStats(_req: Request, res: Response): Promise<void>
   const stats = await adminService.getPlatformStats();
   res.json({ success: true, data: { stats } });
 }
+
+export async function listResources(_req: Request, res: Response): Promise<void> {
+  requireAdmin(_req);
+  const resources = await adminService.listAdminResources();
+  res.json({ success: true, data: { resources } });
+}
+
+export async function removeResource(req: Request, res: Response): Promise<void> {
+  const admin = requireAdmin(req);
+  const result = await adminService.adminRemoveResource(admin.id, req.params.resourceId);
+  res.json({ success: true, ...result });
+}
+
+export async function restoreResource(req: Request, res: Response): Promise<void> {
+  requireAdmin(req);
+  const result = await adminService.adminRestoreResource(req.params.resourceId);
+  res.json({ success: true, ...result });
+}
+
+export async function listCertificates(_req: Request, res: Response): Promise<void> {
+  requireAdmin(_req);
+  const certificates = await adminService.listAdminCertificates();
+  res.json({ success: true, data: { certificates } });
+}
+
+export async function downloadCertificate(req: Request, res: Response): Promise<void> {
+  const admin = requireAdmin(req);
+  await adminService.streamCertificatePdfAdmin(res, req.params.certificateId, admin.id);
+}

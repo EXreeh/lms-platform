@@ -68,7 +68,7 @@ async function seedCourse(courseData: SeedCourse, teacherId: string) {
 }
 
 async function main() {
-  console.log("🌱 Seeding Cognitiax AI LMS demo data…");
+  console.log("🌱 Seeding CognitiaX AI LMS demo data…");
 
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);
 

@@ -18,10 +18,14 @@ export function errorHandler(
   }
 
   if (err instanceof ZodError) {
+    const fieldErrors = err.flatten().fieldErrors;
+    const detail = Object.entries(fieldErrors)
+      .flatMap(([field, messages]) => (messages ?? []).map((m) => `${field}: ${m}`))
+      .join("; ");
     res.status(400).json({
       success: false,
-      message: "Validation failed",
-      errors: err.flatten().fieldErrors,
+      message: detail || "Validation failed",
+      errors: fieldErrors,
     });
     return;
   }

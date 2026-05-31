@@ -66,7 +66,7 @@ export async function sendEmail(params: {
 
   if (!isEmailConfigured) {
     if (env.MAIL_DEV_LOG || env.NODE_ENV === "development") {
-      console.info("\n📧 [Cognitiax AI — Dev Email (SMTP not configured)]");
+      console.info("\n📧 [CognitiaX AI — Dev Email (SMTP not configured)]");
       console.info(`To: ${params.to}`);
       console.info(`Subject: ${params.subject}`);
       console.info(`Body:\n${params.text}\n`);

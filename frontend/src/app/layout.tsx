@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     template: `%s | ${brand.name}`,
   },
   description:
-    "Cognitiax AI — AI-powered EdTech platform for students, teachers, and administrators. Learn smarter with intelligent course delivery and progress tracking.",
+    `${brand.name} — AI-powered EdTech platform for students, teachers, and administrators. Learn smarter with intelligent course delivery and progress tracking.`,
   icons: {
     icon: "/brand/cognitiax-logo.png",
     apple: "/brand/cognitiax-logo.png",

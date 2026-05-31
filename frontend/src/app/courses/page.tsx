@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/button";
 import { fetchCourses, fetchCategories } from "@/lib/courses-api";
 import { COURSE_LEVELS } from "@/types/course";
 import type { Course, CourseLevel } from "@/types/course";
+import { brand } from "@/lib/design-tokens";
 import { ApiClientError } from "@/lib/api";
+import { layout } from "@/lib/layout";
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -34,7 +36,7 @@ export default function CoursesPage() {
       });
       setCourses(res.data.courses);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to load courses");
+      setError(err instanceof ApiClientError ? err.message : "Could not load courses. Please refresh the page.");
     } finally {
       setIsLoading(false);
     }
@@ -54,14 +56,14 @@ export default function CoursesPage() {
   return (
     <PageBackground variant="default">
       <Navbar />
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <main className={`${layout.page} py-10`}>
         <PageTransition>
           <div className="mb-10">
             <h1 className="font-serif text-3xl font-bold text-foreground sm:text-4xl">
               Explore courses
             </h1>
             <p className="mt-2 text-muted-foreground">
-              Discover AI-powered learning paths from expert educators on Cognitiax AI.
+              Discover AI-powered learning paths from expert educators on {brand.name}.
             </p>
           </div>
 
