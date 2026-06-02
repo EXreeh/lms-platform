@@ -42,15 +42,17 @@ npm run dev          # frontend :3000, backend :4000
 1. Open `/courses` — catalog loads with filters (search, category, level).
 2. Open an **approved** course detail page.
 3. **Free course** (`price = 0`): click **Enroll now** → success toast → redirect to learn page.
-4. **Paid course** (`price > 0`): **Buy now** opens Razorpay (if configured) or shows clear error if keys missing.
-5. Already enrolled: sidebar shows **Continue learning**.
+4. **Paid course** (`price > 0`): checkout requires Razorpay (not configured in polish pass).
+5. Already enrolled: shows **Already enrolled** message; redirects to learn page.
+6. New student dashboard shows empty states (0 enrolled, no continue learning) until enrollment exists.
 
 ### Learning & progress
 
-1. `/courses/[slug]/learn` — video, sidebar, progress bar visible.
-2. **Mark as complete** on a lesson — progress updates; persists after refresh.
-3. Dashboard stats match learn page progress (`completed / total lessons`).
-4. Admin preview: admin can open learn without enrollment.
+1. `/courses/[slug]/learn` — video, sidebar, progress bar visible for enrolled students.
+2. Not enrolled: redirected to course detail with access message.
+3. **Mark as complete** on a lesson — progress updates; persists after refresh.
+4. Dashboard stats match learn page progress (`completed / total lessons`).
+5. Admin preview: admin can open learn without enrollment.
 
 ### Quizzes
 
@@ -92,8 +94,9 @@ npm run dev          # frontend :3000, backend :4000
 
 1. `/dashboard/teacher/quizzes/new` — select course + lesson.
 2. Add questions (≥2 options, correct answer matches an option).
-3. Edit/delete quiz; delete may require admin approval.
-4. `/dashboard/teacher/quizzes` — list loads without API errors.
+3. **Edit question** — change text, options, correct answer, points; persists after refresh.
+4. Edit/delete quiz; delete may require admin approval.
+5. `/dashboard/teacher/quizzes` — list loads without API errors.
 
 ### Dashboard
 
@@ -113,8 +116,13 @@ npm run dev          # frontend :3000, backend :4000
 
 1. `/dashboard/admin/review` — courses under review listed.
 2. **Approve** → course `APPROVED`, visible in marketplace.
-3. **Reject** → course `REJECTED`; teacher can edit and resubmit.
+3. **Reject** → modal requires reason (≥10 chars); course `REJECTED`; teacher sees reason on course edit page.
 4. **Pending delete requests** — approve/deny for course, module, lesson, quiz.
+
+### Analytics
+
+1. `/dashboard/admin/activity` — student growth chart (last 90 days) and activity feed.
+2. `/dashboard/admin/payments` — shows "Payments not configured yet" (no fake revenue).
 
 ### User management
 
@@ -129,10 +137,14 @@ npm run dev          # frontend :3000, backend :4000
 3. `/dashboard/admin/certificates` — issued list + verify by code.
 4. `/dashboard/admin/activity` — activity feed filters work.
 
-### Analytics
+---
 
-1. `/dashboard/admin/activity` — enrollment, login, course events.
-2. `/dashboard/admin/payments` — revenue stats (if payments enabled).
+## Profile testing
+
+1. `/dashboard/profile` — view account info and role stats (all roles).
+2. **Edit profile** — update first/last name, save, cancel; toast on success/error.
+3. **Change password** — current + new + confirm; validation rules enforced.
+4. Profile link in navbar highlights when active.
 
 ---
 
@@ -167,9 +179,20 @@ Test with browser devtools or `curl` + JWT cookie.
 ## Layout & branding checklist
 
 - [ ] Brand displays as **CognitiaX AI** (capital X) in navbar, footer, emails, certificates.
+- [ ] Footer shows About, Quick Links, Courses, Support, Contact, Legal sections.
+- [ ] Contact placeholders in `frontend/src/lib/site-config.ts` ready to replace.
 - [ ] Dashboard content uses full width (no excessive side margins on desktop).
-- [ ] Landing page remains centered but not overly narrow.
 - [ ] Active nav link highlighted for current page.
+
+## Profile & resources
+
+- [ ] **Profile** (`/dashboard/profile`) — edit name, change password, view stats.
+- [ ] Profile link in navbar goes to `/dashboard/profile` (not dashboard home).
+- [ ] Student **Resources** nav → `/dashboard/student/resources` lists enrolled course materials.
+- [ ] New student dashboard shows zeros and empty enrolled list (no demo data).
+- [ ] Footer contact placeholders: info@, support@, sales@cognitiax.ai, +91-XXXXXXXXXX.
+- [ ] `/legal/privacy` and `/legal/terms` placeholder pages load.
+- [ ] `/support` help page loads with contact placeholders.
 
 ---
 

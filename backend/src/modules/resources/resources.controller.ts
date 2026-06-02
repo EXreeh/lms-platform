@@ -74,3 +74,9 @@ export async function listByLessonStudent(req: Request, res: Response): Promise<
   );
   res.json({ success: true, data: { resources } });
 }
+
+export async function listEnrolled(req: Request, res: Response): Promise<void> {
+  const user = requireUser(req);
+  const resources = await resourcesService.listStudentEnrolledResources(user.id);
+  res.json({ success: true, data: { resources } });
+}

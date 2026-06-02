@@ -14,6 +14,9 @@ export interface Lesson {
   title: string;
   description: string | null;
   videoUrl: string | null;
+  videoFileName?: string | null;
+  videoMimeType?: string | null;
+  videoSize?: number | null;
   duration: number;
   order: number;
   moduleId: string;
@@ -37,12 +40,14 @@ export interface Course {
   slug: string;
   description: string;
   thumbnail: string | null;
+  thumbnailFileName?: string | null;
   price: number;
   category: string;
   level: CourseLevel;
   status: CourseStatus;
   published: boolean;
   archived?: boolean;
+  rejectionReason?: string | null;
   deleteStatus?: EntityStatus;
   teacherId: string;
   teacher?: CourseTeacher;

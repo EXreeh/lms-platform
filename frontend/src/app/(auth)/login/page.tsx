@@ -22,6 +22,7 @@ function LoginForm() {
   const { login } = useAuth();
   const searchParams = useSearchParams();
   const redirectTo = getSafeRedirectPath(searchParams.get("redirect"));
+  const sessionExpired = searchParams.get("session") === "expired";
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -79,6 +80,11 @@ function LoginForm() {
           }
         >
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+            {sessionExpired ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                Your session expired or is no longer valid. Please sign in again.
+              </p>
+            ) : null}
             <Input
               label="Email"
               name="email"

@@ -89,6 +89,21 @@ export function deleteQuestion(questionId: string) {
   );
 }
 
+export function updateQuestion(
+  questionId: string,
+  data: Partial<{
+    question: string;
+    options: string[];
+    correctAnswer: string;
+    points: number;
+  }>,
+) {
+  return apiRequest<{ success: boolean; data: { question: Question } }>(
+    `/quizzes/questions/${questionId}`,
+    { method: "PATCH", body: data, auth: true },
+  );
+}
+
 export function fetchQuizAnalytics(quizId: string) {
   return apiRequest<{ success: boolean; data: QuizAnalytics }>(
     `/quizzes/${quizId}/analytics`,

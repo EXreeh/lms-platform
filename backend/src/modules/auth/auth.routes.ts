@@ -12,6 +12,8 @@ import {
   resendOtpSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  updateProfileSchema,
+  changePasswordSchema,
 } from "./auth.validation.js";
 import * as authController from "./auth.controller.js";
 
@@ -47,9 +49,25 @@ authRoutes.post(
 
 authRoutes.post("/login", validateBody(loginSchema), asyncHandler(authController.login));
 
-authRoutes.post("/logout", authenticate, asyncHandler(authController.logout));
+authRoutes.post("/logout", asyncHandler(authController.logout));
 
 authRoutes.get("/me", authenticate, asyncHandler(authController.me));
+
+authRoutes.get("/account", authenticate, asyncHandler(authController.account));
+
+authRoutes.patch(
+  "/profile",
+  authenticate,
+  validateBody(updateProfileSchema),
+  asyncHandler(authController.updateProfile),
+);
+
+authRoutes.post(
+  "/password/change",
+  authenticate,
+  validateBody(changePasswordSchema),
+  asyncHandler(authController.changePassword),
+);
 
 authRoutes.post(
   "/password/forgot",

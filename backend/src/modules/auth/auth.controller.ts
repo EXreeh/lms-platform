@@ -77,6 +77,35 @@ export async function me(req: Request, res: Response): Promise<void> {
   });
 }
 
+export async function account(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw ApiError.unauthorized();
+  }
+
+  const data = await authService.getAccountProfile(req.user.id);
+  res.json({ success: true, data });
+}
+
+export async function updateProfile(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw ApiError.unauthorized();
+  }
+
+  const input = req.body as import("./auth.validation.js").UpdateProfileInput;
+  const data = await authService.updateProfile(req.user.id, input);
+  res.json({ success: true, data });
+}
+
+export async function changePassword(req: Request, res: Response): Promise<void> {
+  if (!req.user) {
+    throw ApiError.unauthorized();
+  }
+
+  const { currentPassword, newPassword } = req.body as import("./auth.validation.js").ChangePasswordInput;
+  const result = await authService.changePassword(req.user.id, { currentPassword, newPassword });
+  res.json({ success: true, ...result });
+}
+
 export async function forgotPasswordRequest(req: Request, res: Response): Promise<void> {
   const { email } = req.body as { email: string };
   const result = await authService.requestPasswordResetOtp(email);

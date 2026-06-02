@@ -46,6 +46,7 @@ export function useCoursePurchase({
       router.push(`/courses/${courseSlug}/learn`);
     } catch (err) {
       if (err instanceof ApiClientError && err.code === "ALREADY_ENROLLED") {
+        toastSuccess("You are already enrolled in this course.");
         router.push(`/courses/${courseSlug}/learn`);
         return;
       }

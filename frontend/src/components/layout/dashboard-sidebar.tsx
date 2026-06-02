@@ -43,7 +43,13 @@ const teacherNav: NavItem[] = [
     icon: "＋",
     match: (p) => p === "/dashboard/teacher/courses/new",
   },
-  { href: "/courses", label: "Catalog", icon: "◎" },
+  {
+    href: "/dashboard/profile",
+    label: "Profile",
+    icon: "👤",
+    match: (p) => p.startsWith("/dashboard/profile"),
+  },
+  { href: "/courses", label: "Catalog", icon: "◇" },
 ];
 
 const studentNav: NavItem[] = [
@@ -61,10 +67,16 @@ const studentNav: NavItem[] = [
     match: (p) => p.startsWith("/dashboard/student/certificates") || p.includes("/certificate"),
   },
   {
-    href: "/dashboard/student/payments",
-    label: "Payments",
-    icon: "💳",
-    match: (p) => p.startsWith("/dashboard/student/payments"),
+    href: "/dashboard/student/resources",
+    label: "Resources",
+    icon: "📎",
+    match: (p) => p.startsWith("/dashboard/student/resources"),
+  },
+  {
+    href: "/dashboard/profile",
+    label: "Profile",
+    icon: "👤",
+    match: (p) => p.startsWith("/dashboard/profile"),
   },
 ];
 
@@ -116,6 +128,12 @@ const adminNav: NavItem[] = [
     label: "Payments",
     icon: "💰",
     match: (p) => p.startsWith("/dashboard/admin/payments"),
+  },
+  {
+    href: "/dashboard/profile",
+    label: "Profile",
+    icon: "👤",
+    match: (p) => p.startsWith("/dashboard/profile"),
   },
   { href: "/courses", label: "Catalog", icon: "◇" },
 ];

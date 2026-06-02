@@ -251,3 +251,103 @@ export async function resetPassword(resetToken: string, password: string) {
 
   return { message: "Password updated successfully" };
 }
+
+export async function getAccountProfile(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: publicUserSelect,
+  });
+  if (!user) throw ApiError.notFound("User not found");
+
+  const profile = toPublicUser(user);
+  let stats: Record<string, number> = {};
+
+  if (user.role === "STUDENT") {
+    const [enrolled, completed, certificates, quizAttempts] = await Promise.all([
+      prisma.enrollment.count({ where: { studentId: userId } }),
+      prisma.enrollment.count({ where: { studentId: userId, completed: true } }),
+      prisma.certificate.count({ where: { studentId: userId } }),
+      prisma.quizAttempt.count({
+        where: { studentId: userId, completedAt: { not: null } },
+      }),
+    ]);
+    stats = {
+      enrolledCourses: enrolled,
+      completedCourses: completed,
+      certificates,
+      quizAttempts,
+    };
+  } else if (user.role === "TEACHER") {
+    const [courses, enrollments, resources, quizzes] = await Promise.all([
+      prisma.course.count({ where: { teacherId: userId, deleteStatus: { not: "DELETED" } } }),
+      prisma.enrollment.count({ where: { course: { teacherId: userId } } }),
+      prisma.resource.count({ where: { uploadedById: userId, deleteStatus: { not: "DELETED" } } }),
+      prisma.quiz.count({
+        where: {
+          deleteStatus: { not: "DELETED" },
+          lesson: { module: { course: { teacherId: userId } } },
+        },
+      }),
+    ]);
+    stats = { courses, totalEnrollments: enrollments, resources, quizzes };
+  } else if (user.role === "ADMIN") {
+    const [students, teachers, courses, enrollments] = await Promise.all([
+      prisma.user.count({ where: { role: "STUDENT", suspended: false } }),
+      prisma.user.count({ where: { role: "TEACHER", suspended: false } }),
+      prisma.course.count({ where: { deleteStatus: "ACTIVE", status: { not: "ARCHIVED" } } }),
+      prisma.enrollment.count(),
+    ]);
+    stats = { students, teachers, courses, enrollments };
+  }
+
+  return {
+    user: {
+      ...profile,
+      createdAt: profile.createdAt.toISOString(),
+      updatedAt: profile.updatedAt.toISOString(),
+    },
+    stats,
+  };
+}
+
+export async function updateProfile(userId: string, input: { firstName: string; lastName: string }) {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      firstName: input.firstName,
+      lastName: input.lastName,
+    },
+    select: publicUserSelect,
+  });
+
+  const profile = toPublicUser(user);
+  return {
+    user: {
+      ...profile,
+      createdAt: profile.createdAt.toISOString(),
+      updatedAt: profile.updatedAt.toISOString(),
+    },
+    message: "Profile updated successfully",
+  };
+}
+
+export async function changePassword(
+  userId: string,
+  input: { currentPassword: string; newPassword: string },
+) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw ApiError.notFound("User not found");
+
+  const valid = await comparePassword(input.currentPassword, user.password);
+  if (!valid) {
+    throw ApiError.badRequest("Current password is incorrect", "INVALID_PASSWORD");
+  }
+
+  const passwordHash = await hashPassword(input.newPassword);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { password: passwordHash },
+  });
+
+  return { message: "Password changed successfully" };
+}

@@ -95,6 +95,9 @@ export function updateLesson(
     title?: string;
     description?: string;
     videoUrl?: string;
+    videoFileName?: string | null;
+    videoMimeType?: string | null;
+    videoSize?: number | null;
     duration?: number;
     order?: number;
   },
@@ -127,6 +130,9 @@ export function createLesson(
     title: string;
     description?: string;
     videoUrl?: string;
+    videoFileName?: string;
+    videoMimeType?: string;
+    videoSize?: number;
     duration?: number;
     order?: number;
   },

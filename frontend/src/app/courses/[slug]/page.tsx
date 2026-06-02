@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { AuthNavbar } from "@/components/layout/auth-navbar";
 import { PageBackground } from "@/components/layout/page-background";
@@ -17,7 +17,6 @@ import { ApiClientError } from "@/lib/api";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { useCoursePurchase } from "@/hooks/use-course-purchase";
-import { useRouter } from "next/navigation";
 import { layout } from "@/lib/layout";
 
 export default function CourseDetailPage() {
@@ -44,6 +43,12 @@ export default function CourseDetailPage() {
       toastError(msg);
     },
   });
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("access") === "denied") {
+      setEnrollMsg("Only enrolled students can access this course. Enroll below to start learning.");
+    }
+  }, [slug]);
 
   useEffect(() => {
     void (async () => {

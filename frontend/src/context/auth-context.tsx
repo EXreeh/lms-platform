@@ -10,10 +10,14 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import type { User } from "@/types/auth";
-import { fetchCurrentUser, logoutUser } from "@/lib/auth-api";
-import { clearAuthStorage, getDashboardPathForRole, syncMiddlewareCookie } from "@/lib/auth-storage";
+import { fetchCurrentUser } from "@/lib/auth-api";
+import { getDashboardPathForRole, syncMiddlewareCookie } from "@/lib/auth-storage";
 import { getSafeRedirectPath } from "@/lib/safe-redirect";
-import { ApiClientError } from "@/lib/api";
+import {
+  destroySession,
+  isAuthSessionError,
+  isValidUser,
+} from "@/lib/auth-session";
 
 interface AuthContextValue {
   user: User | null;
@@ -34,10 +38,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = useCallback(async () => {
     try {
       const response = await fetchCurrentUser();
-      setUser(response.data.user);
+      const nextUser = response.data.user;
+
+      if (!isValidUser(nextUser)) {
+        await destroySession();
+        setUser(null);
+        return;
+      }
+
+      setUser(nextUser);
     } catch (error) {
-      if (error instanceof ApiClientError && error.status === 401) {
-        clearAuthStorage();
+      if (isAuthSessionError(error)) {
+        await destroySession();
         setUser(null);
       }
     }
@@ -52,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     (nextUser: User, token?: string, redirectTo?: string | null) => {
+      if (!isValidUser(nextUser)) return;
       if (token) {
         syncMiddlewareCookie(token);
       }
@@ -63,14 +76,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    try {
-      await logoutUser();
-    } catch {
-      // Clear local session even if API call fails
-    }
-    clearAuthStorage();
+    await destroySession();
     setUser(null);
-    router.push("/login");
+    router.push("/");
   }, [router]);
 
   const value = useMemo<AuthContextValue>(

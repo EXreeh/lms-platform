@@ -8,6 +8,7 @@ import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { CourseCard } from "@/components/courses/course-card";
+import { RejectCourseModal } from "@/components/admin/reject-course-modal";
 import {
   fetchReviewQueue,
   fetchPendingDeletes,
@@ -31,6 +32,8 @@ export default function AdminReviewPage() {
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<Course | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -65,12 +68,14 @@ export default function AdminReviewPage() {
     }
   }
 
-  async function handleReject(courseId: string) {
-    if (!confirm("Reject this course submission?")) return;
-    setActionId(courseId);
+  async function handleRejectConfirm() {
+    if (!rejectTarget) return;
+    setActionId(rejectTarget.id);
     try {
-      await rejectCourse(courseId);
+      await rejectCourse(rejectTarget.id, rejectReason.trim());
       success("Course rejected");
+      setRejectTarget(null);
+      setRejectReason("");
       await load();
     } catch (err) {
       toastError(err instanceof ApiClientError ? err.message : "Reject failed");
@@ -154,7 +159,10 @@ export default function AdminReviewPage() {
                             size="sm"
                             variant="secondary"
                             disabled={actionId === course.id}
-                            onClick={() => void handleReject(course.id)}
+                            onClick={() => {
+                              setRejectTarget(course);
+                              setRejectReason("");
+                            }}
                           >
                             Reject
                           </Button>
@@ -238,6 +246,19 @@ export default function AdminReviewPage() {
           )}
         </div>
       </div>
+
+      <RejectCourseModal
+        open={Boolean(rejectTarget)}
+        courseTitle={rejectTarget?.title ?? ""}
+        reason={rejectReason}
+        loading={Boolean(rejectTarget && actionId === rejectTarget.id)}
+        onReasonChange={setRejectReason}
+        onConfirm={() => void handleRejectConfirm()}
+        onCancel={() => {
+          setRejectTarget(null);
+          setRejectReason("");
+        }}
+      />
     </DashboardShell>
   );
 }

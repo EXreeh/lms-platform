@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
+import { ProtectedVideo } from "@/components/media/protected-video";
 import { parseVideoEmbedUrl } from "@/lib/video-utils";
 
 interface VideoPlayerProps {
@@ -74,12 +75,12 @@ export function VideoPlayer({
         animate={{ opacity: 1 }}
         className="overflow-hidden rounded-2xl bg-black shadow-xl"
       >
-        <video
+        <ProtectedVideo
           ref={videoRef}
           src={embedUrl}
           title={title}
-          controls
-          className="aspect-video w-full"
+          className="aspect-video w-full max-h-[70vh] object-contain"
+          showProtectionNote
           onTimeUpdate={(e) => reportProgress(Math.floor(e.currentTarget.currentTime))}
           onEnded={() => {
             reportProgress(duration || Math.floor(videoRef.current?.duration ?? 0));
@@ -102,7 +103,7 @@ export function VideoPlayer({
       transition={{ duration: 0.3 }}
       className="overflow-hidden rounded-2xl bg-black shadow-xl ring-1 ring-border"
     >
-      <div className="relative aspect-video">
+      <div className="relative aspect-video max-h-[70vh]">
         <iframe
           src={embedUrl}
           title={title}

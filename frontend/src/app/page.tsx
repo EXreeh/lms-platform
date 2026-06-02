@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
 import { PageBackground } from "@/components/layout/page-background";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { layout } from "@/lib/layout";
@@ -45,7 +46,7 @@ export default function LandingPage() {
     <PageBackground variant="default">
       <Navbar />
 
-      <main>
+      <main className="flex-1">
         {/* Hero */}
         <section className={`${layout.page} pb-20 pt-16 lg:pt-24`}>
           <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
@@ -150,15 +151,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Footer */}
-        <footer className="border-t border-border py-10">
-          <div className={`${layout.page} flex flex-col items-center justify-between gap-4 sm:flex-row`}>
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} {brand.name}. All rights reserved.
-            </p>
-            <p className="text-sm text-muted-foreground">Premium AI EdTech · Secure · Scalable</p>
-          </div>
-        </footer>
+        <SiteFooter />
       </main>
     </PageBackground>
   );

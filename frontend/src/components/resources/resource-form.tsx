@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { FileUploadZone, type UploadedFileInfo } from "@/components/uploads/file-upload-zone";
 import type { Resource, ResourceType } from "@/types/resource";
 import { RESOURCE_TYPE_LABELS } from "@/types/resource";
+import { inferResourceTypeFromMime } from "@/lib/uploads-api";
+import { getMaxResourceBytes, maxSizeLabelForKind } from "@/lib/upload-config";
 
 export interface ResourceFormPayload {
   title: string;
@@ -13,14 +16,15 @@ export interface ResourceFormPayload {
   type: ResourceType;
   url: string;
   fileName?: string;
+  mimeType?: string;
+  fileSize?: number;
+  storageProvider?: string;
   courseId: string;
   lessonId?: string | null;
 }
 
 interface ResourceFormProps {
-  /** Set when adding from a course edit page — course cannot be changed */
   courseId?: string;
-  /** Required on the general teacher resources page */
   courses?: { id: string; label: string }[];
   lessonId?: string | null;
   lessons?: { id: string; label: string }[];
@@ -38,6 +42,9 @@ function emptyFormState(lessonId?: string | null, initial?: Partial<Resource>) {
     type: (initial?.type ?? "LINK") as ResourceType,
     url: initial?.url ?? "",
     fileName: initial?.fileName ?? "",
+    mimeType: initial?.mimeType ?? "",
+    fileSize: initial?.fileSize ?? undefined,
+    storageProvider: initial?.storageProvider ?? "local",
     attachLessonId: lessonId ?? initial?.lessonId ?? "",
   };
 }
@@ -57,6 +64,12 @@ export function ResourceForm({
   const [type, setType] = useState<ResourceType>(initial?.type ?? "LINK");
   const [url, setUrl] = useState(initial?.url ?? "");
   const [fileName, setFileName] = useState(initial?.fileName ?? "");
+  const [mimeType, setMimeType] = useState(initial?.mimeType ?? "");
+  const [fileSize, setFileSize] = useState<number | undefined>(initial?.fileSize ?? undefined);
+  const [storageProvider, setStorageProvider] = useState(initial?.storageProvider ?? "local");
+  const [urlMode, setUrlMode] = useState(
+    Boolean(initial?.url && !initial.url.startsWith("/uploads/resources/")),
+  );
   const [selectedCourseId, setSelectedCourseId] = useState(
     fixedCourseId ?? initial?.courseId ?? "",
   );
@@ -72,12 +85,23 @@ export function ResourceForm({
 
   const resolvedCourseId = (fixedCourseId ?? selectedCourseId).trim();
   const needsCoursePicker = !fixedCourseId && Boolean(courses);
+  const hasResource = Boolean(url.trim());
   const canSubmit =
     Boolean(title.trim()) &&
-    Boolean(url.trim()) &&
+    hasResource &&
     Boolean(resolvedCourseId) &&
     !isSaving &&
     (!needsCoursePicker || courses!.length > 0);
+
+  const uploaded: UploadedFileInfo | null =
+    url && url.startsWith("/uploads/resources/")
+      ? {
+          url,
+          fileName: fileName || "resource",
+          size: fileSize,
+          mimeType: mimeType || undefined,
+        }
+      : null;
 
   function resetForm() {
     const empty = emptyFormState(lessonId);
@@ -86,7 +110,11 @@ export function ResourceForm({
     setType(empty.type);
     setUrl(empty.url);
     setFileName(empty.fileName);
+    setMimeType(empty.mimeType);
+    setFileSize(empty.fileSize);
+    setStorageProvider(empty.storageProvider);
     setAttachLessonId(empty.attachLessonId);
+    setUrlMode(false);
     if (!fixedCourseId) {
       setSelectedCourseId("");
     }
@@ -96,10 +124,15 @@ export function ResourceForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!title.trim() || !url.trim()) return;
+    if (!title.trim()) return;
 
     if (!resolvedCourseId) {
       setCourseError(COURSE_REQUIRED_MESSAGE);
+      return;
+    }
+
+    if (!url.trim()) {
+      setCourseError("Upload a file or paste a resource link.");
       return;
     }
 
@@ -111,11 +144,12 @@ export function ResourceForm({
       type,
       url: url.trim(),
       fileName: fileName.trim() || undefined,
+      mimeType: mimeType || undefined,
+      fileSize,
+      storageProvider,
       courseId: resolvedCourseId,
       lessonId: attachLessonId.trim() ? attachLessonId.trim() : null,
     };
-
-    console.log("Resource payload:", payload);
 
     setIsSaving(true);
     try {
@@ -148,11 +182,11 @@ export function ResourceForm({
           {courses!.length === 0 && (
             <p className="text-sm text-muted-foreground">Create a course before adding resources.</p>
           )}
-          {courseError && <p className="text-sm text-red-600 dark:text-red-400">{courseError}</p>}
         </div>
       )}
 
       <Input label="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+
       <div className="space-y-1.5">
         <label className="text-sm font-medium">Description</label>
         <textarea
@@ -162,14 +196,58 @@ export function ResourceForm({
           className="w-full rounded-xl border border-border px-3.5 py-2.5 text-sm"
         />
       </div>
+
       <Select
         label="Type"
         value={type}
         onChange={(e) => setType(e.target.value as ResourceType)}
         options={Object.entries(RESOURCE_TYPE_LABELS).map(([value, label]) => ({ value, label }))}
       />
-      <Input label="Resource URL" value={url} onChange={(e) => setUrl(e.target.value)} required placeholder="https://..." />
-      <Input label="Display file name (optional)" value={fileName} onChange={(e) => setFileName(e.target.value)} />
+
+      <FileUploadZone
+        kind="resource"
+        accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.jpg,.jpeg,.png,.webp,.gif,.txt,application/pdf,image/*"
+        label="Resource file"
+        hint="PDF, Word, PowerPoint, ZIP, images, or assignment files"
+        maxSizeLabel={maxSizeLabelForKind("resource")}
+        maxBytes={getMaxResourceBytes()}
+        uploaded={uploaded}
+        showUrlFallback
+        urlMode={urlMode}
+        onUrlModeChange={(mode) => {
+          setUrlMode(mode);
+          if (mode) {
+            setFileName("");
+            setMimeType("");
+            setFileSize(undefined);
+            setStorageProvider("local");
+          }
+        }}
+        urlValue={urlMode ? url : ""}
+        onUrlChange={(nextUrl) => {
+          setUrl(nextUrl);
+          setStorageProvider("local");
+        }}
+        urlFallbackPlaceholder="https://drive.google.com/... or any resource link"
+        onUploaded={(result) => {
+          setUrl(result.url);
+          setFileName(result.fileName);
+          setMimeType(result.mimeType);
+          setFileSize(result.size);
+          setStorageProvider(result.storageProvider);
+          setType(inferResourceTypeFromMime(result.mimeType));
+          setUrlMode(false);
+        }}
+        onClear={() => {
+          setUrl("");
+          setFileName("");
+          setMimeType("");
+          setFileSize(undefined);
+        }}
+      />
+
+      {courseError && <p className="text-sm text-red-600 dark:text-red-400">{courseError}</p>}
+
       {lessons && lessons.length > 0 && !lessonId && (
         <Select
           label="Attach to lesson (optional)"
@@ -181,6 +259,7 @@ export function ResourceForm({
           ]}
         />
       )}
+
       <div className="flex gap-2">
         <Button type="submit" variant="gold" size="sm" disabled={!canSubmit}>
           {isSaving ? "Saving…" : isEditing ? "Update resource" : "Add resource"}

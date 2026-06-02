@@ -1,11 +1,19 @@
 import { z } from "zod";
 
+/** Accepts external URLs or locally uploaded paths served from /uploads/ */
+export const urlOrUploadPath = z.union([
+  z.string().url(),
+  z.string().regex(/^\/uploads\/(videos|resources|thumbnails)\/[\w.\-]+$/i),
+  z.literal(""),
+]);
+
 export const courseLevelEnum = z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"]);
 
 export const createCourseSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters").max(200),
   description: z.string().min(10, "Description must be at least 10 characters").max(10000),
-  thumbnail: z.string().url("Invalid thumbnail URL").optional().or(z.literal("")),
+  thumbnail: urlOrUploadPath.optional(),
+  thumbnailFileName: z.string().max(255).optional(),
   price: z.coerce.number().min(0, "Price cannot be negative").max(999999),
   category: z.string().min(2).max(80),
   level: courseLevelEnum.default("BEGINNER"),
@@ -45,7 +53,10 @@ export const updateModuleSchema = z.object({
 export const createLessonSchema = z.object({
   title: z.string().min(2).max(200),
   description: z.string().max(5000).optional(),
-  videoUrl: z.string().url("Invalid video URL").optional().or(z.literal("")),
+  videoUrl: urlOrUploadPath.optional(),
+  videoFileName: z.string().max(255).optional(),
+  videoMimeType: z.string().max(120).optional(),
+  videoSize: z.coerce.number().int().min(0).optional(),
   duration: z.coerce.number().int().min(0).default(0),
   order: z.coerce.number().int().min(0).optional(),
 });

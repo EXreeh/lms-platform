@@ -170,6 +170,13 @@ export function fetchAdminActivity(params: ListActivityParams = {}) {
   });
 }
 
+export function fetchStudentGrowth(days = 90) {
+  return apiRequest<{
+    success: boolean;
+    data: { series: { date: string; count: number }[]; total: number; days: number };
+  }>(`/admin/analytics/student-growth?days=${days}`, { auth: true });
+}
+
 export function fetchCoursePreview(slug: string) {
   return apiRequest<{ success: boolean; data: import("@/types/learning").CourseProgressData }>(
     `/learning/preview/${slug}`,

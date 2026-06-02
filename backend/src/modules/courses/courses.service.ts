@@ -90,6 +90,7 @@ export async function createCourse(userId: string, role: Role, input: CreateCour
       slug,
       description: input.description,
       thumbnail: input.thumbnail || null,
+      thumbnailFileName: input.thumbnailFileName ?? null,
       price: input.price,
       category: input.category,
       level: input.level,
@@ -137,6 +138,9 @@ export async function updateCourse(
       ...(input.title !== undefined && { title: input.title }),
       ...(input.description !== undefined && { description: input.description }),
       ...(input.thumbnail !== undefined && { thumbnail: input.thumbnail || null }),
+      ...(input.thumbnailFileName !== undefined && {
+        thumbnailFileName: input.thumbnailFileName || null,
+      }),
       ...(input.price !== undefined && { price: input.price }),
       ...(input.category !== undefined && { category: input.category }),
       ...(input.level !== undefined && { level: input.level }),
@@ -177,7 +181,7 @@ export async function submitCourseForReview(userId: string, role: Role, idOrSlug
 
   const course = await prisma.course.update({
     where: { id: existing.id },
-    data: { status: "UNDER_REVIEW" },
+    data: { status: "UNDER_REVIEW", rejectionReason: null },
     include: buildCourseInclude("manage"),
   });
 
@@ -389,10 +393,16 @@ export async function adminRejectCourse(userId: string, idOrSlug: string, reason
   if (existing.status !== "UNDER_REVIEW") {
     throw ApiError.badRequest("Course is not under review");
   }
+  if (!reason?.trim() || reason.trim().length < 10) {
+    throw ApiError.badRequest("A rejection reason of at least 10 characters is required");
+  }
 
   const course = await prisma.course.update({
     where: { id: existing.id },
-    data: { status: "REJECTED" },
+    data: {
+      status: "REJECTED",
+      rejectionReason: reason?.trim() || null,
+    },
     include: buildCourseInclude("manage"),
   });
 
@@ -488,6 +498,9 @@ export async function createLesson(
     title: string;
     description?: string;
     videoUrl?: string;
+    videoFileName?: string;
+    videoMimeType?: string;
+    videoSize?: number;
     duration?: number;
     order?: number;
   },
@@ -509,6 +522,9 @@ export async function createLesson(
       title: input.title,
       description: input.description ?? null,
       videoUrl: input.videoUrl || null,
+      videoFileName: input.videoFileName ?? null,
+      videoMimeType: input.videoMimeType ?? null,
+      videoSize: input.videoSize ?? null,
       duration: input.duration ?? 0,
       order,
       moduleId: module.id,
@@ -712,6 +728,9 @@ export async function updateLesson(
     title?: string;
     description?: string;
     videoUrl?: string;
+    videoFileName?: string | null;
+    videoMimeType?: string | null;
+    videoSize?: number | null;
     duration?: number;
     order?: number;
   },
@@ -731,6 +750,9 @@ export async function updateLesson(
       ...(input.title !== undefined && { title: input.title }),
       ...(input.description !== undefined && { description: input.description }),
       ...(input.videoUrl !== undefined && { videoUrl: input.videoUrl || null }),
+      ...(input.videoFileName !== undefined && { videoFileName: input.videoFileName }),
+      ...(input.videoMimeType !== undefined && { videoMimeType: input.videoMimeType }),
+      ...(input.videoSize !== undefined && { videoSize: input.videoSize }),
       ...(input.duration !== undefined && { duration: input.duration }),
       ...(input.order !== undefined && { order: input.order }),
     },

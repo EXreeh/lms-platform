@@ -15,6 +15,7 @@ import type { Course, CourseLevel } from "@/types/course";
 import { brand } from "@/lib/design-tokens";
 import { ApiClientError } from "@/lib/api";
 import { layout } from "@/lib/layout";
+import { SiteFooter } from "@/components/layout/site-footer";
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -156,6 +157,7 @@ export default function CoursesPage() {
           )}
         </PageTransition>
       </main>
+      <SiteFooter />
     </PageBackground>
   );
 }

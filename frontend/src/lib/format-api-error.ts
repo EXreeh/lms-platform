@@ -5,6 +5,12 @@ const FRIENDLY_BY_CODE: Record<string, string> = {
   PAYMENT_REQUIRED: "Please complete payment before enrolling in this course.",
   FREE_COURSE: "This course is free — use Enroll instead of checkout.",
   INVALID_SIGNATURE: "Payment could not be verified. Please contact support if you were charged.",
+  INVALID_PASSWORD: "Current password is incorrect.",
+  FILE_TOO_LARGE: "File too large. Please choose a smaller file.",
+  INVALID_FILE: "Unsupported file type.",
+  INVALID_FILE_TYPE: "Unsupported file type.",
+  NO_FILE: "Please select a file to upload.",
+  UPLOAD_ERROR: "Upload failed. Please try again.",
   UNAUTHORIZED: "Please sign in to continue.",
   FORBIDDEN: "You do not have permission to perform this action.",
   NOT_FOUND: "The requested item could not be found.",
@@ -28,11 +34,11 @@ export function formatApiError(err: unknown, fallback = "Something went wrong. P
       return FRIENDLY_BY_CODE[err.code];
     }
     if (err.errors) {
-      const parts = Object.entries(err.errors).flatMap(([field, messages]) =>
-        (messages ?? []).map((m) => `${field}: ${m}`),
+      const parts = Object.entries(err.errors).flatMap(([, messages]) =>
+        (messages ?? []).map((m) => m),
       );
       if (parts.length > 0) {
-        return parts.join("; ");
+        return parts.join(" ");
       }
     }
     if (err.message && err.message !== "Request failed") {

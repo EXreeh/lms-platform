@@ -25,6 +25,7 @@ import type { CourseProgressData, LessonWithProgress, ModuleWithProgress } from 
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
 import { ApiClientError } from "@/lib/api";
+import { getDashboardPathForRole } from "@/lib/auth-storage";
 import { layout } from "@/lib/layout";
 
 function flattenLessons(modules: ModuleWithProgress[]): LessonWithProgress[] {
@@ -37,7 +38,7 @@ export default function CourseLearnPage() {
   const searchParams = useSearchParams();
   const slug = params.slug as string;
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { success: toastSuccess } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
 
   const [data, setData] = useState<CourseProgressData | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
@@ -74,11 +75,20 @@ export default function CourseLearnPage() {
         );
       });
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to load course");
+      if (err instanceof ApiClientError) {
+        if (err.status === 403) {
+          toastError("Only enrolled students can access this lesson.");
+          router.replace(`/courses/${slug}?access=denied`);
+          return;
+        }
+        setError(err.message);
+      } else {
+        setError("Failed to load course");
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [slug, searchParams, isAdminPreview]);
+  }, [slug, searchParams, isAdminPreview, router, toastError]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -86,12 +96,13 @@ export default function CourseLearnPage() {
       router.push(`/login?redirect=/courses/${slug}/learn`);
       return;
     }
-    if (!isAdminPreview && user?.role !== "STUDENT") {
-      router.push(`/login?redirect=/courses/${slug}/learn`);
+    if (!user) return;
+    if (!isAdminPreview && user.role !== "STUDENT") {
+      router.replace(getDashboardPathForRole(user.role));
       return;
     }
     void loadProgress();
-  }, [authLoading, isAuthenticated, isAdminPreview, user?.role, router, slug, loadProgress]);
+  }, [authLoading, isAuthenticated, isAdminPreview, user, router, slug, loadProgress]);
 
   useEffect(() => {
     if (!data?.course.id || isAdminPreview) return;

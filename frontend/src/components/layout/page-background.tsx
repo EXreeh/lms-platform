@@ -20,7 +20,7 @@ export function PageBackground({ children, variant = "default" }: PageBackground
       {variant === "dashboard" && (
         <GradientBlob className="-top-16 right-0 h-72 w-72" variant="green" />
       )}
-      <div className="relative z-10">{children}</div>
+      <div className="relative z-10 flex min-h-screen flex-col">{children}</div>
     </div>
   );
 }

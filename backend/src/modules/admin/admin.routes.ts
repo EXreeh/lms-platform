@@ -16,6 +16,7 @@ export const adminRoutes = Router();
 adminRoutes.use(authenticate, authorize("ADMIN"));
 
 adminRoutes.get("/stats", asyncHandler(adminController.platformStats));
+adminRoutes.get("/analytics/student-growth", asyncHandler(adminController.studentGrowth));
 
 adminRoutes.get("/users", asyncHandler(adminController.listUsers));
 adminRoutes.post("/users", validateBody(createTeacherSchema), asyncHandler(adminController.createTeacher));

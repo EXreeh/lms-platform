@@ -12,7 +12,8 @@ const LEGACY_KEY = "lms_token";
 export function syncMiddlewareCookie(token: string): void {
   if (typeof document === "undefined") return;
   const maxAge = 60 * 60 * 24 * 7;
-  document.cookie = `${TOKEN_COOKIE}=${token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${TOKEN_COOKIE}=${token}; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
   localStorage.setItem(LEGACY_KEY, token);
 }
 
@@ -23,7 +24,8 @@ export function getAuthToken(): string | null {
 
 export function clearAuthStorage(): void {
   if (typeof document === "undefined") return;
-  document.cookie = `${TOKEN_COOKIE}=; path=/; max-age=0`;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${TOKEN_COOKIE}=; path=/; max-age=0; SameSite=Lax${secure}`;
   localStorage.removeItem(LEGACY_KEY);
 }
 

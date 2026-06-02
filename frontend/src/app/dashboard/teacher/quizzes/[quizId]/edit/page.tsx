@@ -16,6 +16,7 @@ import {
   deleteQuiz,
   addQuestion,
   deleteQuestion,
+  updateQuestion,
   fetchQuizAnalytics,
 } from "@/lib/quizzes-api";
 import type { Quiz, QuizAnalytics } from "@/types/quiz";
@@ -39,6 +40,13 @@ export default function EditQuizPage() {
   const [options, setOptions] = useState(["", "", "", ""]);
   const [correctAnswer, setCorrectAnswer] = useState("");
   const [points, setPoints] = useState("1");
+
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [editQuestionText, setEditQuestionText] = useState("");
+  const [editOptions, setEditOptions] = useState(["", "", "", ""]);
+  const [editCorrectAnswer, setEditCorrectAnswer] = useState("");
+  const [editPoints, setEditPoints] = useState("1");
+  const [isSavingQuestion, setIsSavingQuestion] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -130,7 +138,56 @@ export default function EditQuizPage() {
   async function handleDeleteQuestion(id: string) {
     if (!confirm("Delete this question?")) return;
     await deleteQuestion(id);
+    if (editingQuestionId === id) setEditingQuestionId(null);
     await load();
+  }
+
+  function startEditQuestion(q: NonNullable<Quiz["questions"]>[number]) {
+    setEditingQuestionId(q.id);
+    setEditQuestionText(q.question);
+    const opts = [...q.options];
+    while (opts.length < 4) opts.push("");
+    setEditOptions(opts.slice(0, 4));
+    setEditCorrectAnswer(q.correctAnswer ?? "");
+    setEditPoints(String(q.points));
+  }
+
+  function cancelEditQuestion() {
+    setEditingQuestionId(null);
+  }
+
+  async function handleSaveQuestion(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingQuestionId) return;
+    const validOptions = editOptions.map((o) => o.trim()).filter(Boolean);
+    if (!editQuestionText.trim() || validOptions.length < 2 || !editCorrectAnswer) {
+      toastError("Please complete all required fields.");
+      return;
+    }
+    if (editQuestionText.trim().length < 5) {
+      toastError("Question text must be at least 5 characters");
+      return;
+    }
+    if (!validOptions.includes(editCorrectAnswer)) {
+      toastError("Correct answer must match one of the options");
+      return;
+    }
+    setIsSavingQuestion(true);
+    try {
+      await updateQuestion(editingQuestionId, {
+        question: editQuestionText.trim(),
+        options: validOptions,
+        correctAnswer: editCorrectAnswer,
+        points: parseInt(editPoints, 10) || 1,
+      });
+      setEditingQuestionId(null);
+      toastSuccess("Question updated");
+      await load();
+    } catch (err) {
+      toastError(formatApiError(err, "Failed to update question"));
+    } finally {
+      setIsSavingQuestion(false);
+    }
   }
 
   async function handleDeleteQuiz() {
@@ -219,22 +276,72 @@ export default function EditQuizPage() {
                   key={q.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex items-start justify-between gap-4 rounded-xl bg-muted/40 p-4"
+                  className="rounded-xl bg-muted/40 p-4"
                 >
-                  <div>
-                    <p className="text-xs text-muted-foreground">Q{i + 1} · {q.points} pt</p>
-                    <p className="font-medium">{q.question}</p>
-                    <p className="mt-1 text-xs text-green-700 dark:text-gold-400">
-                      Answer: {q.correctAnswer}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void handleDeleteQuestion(q.id)}
-                    className="text-xs text-red-600"
-                  >
-                    Remove
-                  </button>
+                  {editingQuestionId === q.id ? (
+                    <form onSubmit={handleSaveQuestion} className="space-y-4">
+                      <p className="text-xs font-medium text-muted-foreground">Editing question {i + 1}</p>
+                      <Input label="Question" value={editQuestionText} onChange={(e) => setEditQuestionText(e.target.value)} />
+                      {editOptions.map((opt, j) => (
+                        <Input
+                          key={j}
+                          label={`Option ${j + 1}`}
+                          value={opt}
+                          onChange={(e) => {
+                            const next = [...editOptions];
+                            next[j] = e.target.value;
+                            setEditOptions(next);
+                          }}
+                        />
+                      ))}
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium">Correct answer</label>
+                        <select
+                          value={editCorrectAnswer}
+                          onChange={(e) => setEditCorrectAnswer(e.target.value)}
+                          className="w-full rounded-xl border border-border px-3.5 py-2.5 text-sm"
+                        >
+                          <option value="">Select correct option</option>
+                          {editOptions.filter(Boolean).map((o) => (
+                            <option key={o} value={o.trim()}>
+                              {o.trim()}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <Input label="Points" type="number" min="1" value={editPoints} onChange={(e) => setEditPoints(e.target.value)} />
+                      <div className="flex gap-2">
+                        <Button type="submit" size="sm" disabled={isSavingQuestion}>
+                          Save changes
+                        </Button>
+                        <Button type="button" variant="secondary" size="sm" onClick={cancelEditQuestion} disabled={isSavingQuestion}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Q{i + 1} · {q.points} pt</p>
+                        <p className="font-medium">{q.question}</p>
+                        <p className="mt-1 text-xs text-green-700 dark:text-gold-400">
+                          Answer: {q.correctAnswer}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col gap-2 text-xs">
+                        <button type="button" onClick={() => startEditQuestion(q)} className="text-green-700 dark:text-green-400">
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteQuestion(q.id)}
+                          className="text-red-600"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </motion.li>
               ))}
             </ul>

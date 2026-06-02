@@ -5,6 +5,8 @@ import type { Lesson } from "@/types/course";
 import { formatDuration } from "@/types/course";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { LessonVideoField, type LessonVideoValue } from "@/components/courses/lesson-video-field";
+import { formatFileSize } from "@/lib/format-file-size";
 
 interface LessonListProps {
   lessons: Lesson[];
@@ -12,7 +14,15 @@ interface LessonListProps {
   onDeleteLesson?: (lessonId: string) => void;
   onUpdateLesson?: (
     lessonId: string,
-    data: { title: string; description?: string; videoUrl?: string; duration?: number },
+    data: {
+      title: string;
+      description?: string;
+      videoUrl?: string;
+      videoFileName?: string | null;
+      videoMimeType?: string | null;
+      videoSize?: number | null;
+      duration?: number;
+    },
   ) => void | Promise<void>;
 }
 
@@ -20,14 +30,24 @@ export function LessonList({ lessons, editable, onDeleteLesson, onUpdateLesson }
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
-  const [editVideoUrl, setEditVideoUrl] = useState("");
+  const [editVideo, setEditVideo] = useState<LessonVideoValue>({
+    videoUrl: "",
+    videoFileName: null,
+    videoMimeType: null,
+    videoSize: null,
+  });
   const [editDuration, setEditDuration] = useState("0");
 
   function startEdit(lesson: Lesson) {
     setEditingId(lesson.id);
     setEditTitle(lesson.title);
     setEditDescription(lesson.description ?? "");
-    setEditVideoUrl(lesson.videoUrl ?? "");
+    setEditVideo({
+      videoUrl: lesson.videoUrl ?? "",
+      videoFileName: lesson.videoFileName ?? null,
+      videoMimeType: lesson.videoMimeType ?? null,
+      videoSize: lesson.videoSize ?? null,
+    });
     setEditDuration(String(lesson.duration ?? 0));
   }
 
@@ -40,7 +60,10 @@ export function LessonList({ lessons, editable, onDeleteLesson, onUpdateLesson }
     await onUpdateLesson(lessonId, {
       title: editTitle.trim(),
       description: editDescription.trim() || undefined,
-      videoUrl: editVideoUrl.trim() || undefined,
+      videoUrl: editVideo.videoUrl.trim() || undefined,
+      videoFileName: editVideo.videoFileName,
+      videoMimeType: editVideo.videoMimeType,
+      videoSize: editVideo.videoSize,
       duration: parseInt(editDuration, 10) || 0,
     });
     setEditingId(null);
@@ -57,10 +80,7 @@ export function LessonList({ lessons, editable, onDeleteLesson, onUpdateLesson }
       {lessons.map((lesson, index) => {
         const isEditing = editingId === lesson.id;
         return (
-          <li
-            key={lesson.id}
-            className="rounded-lg bg-muted/40 px-4 py-3"
-          >
+          <li key={lesson.id} className="rounded-lg bg-muted/40 px-4 py-3">
             {isEditing ? (
               <div className="space-y-3">
                 <Input label="Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
@@ -73,7 +93,10 @@ export function LessonList({ lessons, editable, onDeleteLesson, onUpdateLesson }
                     className="w-full rounded-xl border border-border px-3.5 py-2.5 text-sm"
                   />
                 </div>
-                <Input label="Video URL" value={editVideoUrl} onChange={(e) => setEditVideoUrl(e.target.value)} />
+                <LessonVideoField
+                  value={editVideo}
+                  onChange={setEditVideo}
+                />
                 <Input
                   label="Duration (seconds)"
                   type="number"
@@ -102,7 +125,10 @@ export function LessonList({ lessons, editable, onDeleteLesson, onUpdateLesson }
                       <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{lesson.description}</p>
                     )}
                     {lesson.videoUrl && (
-                      <p className="truncate text-xs text-muted-foreground">{lesson.videoUrl}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {lesson.videoFileName ?? lesson.videoUrl}
+                        {lesson.videoSize ? ` · ${formatFileSize(lesson.videoSize)}` : ""}
+                      </p>
                     )}
                   </div>
                 </div>

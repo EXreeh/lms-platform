@@ -3,6 +3,7 @@
 import { Navbar } from "@/components/layout/navbar";
 import { PageBackground } from "@/components/layout/page-background";
 import { AuthLoading } from "@/components/auth/auth-loading";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { layout } from "@/lib/layout";
 import { useAuth } from "@/context/auth-context";
 
@@ -51,6 +52,7 @@ export function DashboardShell({ title, description, badge, children }: Dashboar
         </div>
         {children}
       </main>
+      <SiteFooter />
     </PageBackground>
   );
 }

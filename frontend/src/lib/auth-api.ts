@@ -58,7 +58,6 @@ export function loginUser(payload: LoginPayload) {
 export function logoutUser() {
   return apiRequest<{ success: boolean; message: string }>("/auth/logout", {
     method: "POST",
-    auth: true,
   });
 }
 
@@ -67,6 +66,26 @@ export function fetchCurrentUser() {
     method: "GET",
     auth: true,
   });
+}
+
+export function fetchAccountProfile() {
+  return apiRequest<{
+    success: boolean;
+    data: {
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        name: string;
+        email: string;
+        role: import("@/types/auth").Role;
+        emailVerified: boolean;
+        createdAt: string;
+        updatedAt: string;
+      };
+      stats: Record<string, number>;
+    };
+  }>("/auth/account", { auth: true });
 }
 
 export function requestPasswordResetOtp(email: string) {
@@ -98,5 +117,37 @@ export function resetPassword(payload: {
   return apiRequest<OtpMessageResponse>("/auth/password/reset", {
     method: "POST",
     body: payload,
+  });
+}
+
+export function updateAccountProfile(payload: { firstName: string; lastName: string }) {
+  return apiRequest<{
+    success: boolean;
+    data: {
+      user: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        name: string;
+        email: string;
+        role: import("@/types/auth").Role;
+        emailVerified: boolean;
+        createdAt: string;
+        updatedAt: string;
+      };
+      message: string;
+    };
+  }>("/auth/profile", { method: "PATCH", body: payload, auth: true });
+}
+
+export function changeAccountPassword(payload: {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}) {
+  return apiRequest<{ success: boolean; message: string }>("/auth/password/change", {
+    method: "POST",
+    body: payload,
+    auth: true,
   });
 }

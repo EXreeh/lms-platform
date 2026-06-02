@@ -1,46 +1,54 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { FileUploadZone, type UploadedFileInfo } from "@/components/uploads/file-upload-zone";
+import { getMaxThumbnailBytes, maxSizeLabelForKind } from "@/lib/upload-config";
 
 interface ThumbnailInputProps {
   value: string;
-  onChange: (url: string) => void;
+  thumbnailFileName?: string | null;
+  onChange: (url: string, meta?: { fileName?: string | null }) => void;
   disabled?: boolean;
 }
 
-export function ThumbnailInput({ value, onChange, disabled }: ThumbnailInputProps) {
+export function ThumbnailInput({ value, thumbnailFileName, onChange, disabled }: ThumbnailInputProps) {
+  const [urlMode, setUrlMode] = useState(false);
+
+  const uploaded: UploadedFileInfo | null =
+    value && value.startsWith("/uploads/thumbnails/")
+      ? { url: value, fileName: thumbnailFileName ?? "thumbnail", size: undefined }
+      : null;
+
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium text-foreground">Course thumbnail</label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <motion.div
-          className="relative aspect-video overflow-hidden rounded-xl border border-dashed border-border bg-muted"
-          whileHover={{ borderColor: "var(--gold-500)" }}
-        >
-          {value ? (
-            <Image src={value} alt="Thumbnail preview" fill className="object-cover" unoptimized />
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center">
-              <span className="text-2xl opacity-40">🖼</span>
-              <p className="text-xs text-muted-foreground">Paste an image URL to preview</p>
-            </div>
-          )}
-        </motion.div>
-        <div className="space-y-2">
-          <input
-            type="url"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="https://example.com/thumbnail.jpg"
-            disabled={disabled}
-            className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-2 focus:ring-gold-500/25"
-          />
-          <p className="text-xs text-muted-foreground">
-            Use a direct image URL. File upload storage coming soon.
-          </p>
+      <FileUploadZone
+        kind="thumbnail"
+        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+        label="Course thumbnail"
+        hint="JPG, PNG, or WebP — square or 16:9 recommended"
+        maxSizeLabel={maxSizeLabelForKind("thumbnail")}
+        maxBytes={getMaxThumbnailBytes()}
+        disabled={disabled}
+        uploaded={uploaded}
+        showUrlFallback
+        urlMode={urlMode || (!!value && !value.startsWith("/uploads/"))}
+        onUrlModeChange={setUrlMode}
+        urlValue={urlMode ? value : ""}
+        onUrlChange={(url) => onChange(url, { fileName: null })}
+        urlFallbackPlaceholder="https://example.com/thumbnail.jpg"
+        previewType="image"
+        onUploaded={(result) => {
+          onChange(result.url, { fileName: result.fileName });
+          setUrlMode(false);
+        }}
+        onClear={() => onChange("", { fileName: null })}
+      />
+      {value && !uploaded && urlMode && value.startsWith("http") && (
+        <div className="relative aspect-video max-w-xs overflow-hidden rounded-xl border border-border">
+          <Image src={value} alt="Thumbnail preview" fill className="object-cover" unoptimized />
         </div>
-      </div>
+      )}
     </div>
   );
 }

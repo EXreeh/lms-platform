@@ -3,7 +3,9 @@
 import { motion } from "framer-motion";
 import type { Resource } from "@/types/resource";
 import { RESOURCE_TYPE_ICONS, RESOURCE_TYPE_LABELS } from "@/types/resource";
+import { formatFileSize } from "@/lib/format-file-size";
 import { Button } from "@/components/ui/button";
+import { ResourceFileActions } from "@/components/resources/resource-file-actions";
 
 interface ResourceListProps {
   resources: Resource[];
@@ -47,6 +49,8 @@ export function ResourceList({
               <p className="text-xs text-muted-foreground">
                 {RESOURCE_TYPE_LABELS[resource.type]}
                 {resource.fileName ? ` · ${resource.fileName}` : ""}
+                {resource.fileSize ? ` · ${formatFileSize(resource.fileSize)}` : ""}
+                {resource.mimeType ? ` · ${resource.mimeType.split("/").pop()}` : ""}
               </p>
               {resource.description && (
                 <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{resource.description}</p>
@@ -57,11 +61,11 @@ export function ResourceList({
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
-            <a href={resource.url} target="_blank" rel="noopener noreferrer">
-              <Button type="button" variant="secondary" size="sm">
-                Open
-              </Button>
-            </a>
+            <ResourceFileActions
+              url={resource.url}
+              fileName={resource.fileName}
+              mimeType={resource.mimeType}
+            />
             {editable && onEdit && (
               <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(resource)}>
                 Edit

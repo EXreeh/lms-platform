@@ -8,6 +8,9 @@ export interface Resource {
   type: ResourceType;
   url: string;
   fileName: string | null;
+  mimeType?: string | null;
+  fileSize?: number | null;
+  storageProvider?: string;
   courseId: string;
   lessonId: string | null;
   uploadedById: string;

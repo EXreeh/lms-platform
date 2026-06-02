@@ -2,6 +2,7 @@ import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { prisma } from "./config/database.js";
 import { verifyEmailTransport } from "./services/email/email.service.js";
+import { ensureUploadDirectories } from "./services/storage/index.js";
 
 const app = createApp();
 
@@ -9,6 +10,10 @@ async function start() {
   try {
     await prisma.$connect();
     console.log("Database connected");
+
+    if (env.STORAGE_PROVIDER === "local") {
+      await ensureUploadDirectories();
+    }
 
     await verifyEmailTransport();
 

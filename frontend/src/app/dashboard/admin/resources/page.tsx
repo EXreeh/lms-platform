@@ -13,6 +13,7 @@ import {
   restoreAdminResource,
 } from "@/lib/admin-api";
 import { RESOURCE_TYPE_ICONS, RESOURCE_TYPE_LABELS } from "@/types/resource";
+import { ResourceFileActions } from "@/components/resources/resource-file-actions";
 import { formatApiError } from "@/lib/format-api-error";
 import type { Resource } from "@/types/resource";
 import { useToast } from "@/context/toast-context";
@@ -100,11 +101,11 @@ export default function AdminResourcesPage() {
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
-          <a href={resource.url} target="_blank" rel="noopener noreferrer">
-            <Button type="button" variant="secondary" size="sm">
-              Open
-            </Button>
-          </a>
+          <ResourceFileActions
+            url={resource.url}
+            fileName={resource.fileName}
+            mimeType={resource.mimeType}
+          />
           {resource.course?.slug && (
             <Link href={`/courses/${resource.course.slug}`}>
               <Button type="button" variant="ghost" size="sm">

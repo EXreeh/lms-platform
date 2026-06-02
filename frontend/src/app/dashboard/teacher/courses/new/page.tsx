@@ -20,6 +20,7 @@ export default function NewCoursePage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [thumbnail, setThumbnail] = useState("");
+  const [thumbnailFileName, setThumbnailFileName] = useState<string | null>(null);
   const [price, setPrice] = useState("0");
   const [category, setCategory] = useState<string>(COURSE_CATEGORIES[0]);
   const [level, setLevel] = useState<CourseLevel>("BEGINNER");
@@ -36,6 +37,7 @@ export default function NewCoursePage() {
         title,
         description,
         thumbnail: thumbnail || undefined,
+        thumbnailFileName: thumbnailFileName || undefined,
         price: parseFloat(price) || 0,
         category,
         level,
@@ -83,7 +85,15 @@ export default function NewCoursePage() {
               className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-sm focus:border-gold-500 focus:outline-none focus:ring-2 focus:ring-gold-500/25"
             />
           </div>
-          <ThumbnailInput value={thumbnail} onChange={setThumbnail} disabled={isLoading} />
+          <ThumbnailInput
+            value={thumbnail}
+            thumbnailFileName={thumbnailFileName}
+            onChange={(url, meta) => {
+              setThumbnail(url);
+              setThumbnailFileName(meta?.fileName ?? null);
+            }}
+            disabled={isLoading}
+          />
           <div className="grid gap-5 sm:grid-cols-3">
             <Input
               label="Price (USD)"

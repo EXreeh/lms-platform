@@ -39,3 +39,7 @@ database/generated/
 *.tsbuildinfo
 .turbo/
 .vercel
+
+# Local uploads (keep directory structure)
+backend/uploads/**/*
+!backend/uploads/**/.gitkeep

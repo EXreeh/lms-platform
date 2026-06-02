@@ -27,7 +27,7 @@ export function parseVideoEmbedUrl(url: string | null | undefined): {
     };
   }
 
-  if (/\.(mp4|webm|ogg)(\?|$)/i.test(url)) {
+  if (/\.(mp4|webm|ogg|mov|mkv)(\?|$)/i.test(url) || url.startsWith("/uploads/videos/")) {
     return { type: "html5", embedUrl: url, videoId: null };
   }
 

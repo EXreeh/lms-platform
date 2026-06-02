@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Playfair_Display } from "next/font/google";
 import { AuthProvider } from "@/context/auth-context";
+import { SessionGuard } from "@/components/auth/session-guard";
 import { ThemeProvider } from "@/context/theme-context";
 import { ToastProvider } from "@/context/toast-context";
 import Script from "next/script";
@@ -65,7 +66,9 @@ export default function RootLayout({
         </Script>
         <ThemeProvider>
           <AuthProvider>
-            <ToastProvider>{children}</ToastProvider>
+            <SessionGuard>
+              <ToastProvider>{children}</ToastProvider>
+            </SessionGuard>
           </AuthProvider>
         </ThemeProvider>
       </body>

@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ThumbnailInput } from "@/components/courses/thumbnail-input";
+import { LessonVideoField, type LessonVideoValue } from "@/components/courses/lesson-video-field";
 import { ModuleAccordion } from "@/components/courses/module-accordion";
 import { CourseResourcesSection } from "@/components/courses/course-resources-section";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ export default function EditCoursePage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [thumbnail, setThumbnail] = useState("");
+  const [thumbnailFileName, setThumbnailFileName] = useState<string | null>(null);
   const [price, setPrice] = useState("0");
   const [category, setCategory] = useState("");
   const [level, setLevel] = useState<CourseLevel>("BEGINNER");
@@ -51,7 +53,12 @@ export default function EditCoursePage() {
   const [moduleTitle, setModuleTitle] = useState("");
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonDescription, setLessonDescription] = useState("");
-  const [lessonVideoUrl, setLessonVideoUrl] = useState("");
+  const [lessonVideo, setLessonVideo] = useState<LessonVideoValue>({
+    videoUrl: "",
+    videoFileName: null,
+    videoMimeType: null,
+    videoSize: null,
+  });
   const [lessonDuration, setLessonDuration] = useState("0");
   const [selectedModuleId, setSelectedModuleId] = useState("");
 
@@ -68,6 +75,7 @@ export default function EditCoursePage() {
       setTitle(c.title);
       setDescription(c.description);
       setThumbnail(c.thumbnail ?? "");
+      setThumbnailFileName(c.thumbnailFileName ?? null);
       setPrice(String(c.price));
       setCategory(c.category);
       setLevel(c.level);
@@ -93,6 +101,7 @@ export default function EditCoursePage() {
         title,
         description,
         thumbnail: thumbnail || "",
+        thumbnailFileName: thumbnailFileName || undefined,
         price: parseFloat(price) || 0,
         category,
         level,
@@ -195,13 +204,16 @@ export default function EditCoursePage() {
       const res = await createLesson(selectedModuleId, {
         title: lessonTitle.trim(),
         description: lessonDescription.trim() || undefined,
-        videoUrl: lessonVideoUrl || undefined,
+        videoUrl: lessonVideo.videoUrl || undefined,
+        videoFileName: lessonVideo.videoFileName ?? undefined,
+        videoMimeType: lessonVideo.videoMimeType ?? undefined,
+        videoSize: lessonVideo.videoSize ?? undefined,
         duration: parseInt(lessonDuration, 10) || 0,
       });
       setCourse(res.data.course);
       setLessonTitle("");
       setLessonDescription("");
-      setLessonVideoUrl("");
+      setLessonVideo({ videoUrl: "", videoFileName: null, videoMimeType: null, videoSize: null });
       setLessonDuration("0");
       setSuccess("Lesson added");
     } catch (err) {
@@ -273,6 +285,16 @@ export default function EditCoursePage() {
             </motion.div>
           )}
 
+          {status === "REJECTED" && course.rejectionReason && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-4 dark:border-red-900 dark:bg-red-950/40">
+              <p className="text-sm font-semibold text-red-800 dark:text-red-300">Course rejected by admin</p>
+              <p className="mt-2 text-sm text-red-700 dark:text-red-200">{course.rejectionReason}</p>
+              <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                Update your course and submit for review again when ready.
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSave} className="space-y-6 rounded-2xl border border-border bg-card p-6">
             <h2 className="font-serif text-lg font-bold">Course details</h2>
             {isLocked && (
@@ -291,7 +313,15 @@ export default function EditCoursePage() {
                 className="w-full rounded-xl border border-border px-3.5 py-2.5 text-sm"
               />
             </div>
-            <ThumbnailInput value={thumbnail} onChange={setThumbnail} />
+            <ThumbnailInput
+              value={thumbnail}
+              thumbnailFileName={thumbnailFileName}
+              onChange={(url, meta) => {
+                setThumbnail(url);
+                setThumbnailFileName(meta?.fileName ?? null);
+              }}
+              disabled={isLocked}
+            />
             <div className="grid gap-4 sm:grid-cols-3">
               <Input label="Price" type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
               <Select
@@ -434,12 +464,7 @@ export default function EditCoursePage() {
                     className="w-full rounded-xl border border-border px-3.5 py-2.5 text-sm"
                   />
                 </div>
-                <Input
-                  label="Video URL"
-                  value={lessonVideoUrl}
-                  onChange={(e) => setLessonVideoUrl(e.target.value)}
-                  placeholder="https://youtube.com/watch?v=..."
-                />
+                <LessonVideoField value={lessonVideo} onChange={setLessonVideo} />
                 <Input
                   label="Duration (seconds)"
                   type="number"

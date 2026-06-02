@@ -114,10 +114,12 @@ model Course {
   slug        String      @unique
   description String      @db.Text
   thumbnail   String?
+  thumbnailFileName String? @map("thumbnail_file_name")
   price       Decimal     @default(0) @db.Decimal(10, 2)
   category    String
   level       CourseLevel  @default(BEGINNER)
   status      CourseStatus @default(DRAFT)
+  rejectionReason String?  @map("rejection_reason") @db.Text
   deleteStatus EntityStatus @default(ACTIVE) @map("delete_status")
   teacherId   String       @map("teacher_id")
   teacher     User         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
@@ -154,6 +156,9 @@ model Lesson {
   title        String
   description  String?      @db.Text
   videoUrl     String?      @map("video_url")
+  videoFileName String?     @map("video_file_name")
+  videoMimeType String?     @map("video_mime_type")
+  videoSize    Int?         @map("video_size")
   duration     Int          @default(0)
   order        Int          @default(0)
   deleteStatus EntityStatus @default(ACTIVE) @map("delete_status")
@@ -318,6 +323,9 @@ model Resource {
   type         ResourceType
   url          String
   fileName     String?      @map("file_name")
+  mimeType     String?      @map("mime_type")
+  fileSize     Int?         @map("file_size")
+  storageProvider String    @default("local") @map("storage_provider")
   courseId     String       @map("course_id")
   lessonId     String?      @map("lesson_id")
   uploadedById String       @map("uploaded_by_id")

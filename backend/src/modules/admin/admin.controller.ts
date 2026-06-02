@@ -147,6 +147,13 @@ export async function platformStats(_req: Request, res: Response): Promise<void>
   res.json({ success: true, data: { stats } });
 }
 
+export async function studentGrowth(req: Request, res: Response): Promise<void> {
+  requireAdmin(req);
+  const days = Math.min(365, Math.max(7, parseInt(String(req.query.days ?? "90"), 10) || 90));
+  const data = await adminService.getStudentGrowth(days);
+  res.json({ success: true, data });
+}
+
 export async function listResources(_req: Request, res: Response): Promise<void> {
   requireAdmin(_req);
   const resources = await adminService.listAdminResources();

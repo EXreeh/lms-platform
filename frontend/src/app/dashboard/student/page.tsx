@@ -7,20 +7,17 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { CourseSection } from "@/components/dashboard/course-section";
-import { DemoBanner } from "@/components/dashboard/demo-banner";
 import { ContinueLearningCard } from "@/components/learning/continue-learning-card";
 import { CourseProgressCard } from "@/components/learning/course-progress-card";
 import { DashboardStatsSkeleton } from "@/components/learning/learning-skeleton";
 import { Button } from "@/components/ui/button";
 import { fetchStudentDashboard } from "@/lib/dashboard-api";
-import { getDemoStudentDashboard } from "@/lib/demo-dashboard";
 import type { StudentDashboardData } from "@/types/dashboard";
 import { formatWatchTime } from "@/lib/video-utils";
-import { ApiClientError } from "@/lib/api";
+import { formatApiError } from "@/lib/format-api-error";
 
 export default function StudentDashboardPage() {
   const [data, setData] = useState<StudentDashboardData | null>(null);
-  const [showDemo, setShowDemo] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,16 +25,9 @@ export default function StudentDashboardPage() {
     void (async () => {
       try {
         const res = await fetchStudentDashboard();
-        if (res.data.isEmpty) {
-          setData(getDemoStudentDashboard());
-          setShowDemo(true);
-        } else {
-          setData(res.data);
-        }
+        setData(res.data);
       } catch (err) {
-        setError(err instanceof ApiClientError ? err.message : "Failed to load dashboard");
-        setData(getDemoStudentDashboard());
-        setShowDemo(true);
+        setError(formatApiError(err, "Could not load your dashboard."));
       } finally {
         setIsLoading(false);
       }
@@ -55,14 +45,12 @@ export default function StudentDashboardPage() {
         <div className="min-w-0 flex-1 space-y-8">
           {isLoading ? (
             <DashboardStatsSkeleton />
+          ) : error ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900 dark:bg-red-950/30">
+              <p className="text-red-700 dark:text-red-300">{error}</p>
+            </div>
           ) : data ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-              {showDemo && <DemoBanner />}
-              {error && (
-                <p className="text-sm text-amber-600 dark:text-amber-400" role="alert">
-                  {error} — showing demo data.
-                </p>
-              )}
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard label="Enrolled" value={data.stats.enrolled} icon="📖" accent="green" />

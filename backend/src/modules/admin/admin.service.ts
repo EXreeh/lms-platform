@@ -568,6 +568,37 @@ export async function getPlatformStats() {
   };
 }
 
+export async function getStudentGrowth(days = 90) {
+  const since = new Date();
+  since.setHours(0, 0, 0, 0);
+  since.setDate(since.getDate() - (days - 1));
+
+  const students = await prisma.user.findMany({
+    where: { role: "STUDENT", createdAt: { gte: since } },
+    select: { createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const buckets = new Map<string, number>();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(since);
+    d.setDate(since.getDate() + i);
+    buckets.set(d.toISOString().slice(0, 10), 0);
+  }
+
+  for (const s of students) {
+    const key = s.createdAt.toISOString().slice(0, 10);
+    if (buckets.has(key)) {
+      buckets.set(key, (buckets.get(key) ?? 0) + 1);
+    }
+  }
+
+  const series = Array.from(buckets.entries()).map(([date, count]) => ({ date, count }));
+  const total = students.length;
+
+  return { series, total, days };
+}
+
 export async function listAdminResources() {
   const { listAdminResources: list } = await import("../resources/resources.service.js");
   return list();

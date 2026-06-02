@@ -16,6 +16,12 @@ resourcesRoutes.get(
   asyncHandler(resourcesController.listMine),
 );
 
+resourcesRoutes.get(
+  "/enrolled",
+  authorize("STUDENT"),
+  asyncHandler(resourcesController.listEnrolled),
+);
+
 resourcesRoutes.post(
   "/",
   authorize("TEACHER", "ADMIN"),

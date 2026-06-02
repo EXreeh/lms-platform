@@ -7,6 +7,12 @@ export function fetchTeacherResources() {
   });
 }
 
+export function fetchEnrolledResources() {
+  return apiRequest<{ success: boolean; data: { resources: Resource[] } }>("/resources/enrolled", {
+    auth: true,
+  });
+}
+
 export function fetchCourseResources(courseId: string) {
   return apiRequest<{ success: boolean; data: { resources: Resource[] } }>(
     `/resources/course/${courseId}`,

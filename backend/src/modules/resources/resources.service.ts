@@ -46,6 +46,9 @@ export async function createResource(userId: string, role: Role, input: CreateRe
       type: input.type,
       url: input.url,
       fileName: input.fileName ?? null,
+      mimeType: input.mimeType ?? null,
+      fileSize: input.fileSize ?? null,
+      storageProvider: input.storageProvider ?? "local",
       courseId: course.id,
       lessonId: input.lessonId ?? null,
       uploadedById: userId,
@@ -87,6 +90,9 @@ export async function updateResource(
       ...(input.type !== undefined && { type: input.type }),
       ...(input.url !== undefined && { url: input.url }),
       ...(input.fileName !== undefined && { fileName: input.fileName ?? null }),
+      ...(input.mimeType !== undefined && { mimeType: input.mimeType ?? null }),
+      ...(input.fileSize !== undefined && { fileSize: input.fileSize ?? null }),
+      ...(input.storageProvider !== undefined && { storageProvider: input.storageProvider }),
     },
     include: { uploadedBy: { select: uploaderSelect } },
   });
@@ -273,6 +279,33 @@ export async function listLessonResourcesForStudent(studentId: string, lessonId:
   if (!enrollment) throw ApiError.forbidden("You must enroll in this course first");
 
   return listLessonResources(lessonId, "student");
+}
+
+export async function listStudentEnrolledResources(studentId: string) {
+  const enrollments = await prisma.enrollment.findMany({
+    where: { studentId },
+    select: { courseId: true },
+  });
+  const courseIds = enrollments.map((e) => e.courseId);
+  if (courseIds.length === 0) return [];
+
+  const resources = await prisma.resource.findMany({
+    where: {
+      courseId: { in: courseIds },
+      deleteStatus: "ACTIVE",
+    },
+    include: {
+      course: { select: { id: true, title: true, slug: true } },
+      lesson: { select: { id: true, title: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return resources.map((r) => ({
+    ...mapResource(r),
+    course: r.course,
+    lesson: r.lesson,
+  }));
 }
 
 export async function adminRestoreResource(resourceId: string) {

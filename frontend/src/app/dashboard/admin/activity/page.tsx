@@ -5,10 +5,11 @@ import { motion } from "framer-motion";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
+import { StudentGrowthChart } from "@/components/dashboard/student-growth-chart";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { fetchAdminActivity } from "@/lib/admin-api";
+import { fetchAdminActivity, fetchStudentGrowth } from "@/lib/admin-api";
 import type { ActivityItem, Pagination } from "@/types/admin";
 import { ApiClientError } from "@/lib/api";
 import { useToast } from "@/context/toast-context";
@@ -37,6 +38,9 @@ export default function AdminActivityPage() {
   });
   const [typeFilter, setTypeFilter] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [growthSeries, setGrowthSeries] = useState<{ date: string; count: number }[]>([]);
+  const [growthTotal, setGrowthTotal] = useState(0);
+  const [growthLoading, setGrowthLoading] = useState(true);
 
   const loadActivity = useCallback(async () => {
     setIsLoading(true);
@@ -59,15 +63,50 @@ export default function AdminActivityPage() {
     void loadActivity();
   }, [loadActivity]);
 
+  useEffect(() => {
+    void (async () => {
+      setGrowthLoading(true);
+      try {
+        const res = await fetchStudentGrowth(90);
+        setGrowthSeries(res.data.series);
+        setGrowthTotal(res.data.total);
+      } catch (err) {
+        toastError(err instanceof ApiClientError ? err.message : "Failed to load student growth");
+      } finally {
+        setGrowthLoading(false);
+      }
+    })();
+  }, [toastError]);
+
   return (
     <DashboardShell
-      title="Platform Activity"
-      description="Live feed of logins, enrollments, course events, and quiz attempts."
+      title="Reports & Analytics"
+      description="Student growth, platform activity, and engagement on CognitiaX AI."
       badge="Administrator"
     >
       <div className="flex flex-col gap-8 lg:flex-row">
         <DashboardSidebar role="ADMIN" />
         <div className="min-w-0 flex-1 space-y-6">
+          <motion.section
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="rounded-2xl border border-border bg-card p-5"
+          >
+            <h2 className="font-serif text-lg font-bold">Student growth</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              New student registrations over the last 90 days
+            </p>
+            <div className="mt-6">
+              {growthLoading ? (
+                <div className="flex justify-center py-12">
+                  <Spinner size="lg" label="Loading growth chart" />
+                </div>
+              ) : (
+                <StudentGrowthChart series={growthSeries} total={growthTotal} />
+              )}
+            </div>
+          </motion.section>
+
           <div className="flex flex-wrap items-center gap-3">
             <Select
               label="Filter"

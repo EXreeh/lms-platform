@@ -17,7 +17,9 @@ const envSchema = z.object({
     .transform((v) => v === "true")
     .default("false"),
   COOKIE_SAME_SITE: z.enum(["strict", "lax", "none"]).default("lax"),
-  CORS_ORIGIN: z.string().default("http://localhost:3000"),
+  COOKIE_DOMAIN: z.string().optional(),
+  FRONTEND_URL: z.string().default("http://localhost:3000"),
+  CORS_ORIGIN: z.string().optional(),
   OTP_SECRET: z.string().min(16).default("cognitiax-otp-secret-key"),
   OTP_EXPIRES_MINUTES: z.coerce.number().default(5),
   OTP_MAX_ATTEMPTS: z.coerce.number().default(5),
@@ -39,6 +41,20 @@ const envSchema = z.object({
     .default("true"),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+  STORAGE_PROVIDER: z.enum(["local", "s3", "r2"]).default("local"),
+  UPLOADS_DIR: z.string().default("uploads"),
+  STORAGE_PUBLIC_URL: z.string().default("/uploads"),
+  MAX_VIDEO_UPLOAD_MB: z.coerce.number().default(500),
+  MAX_RESOURCE_UPLOAD_MB: z.coerce.number().default(50),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_REGION: z.string().optional(),
+  AWS_S3_BUCKET: z.string().optional(),
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET: z.string().optional(),
+  R2_PUBLIC_URL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -49,6 +65,11 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+export const corsOrigins = (env.CORS_ORIGIN ?? env.FRONTEND_URL)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 export const isEmailConfigured = Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
 export const isRazorpayConfigured = Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET);
