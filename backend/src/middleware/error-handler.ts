@@ -11,8 +11,8 @@ export function errorHandler(
   if (err instanceof ApiError) {
     res.status(err.statusCode).json({
       success: false,
+      code: err.code ?? inferErrorCode(err.statusCode),
       message: err.message,
-      code: err.code,
     });
     return;
   }
@@ -33,6 +33,15 @@ export function errorHandler(
   console.error(err);
   res.status(500).json({
     success: false,
+    code: "STORAGE_ERROR",
     message: process.env.NODE_ENV === "production" ? "Internal server error" : String(err),
   });
+}
+
+function inferErrorCode(statusCode: number): string | undefined {
+  if (statusCode === 401) return "UNAUTHORIZED";
+  if (statusCode === 403) return "FORBIDDEN";
+  if (statusCode === 413) return "FILE_TOO_LARGE";
+  if (statusCode >= 500) return "STORAGE_ERROR";
+  return undefined;
 }

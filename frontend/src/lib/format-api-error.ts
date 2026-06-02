@@ -31,7 +31,8 @@ const FRIENDLY_BY_STATUS: Record<number, string> = {
 export function formatApiError(err: unknown, fallback = "Something went wrong. Please try again."): string {
   if (err instanceof ApiClientError) {
     if (err.code && FRIENDLY_BY_CODE[err.code]) {
-      return FRIENDLY_BY_CODE[err.code];
+      const friendly = FRIENDLY_BY_CODE[err.code];
+      if (friendly) return friendly;
     }
     if (err.errors) {
       const parts = Object.entries(err.errors).flatMap(([, messages]) =>

@@ -1,6 +1,16 @@
-import { API_URL } from "./constants";
+import { UPLOAD_API_URL } from "./constants";
 import { getAuthToken } from "./auth-storage";
 import { ApiClientError } from "./api";
+import {
+  assertFileWithinLimit,
+  FileTooLargeError,
+  tooLargeClientMessage,
+} from "./upload-config";
+import {
+  logUploadFileSelected,
+  logUploadRequest,
+  logUploadResponse,
+} from "./upload-debug";
 
 export interface UploadResult {
   url: string;
@@ -19,17 +29,56 @@ const ENDPOINTS: Record<UploadKind, string> = {
   thumbnail: "/uploads/thumbnail",
 };
 
+function tooLargeCodeForKind(kind: UploadKind): string {
+  if (kind === "video") return "VIDEO_FILE_TOO_LARGE";
+  if (kind === "resource") return "RESOURCE_FILE_TOO_LARGE";
+  return "THUMBNAIL_FILE_TOO_LARGE";
+}
+
+function parseUploadResponseBody(raw: string): {
+  success?: boolean;
+  message?: string;
+  code?: string;
+  data?: UploadResult;
+} {
+  if (!raw.trim()) return {};
+  try {
+    return JSON.parse(raw) as {
+      success?: boolean;
+      message?: string;
+      code?: string;
+      data?: UploadResult;
+    };
+  } catch {
+    return { message: raw.replace(/\s+/g, " ").trim().slice(0, 240) };
+  }
+}
+
 export function uploadFile(
   kind: UploadKind,
   file: File,
   onProgress?: (percent: number) => void,
 ): Promise<UploadResult> {
+  logUploadFileSelected(kind, file);
+
+  try {
+    assertFileWithinLimit(file, kind);
+  } catch (err) {
+    if (err instanceof FileTooLargeError) {
+      return Promise.reject(new ApiClientError(err.message, 400, err.code));
+    }
+    throw err;
+  }
+
+  const url = `${UPLOAD_API_URL}${ENDPOINTS[kind]}`;
+  logUploadRequest(kind, url);
+
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const formData = new FormData();
     formData.append("file", file);
 
-    xhr.open("POST", `${API_URL}${ENDPOINTS[kind]}`);
+    xhr.open("POST", url);
     xhr.withCredentials = true;
 
     const token = getAuthToken();
@@ -44,55 +93,79 @@ export function uploadFile(
     };
 
     xhr.onload = () => {
-      let data: {
-        success?: boolean;
-        message?: string;
-        code?: string;
-        data?: UploadResult;
-      } = {};
-      try {
-        data = JSON.parse(xhr.responseText) as typeof data;
-      } catch {
-        reject(new ApiClientError("Upload failed", xhr.status));
-        return;
-      }
+      const raw = xhr.responseText ?? "";
+      logUploadResponse(kind, xhr.status, raw);
+
+      const data = parseUploadResponseBody(raw);
 
       if (xhr.status >= 200 && xhr.status < 300 && data.data) {
         resolve(data.data);
         return;
       }
 
+      if (xhr.status === 413) {
+        reject(
+          new ApiClientError(
+            tooLargeClientMessage(kind, file.size),
+            413,
+            tooLargeCodeForKind(kind),
+          ),
+        );
+        return;
+      }
+
+      const message =
+        data.message ||
+        (raw.trim()
+          ? `Upload failed (HTTP ${xhr.status}): ${raw.replace(/\s+/g, " ").trim().slice(0, 180)}`
+          : `Upload failed (HTTP ${xhr.status}).`);
+
       reject(
-        new ApiClientError(
-          data.message ?? "Upload failed",
-          xhr.status,
-          data.code,
-        ),
+        new ApiClientError(message, xhr.status, data.code ?? inferCodeFromStatus(xhr.status)),
       );
     };
 
     xhr.onerror = () => {
-      reject(new ApiClientError("Upload failed. Check your connection and try again.", 0));
+      logUploadResponse(kind, 0, "(network error — no response body)");
+      reject(
+        new ApiClientError(
+          `Network error while uploading to ${url}. Ensure the backend is running and CORS allows ${typeof window !== "undefined" ? window.location.origin : "this origin"}.`,
+          0,
+          "NETWORK_ERROR",
+        ),
+      );
+    };
+
+    xhr.onabort = () => {
+      reject(new ApiClientError("Upload was cancelled.", 0, "UPLOAD_CANCELLED"));
     };
 
     xhr.send(formData);
   });
 }
 
+function inferCodeFromStatus(status: number): string | undefined {
+  if (status === 401) return "UNAUTHORIZED";
+  if (status === 403) return "FORBIDDEN";
+  if (status === 413) return "FILE_TOO_LARGE";
+  if (status >= 500) return "STORAGE_ERROR";
+  return undefined;
+}
+
 export function getVideoDurationFromFile(file: File): Promise<number> {
   return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
+    const videoUrl = URL.createObjectURL(file);
     const video = document.createElement("video");
     video.preload = "metadata";
     video.onloadedmetadata = () => {
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(videoUrl);
       resolve(Number.isFinite(video.duration) ? Math.floor(video.duration) : 0);
     };
     video.onerror = () => {
-      URL.revokeObjectURL(url);
+      URL.revokeObjectURL(videoUrl);
       resolve(0);
     };
-    video.src = url;
+    video.src = videoUrl;
   });
 }
 

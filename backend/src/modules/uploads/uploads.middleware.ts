@@ -18,7 +18,7 @@ function ensureDestinationDir(category: UploadCategory): string {
     mkdirSync(dir, { recursive: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to prepare upload folder";
-    throw ApiError.internal(`Upload folder unavailable: ${message}`, "STORAGE_UNAVAILABLE");
+    throw ApiError.internal(`Upload folder unavailable: ${message}`, "STORAGE_ERROR");
   }
   return dir;
 }
@@ -110,13 +110,13 @@ export function handleMulterErrorForCategory(category: UploadCategory) {
         next(
           ApiError.internal(
             "Upload storage folder is missing or unavailable.",
-            "STORAGE_UNAVAILABLE",
+            "STORAGE_ERROR",
           ),
         );
         return;
       }
       if (err.code === "EACCES" || err.code === "EPERM") {
-        next(ApiError.internal("Upload storage permission denied.", "STORAGE_PERMISSION"));
+        next(ApiError.internal("Upload storage permission denied.", "STORAGE_ERROR"));
         return;
       }
     }
@@ -132,7 +132,7 @@ export function handleMulterErrorForCategory(category: UploadCategory) {
         return;
       }
       if (err.message.includes("Upload folder unavailable")) {
-        next(ApiError.internal(err.message, "STORAGE_UNAVAILABLE"));
+        next(ApiError.internal(err.message, "STORAGE_ERROR"));
         return;
       }
     }

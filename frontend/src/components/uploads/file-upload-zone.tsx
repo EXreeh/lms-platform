@@ -5,10 +5,16 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { formatFileSize } from "@/lib/format-file-size";
-import { formatApiError } from "@/lib/format-api-error";
+import { formatUploadError } from "@/lib/format-upload-error";
 import { uploadFile, type UploadKind, type UploadResult } from "@/lib/uploads-api";
 import { ProtectedVideo } from "@/components/media/protected-video";
-import { tooLargeClientMessage } from "@/lib/upload-config";
+import { logUploadFileSelected } from "@/lib/upload-debug";
+import {
+  assertFileWithinLimit,
+  FileTooLargeError,
+  getMaxBytesForKind,
+  tooLargeClientMessage,
+} from "@/lib/upload-config";
 
 export interface UploadedFileInfo {
   url: string;
@@ -35,8 +41,15 @@ interface FileUploadZoneProps {
   urlMode?: boolean;
   onUrlModeChange?: (useUrl: boolean) => void;
   previewType?: "image" | "video" | "none";
-  /** Client-side max bytes — blocks upload before request */
+  /** Optional override; defaults to env limit for kind */
   maxBytes?: number;
+}
+
+function resolveMaxBytes(kind: UploadKind, maxBytes?: number): number {
+  if (maxBytes != null && Number.isFinite(maxBytes) && maxBytes > 0) {
+    return maxBytes;
+  }
+  return getMaxBytesForKind(kind);
 }
 
 export function FileUploadZone({
@@ -68,11 +81,23 @@ export function FileUploadZone({
   const processFile = useCallback(
     async (file: File) => {
       setError(null);
+      logUploadFileSelected(kind, file);
 
-      if (maxBytes != null && file.size > maxBytes) {
-        setError(tooLargeClientMessage(kind, file.size));
-        setSelectedName(null);
-        return;
+      const limit = resolveMaxBytes(kind, maxBytes);
+
+      try {
+        assertFileWithinLimit(file, kind);
+      } catch (err) {
+        if (err instanceof FileTooLargeError) {
+          setError(err.message);
+          setSelectedName(null);
+          return;
+        }
+        if (file.size > limit) {
+          setError(tooLargeClientMessage(kind, file.size));
+          setSelectedName(null);
+          return;
+        }
       }
 
       setSelectedName(file.name);
@@ -85,7 +110,7 @@ export function FileUploadZone({
         onUploaded(result);
         setProgress(100);
       } catch (err) {
-        setError(formatApiError(err, "Upload failed. Please try again."));
+        setError(formatUploadError(err, kind, file.size));
         setSelectedName(null);
       } finally {
         setIsUploading(false);

@@ -27,6 +27,14 @@ const BLOCKED_EXTENSIONS = new Set([
   ".ps1",
 ]);
 
+/** Browsers often send empty or generic MIME types for valid files. */
+const GENERIC_MIME_TYPES = new Set([
+  "",
+  "application/octet-stream",
+  "binary/octet-stream",
+  "application/x-msdownload",
+]);
+
 const CATEGORY_RULES: Record<
   UploadCategory,
   { extensions: Set<string>; mimeTypes: Set<string> }
@@ -39,11 +47,13 @@ const CATEGORY_RULES: Record<
       "video/webm",
       "video/x-matroska",
       "video/x-msvideo",
+      "video/x-mp4",
+      "application/mp4",
     ]),
   },
   thumbnail: {
     extensions: new Set([".jpg", ".jpeg", ".png", ".webp"]),
-    mimeTypes: new Set(["image/jpeg", "image/png", "image/webp"]),
+    mimeTypes: new Set(["image/jpeg", "image/png", "image/webp", "image/jpg"]),
   },
   resource: {
     extensions: new Set([
@@ -86,6 +96,20 @@ export function getFileExtension(filename: string): string {
   return dot >= 0 ? filename.slice(dot).toLowerCase() : "";
 }
 
+function isMimeAllowed(
+  category: UploadCategory,
+  ext: string,
+  mimeType: string,
+): boolean {
+  const rules = CATEGORY_RULES[category];
+  if (rules.mimeTypes.has(mimeType)) return true;
+  if (!rules.extensions.has(ext)) return false;
+  if (GENERIC_MIME_TYPES.has(mimeType)) return true;
+  // Trust extension for video/thumbnail when browsers misreport MIME
+  if (category === "video" || category === "thumbnail") return true;
+  return false;
+}
+
 export function validateUploadedFile(
   file: Express.Multer.File,
   category: UploadCategory,
@@ -109,10 +133,10 @@ export function validateUploadedFile(
     };
   }
 
-  if (!rules.mimeTypes.has(file.mimetype)) {
+  if (!isMimeAllowed(category, ext, file.mimetype)) {
     return {
       ok: false,
-      message: "Unsupported file type for this upload.",
+      message: `Unsupported file type for ${category} upload (${file.mimetype || "unknown MIME"}).`,
       code: "INVALID_FILE_TYPE",
     };
   }

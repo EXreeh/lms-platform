@@ -44,7 +44,7 @@ async function handleUpload(req: Request, res: Response, category: UploadCategor
 
     if (err instanceof ApiError) throw err;
 
-    throw ApiError.internal("File upload failed. Please try again.", "STORAGE_FAILURE");
+    throw ApiError.internal("File upload failed. Please try again.", "STORAGE_ERROR");
   }
 }
 
