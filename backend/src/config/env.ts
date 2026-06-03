@@ -38,7 +38,7 @@ const envSchema = z.object({
   MAIL_DEV_LOG: z
     .string()
     .transform((v) => v === "true")
-    .default("true"),
+    .default("false"),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
   STORAGE_PROVIDER: z.enum(["local", "s3", "r2"]).default("local"),

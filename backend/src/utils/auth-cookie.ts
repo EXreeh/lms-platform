@@ -32,5 +32,6 @@ export function setAuthCookie(res: Response, token: string): void {
 }
 
 export function clearAuthCookie(res: Response): void {
-  res.clearCookie(env.JWT_COOKIE_NAME, cookieBaseOptions());
+  const options = cookieBaseOptions();
+  res.clearCookie(env.JWT_COOKIE_NAME, { ...options, maxAge: 0 });
 }

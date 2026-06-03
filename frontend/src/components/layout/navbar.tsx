@@ -119,8 +119,12 @@ function navForRole(role?: Role): NavLink[] {
   return publicNav;
 }
 
-function resolveNavLinks(user: ReturnType<typeof useAuth>["user"], isLoading: boolean): NavLink[] {
-  if (isLoading) return publicNav;
+function resolveNavLinks(
+  user: ReturnType<typeof useAuth>["user"],
+  isLoading: boolean,
+  isAuthenticated: boolean,
+): NavLink[] {
+  if (isLoading || !isAuthenticated) return publicNav;
   if (user && isValidRole(user.role)) return navForRole(user.role);
   return publicNav;
 }
@@ -153,6 +157,7 @@ function NavLinkItem({
 function AuthActions({
   user,
   isLoading,
+  isAuthenticated,
   pathname,
   logout,
   onNavigate,
@@ -160,6 +165,7 @@ function AuthActions({
 }: {
   user: ReturnType<typeof useAuth>["user"];
   isLoading: boolean;
+  isAuthenticated: boolean;
   pathname: string;
   logout: () => Promise<void>;
   onNavigate?: () => void;
@@ -173,7 +179,7 @@ function AuthActions({
     );
   }
 
-  if (user && isValidRole(user.role)) {
+  if (isAuthenticated && user && isValidRole(user.role)) {
     const profileActive = pathname.startsWith("/dashboard/profile");
     if (compact) {
       return (
@@ -251,10 +257,10 @@ function AuthActions({
 
 export function Navbar() {
   const pathname = usePathname();
-  const { user, logout, isLoading } = useAuth();
+  const { user, logout, isLoading, isAuthenticated } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const links = resolveNavLinks(user, isLoading);
+  const links = resolveNavLinks(user, isLoading, isAuthenticated);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/80 bg-card/90 backdrop-blur-xl">
@@ -276,6 +282,7 @@ export function Navbar() {
             <AuthActions
               user={user}
               isLoading={isLoading}
+              isAuthenticated={isAuthenticated}
               pathname={pathname}
               logout={logout}
             />
@@ -317,6 +324,7 @@ export function Navbar() {
                 <AuthActions
                   user={user}
                   isLoading={isLoading}
+                  isAuthenticated={isAuthenticated}
                   pathname={pathname}
                   logout={logout}
                   onNavigate={() => setMobileOpen(false)}

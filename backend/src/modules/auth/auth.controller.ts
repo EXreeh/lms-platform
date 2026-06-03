@@ -17,6 +17,7 @@ export async function checkEmail(req: Request, res: Response): Promise<void> {
 
 export async function registerRequestOtp(req: Request, res: Response): Promise<void> {
   const input = req.body as RegisterRequestOtpInput;
+  console.log(`[Auth] Registration OTP requested → ${input.email}`);
   const result = await authService.requestRegistrationOtp(input);
 
   res.json({ success: true, ...result });
@@ -47,6 +48,7 @@ export async function login(req: Request, res: Response): Promise<void> {
   const result = await authService.login(input);
 
   setAuthCookie(res, result.token);
+  console.log(`[Auth] Login → ${result.user.email} (${result.user.role})`);
 
   res.json({
     success: true,
@@ -55,7 +57,8 @@ export async function login(req: Request, res: Response): Promise<void> {
   });
 }
 
-export async function logout(_req: Request, res: Response): Promise<void> {
+export async function logout(req: Request, res: Response): Promise<void> {
+  console.log(`[Auth] Logout request${req.user ? ` → ${req.user.email}` : ""}`);
   clearAuthCookie(res);
 
   res.json({
@@ -70,6 +73,9 @@ export async function me(req: Request, res: Response): Promise<void> {
   }
 
   const user = await authService.getProfile(req.user.id);
+  if (process.env.NODE_ENV !== "production") {
+    console.log(`[Auth] /me → ${user.email} (${user.role})`);
+  }
 
   res.json({
     success: true,
@@ -108,6 +114,7 @@ export async function changePassword(req: Request, res: Response): Promise<void>
 
 export async function forgotPasswordRequest(req: Request, res: Response): Promise<void> {
   const { email } = req.body as { email: string };
+  console.log(`[Auth] Password reset OTP requested → ${email}`);
   const result = await authService.requestPasswordResetOtp(email);
 
   res.json({ success: true, ...result });

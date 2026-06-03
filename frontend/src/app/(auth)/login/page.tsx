@@ -40,8 +40,12 @@ function LoginForm() {
         email: String(form.get("email")),
         password: String(form.get("password")),
       });
-      login(response.data.user, response.data.token, redirectTo);
+      await login(response.data.token, redirectTo);
     } catch (err) {
+      if (err instanceof Error && err.message.includes("establish session")) {
+        setError("Signed in but session could not be loaded. Please try again.");
+        return;
+      }
       if (err instanceof ApiClientError) {
         setError(err.message);
         if (err.errors) {

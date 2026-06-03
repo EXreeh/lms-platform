@@ -79,7 +79,7 @@ Copy from `backend/.env.example`. Required in production:
 
 Optional:
 
-- `SMTP_*` — email for OTP and password reset
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` — OTP and password reset (required in production; set `MAIL_DEV_LOG=false`)
 - `STORAGE_PROVIDER=local` — file uploads (ensure persistent volume for `uploads/`)
 - `UPLOADS_DIR`, `STORAGE_PUBLIC_URL`
 

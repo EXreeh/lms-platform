@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
+import { optionalAuthenticate } from "../../middleware/optional-authenticate.js";
 import { validateBody } from "../../middleware/validate.js";
 import { validateQuery } from "../../middleware/validate-query.js";
 import { otpRateLimiter, checkEmailRateLimiter } from "../../middleware/otp-rate-limit.js";
@@ -49,7 +50,7 @@ authRoutes.post(
 
 authRoutes.post("/login", validateBody(loginSchema), asyncHandler(authController.login));
 
-authRoutes.post("/logout", asyncHandler(authController.logout));
+authRoutes.post("/logout", optionalAuthenticate, asyncHandler(authController.logout));
 
 authRoutes.get("/me", authenticate, asyncHandler(authController.me));
 

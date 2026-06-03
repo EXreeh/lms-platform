@@ -92,7 +92,7 @@ export default function RegisterPage() {
   async function handleVerifyOtp(otp: string) {
     const response = await verifyRegistrationOtp(email.trim().toLowerCase(), otp);
     setOtpOpen(false);
-    login(response.data.user, response.data.token);
+    await login(response.data.token);
   }
 
   async function handleResendOtp() {

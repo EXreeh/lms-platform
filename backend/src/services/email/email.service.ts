@@ -4,6 +4,16 @@ import { ApiError } from "../../utils/api-error.js";
 
 let transporter: nodemailer.Transporter | null = null;
 
+function smtpConfigSummary(): string {
+  return [
+    `host=${env.SMTP_HOST ?? "(not set)"}`,
+    `port=${env.SMTP_PORT}`,
+    `secure=${env.SMTP_SECURE}`,
+    `user=${env.SMTP_USER ?? "(not set)"}`,
+    `from=${env.EMAIL_FROM}`,
+  ].join(", ");
+}
+
 function createSmtpTransporter(): nodemailer.Transporter {
   return nodemailer.createTransport({
     host: env.SMTP_HOST,
@@ -13,7 +23,6 @@ function createSmtpTransporter(): nodemailer.Transporter {
       user: env.SMTP_USER,
       pass: env.SMTP_PASS,
     },
-    // Gmail on port 587 uses STARTTLS
     ...(env.SMTP_PORT === 587 && !env.SMTP_SECURE ? { requireTLS: true } : {}),
     connectionTimeout: 10_000,
     greetingTimeout: 10_000,
@@ -34,18 +43,27 @@ function getTransporter(): nodemailer.Transporter {
 
 /** Verify SMTP credentials at startup (Gmail app password, etc.) */
 export async function verifyEmailTransport(): Promise<void> {
+  console.log(`📧 SMTP config: ${smtpConfigSummary()}`);
+
   if (!isEmailConfigured) {
-    console.warn("⚠️  SMTP not configured — OTP emails will be logged to console only.");
+    if (env.NODE_ENV === "production") {
+      console.error(
+        "❌ SMTP not configured in production — OTP emails will fail. Set SMTP_HOST, SMTP_USER, SMTP_PASS.",
+      );
+    } else {
+      console.warn("⚠️  SMTP not configured — OTP emails will be logged to console only.");
+    }
     return;
   }
 
   try {
     await getTransporter().verify();
-    console.log(`✉️  Email ready (SMTP: ${env.SMTP_HOST}:${env.SMTP_PORT} as ${env.SMTP_USER})`);
+    console.log("✉️  SMTP verified successfully");
   } catch (error) {
-    console.error("❌ SMTP verification failed:", error);
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error(`❌ SMTP verification failed: ${reason}`);
     console.error(
-      "   Check SMTP_USER, SMTP_PASS (Gmail App Password), and that 2FA + App Passwords are enabled.",
+      "   Check SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS (Gmail App Password), and EMAIL_FROM.",
     );
   }
 }
@@ -65,25 +83,29 @@ export async function sendEmail(params: {
   };
 
   if (!isEmailConfigured) {
-    if (env.MAIL_DEV_LOG || env.NODE_ENV === "development") {
+    if (env.NODE_ENV === "development" && env.MAIL_DEV_LOG) {
       console.info("\n📧 [CognitiaX AI — Dev Email (SMTP not configured)]");
       console.info(`To: ${params.to}`);
       console.info(`Subject: ${params.subject}`);
       console.info(`Body:\n${params.text}\n`);
       return;
     }
-    throw ApiError.internal("Email service is not configured");
+    throw ApiError.internal(
+      "OTP email could not be sent. Please try again later.",
+      "EMAIL_SEND_FAILED",
+    );
   }
+
+  console.log(`📧 Sending email → ${params.to} (${params.subject})`);
 
   try {
     const info = await getTransporter().sendMail(mail);
-    if (env.NODE_ENV === "development") {
-      console.info(`📧 Email sent → ${params.to} (${info.messageId})`);
-    }
+    console.log(`✉️  Email sent → ${params.to} (${info.messageId})`);
   } catch (error) {
-    console.error("Failed to send email:", error);
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error(`❌ Email send failed → ${params.to}: ${reason}`);
     throw ApiError.internal(
-      "Unable to send verification email. Please try again later.",
+      "OTP email could not be sent. Please try again later.",
       "EMAIL_SEND_FAILED",
     );
   }

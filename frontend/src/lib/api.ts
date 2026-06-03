@@ -1,5 +1,5 @@
 import { apiUrl } from "./constants";
-import { getAuthToken } from "./auth-storage";
+import { logAuth } from "./auth-debug";
 
 export class ApiClientError extends Error {
   constructor(
@@ -20,22 +20,28 @@ interface RequestOptions extends Omit<RequestInit, "body" | "credentials"> {
   credentials?: RequestCredentials;
 }
 
+const AUTH_DEBUG_PATHS = ["/auth/login", "/auth/logout", "/auth/me", "/auth/register"];
+
+function shouldLogAuth(path: string): boolean {
+  return AUTH_DEBUG_PATHS.some((p) => path.startsWith(p));
+}
+
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, auth = false, credentials = "include", headers, ...rest } = options;
+  const { body, credentials = "include", headers, ...rest } = options;
 
   const requestHeaders: HeadersInit = {
     "Content-Type": "application/json",
     ...headers,
   };
 
-  if (auth) {
-    const token = getAuthToken();
-    if (token) {
-      (requestHeaders as Record<string, string>).Authorization = `Bearer ${token}`;
-    }
+  const url = apiUrl(path);
+  const logAuthRequest = shouldLogAuth(path);
+
+  if (logAuthRequest) {
+    logAuth(`request:${path}`, { method: rest.method ?? "GET" });
   }
 
-  const response = await fetch(apiUrl(path), {
+  const response = await fetch(url, {
     ...rest,
     headers: requestHeaders,
     credentials,
@@ -44,9 +50,13 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   const data = await response.json().catch(() => ({}));
 
+  if (logAuthRequest) {
+    logAuth(`response:${path}`, { status: response.status, ok: response.ok });
+  }
+
   if (!response.ok) {
     if (process.env.NODE_ENV === "development") {
-      console.error("[API]", apiUrl(path), { status: response.status, body: data });
+      console.error("[API]", url, { status: response.status, body: data });
     }
     throw new ApiClientError(
       data.message ?? "Request failed",

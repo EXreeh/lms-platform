@@ -21,10 +21,10 @@ const roleBadgeColors: Record<string, string> = {
 };
 
 export function DashboardShell({ title, description, badge, children }: DashboardShellProps) {
-  const { user, isLoading } = useAuth();
-  const role = user?.role ?? "STUDENT";
+  const { user, isLoading, isAuthenticated } = useAuth();
+  const role = user?.role;
 
-  if (isLoading) {
+  if (isLoading || !isAuthenticated || !role) {
     return (
       <PageBackground variant="dashboard">
         <Navbar />

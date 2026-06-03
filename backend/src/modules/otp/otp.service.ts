@@ -57,7 +57,7 @@ export async function createAndSendOtp(params: {
   const code = generateOtpCode();
   const expiresAt = new Date(Date.now() + env.OTP_EXPIRES_MINUTES * 60 * 1000);
 
-  await prisma.otpChallenge.create({
+  const challenge = await prisma.otpChallenge.create({
     data: {
       email: params.email,
       purpose: params.purpose,
@@ -66,7 +66,17 @@ export async function createAndSendOtp(params: {
     },
   });
 
-  await params.send(code);
+  console.log(`🔐 OTP send started (${params.purpose}) → ${params.email}`);
+
+  try {
+    await params.send(code);
+    console.log(`✅ OTP email sent (${params.purpose}) → ${params.email}`);
+  } catch (error) {
+    await prisma.otpChallenge.delete({ where: { id: challenge.id } }).catch(() => undefined);
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error(`❌ OTP email failed (${params.purpose}) → ${params.email}: ${reason}`);
+    throw error;
+  }
 }
 
 export async function verifyOtp(params: {

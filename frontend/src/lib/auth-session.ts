@@ -1,6 +1,7 @@
 import type { User, Role } from "@/types/auth";
 import { logoutUser } from "@/lib/auth-api";
-import { clearAuthStorage } from "@/lib/auth-storage";
+import { clearAuthStorage, clearClientSessionStorage } from "@/lib/auth-storage";
+import { logAuth } from "@/lib/auth-debug";
 import { ApiClientError } from "@/lib/api";
 
 export const VALID_ROLES: Role[] = ["STUDENT", "TEACHER", "ADMIN"];
@@ -26,13 +27,20 @@ export function isAuthSessionError(error: unknown): boolean {
   return false;
 }
 
-/** Clears client auth storage and httpOnly cookie via backend logout. */
+/** Clears httpOnly cookie via backend, then all client auth storage. */
 export async function destroySession(): Promise<void> {
-  clearAuthStorage();
+  logAuth("destroySession:start");
   try {
     await logoutUser();
-  } catch {
-    // Cookie may already be invalid — local state is cleared regardless
+    logAuth("destroySession:logout-ok");
+  } catch (error) {
+    logAuth("destroySession:logout-failed", {
+      message: error instanceof Error ? error.message : "unknown",
+    });
+  } finally {
+    clearAuthStorage();
+    clearClientSessionStorage();
+    logAuth("destroySession:client-cleared");
   }
 }
 
