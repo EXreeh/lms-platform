@@ -45,6 +45,7 @@ export function verifyRegistrationOtp(email: string, otp: string) {
   return apiRequest<AuthResponse>("/auth/register/verify", {
     method: "POST",
     body: { email, otp },
+    credentials: "include",
   });
 }
 
@@ -52,12 +53,14 @@ export function loginUser(payload: LoginPayload) {
   return apiRequest<AuthResponse>("/auth/login", {
     method: "POST",
     body: payload,
+    credentials: "include",
   });
 }
 
 export function logoutUser() {
   return apiRequest<{ success: boolean; message: string }>("/auth/logout", {
     method: "POST",
+    credentials: "include",
   });
 }
 
@@ -65,6 +68,7 @@ export function fetchCurrentUser() {
   return apiRequest<MeResponse>("/auth/me", {
     method: "GET",
     auth: true,
+    credentials: "include",
   });
 }
 

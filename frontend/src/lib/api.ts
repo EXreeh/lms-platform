@@ -13,13 +13,15 @@ export class ApiClientError extends Error {
   }
 }
 
-interface RequestOptions extends Omit<RequestInit, "body"> {
+interface RequestOptions extends Omit<RequestInit, "body" | "credentials"> {
   body?: unknown;
   auth?: boolean;
+  /** Defaults to "include" for httpOnly cookie auth across origins */
+  credentials?: RequestCredentials;
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { body, auth = false, headers, ...rest } = options;
+  const { body, auth = false, credentials = "include", headers, ...rest } = options;
 
   const requestHeaders: HeadersInit = {
     "Content-Type": "application/json",
@@ -36,7 +38,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const response = await fetch(`${API_URL}${path}`, {
     ...rest,
     headers: requestHeaders,
-    credentials: "include",
+    credentials,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 

@@ -66,10 +66,14 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 
-export const corsOrigins = (env.CORS_ORIGIN ?? env.FRONTEND_URL)
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+/** Comma-separated origins; FRONTEND_URL is always included. */
+export const corsOrigins = Array.from(
+  new Set(
+    [...(env.CORS_ORIGIN ?? "").split(","), env.FRONTEND_URL]
+      .map((origin) => origin.trim().replace(/\/$/, ""))
+      .filter(Boolean),
+  ),
+);
 
 export const isEmailConfigured = Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
 export const isRazorpayConfigured = Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET);

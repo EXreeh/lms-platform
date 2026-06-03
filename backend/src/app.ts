@@ -4,7 +4,8 @@ import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
-import { env, corsOrigins } from "./config/env.js";
+import { env } from "./config/env.js";
+import { getCorsOptions } from "./config/cors.js";
 import { apiRouter } from "./routes/index.js";
 import { notFoundHandler } from "./middleware/not-found.js";
 import { errorHandler } from "./middleware/error-handler.js";
@@ -19,12 +20,7 @@ export function createApp() {
       crossOriginResourcePolicy: { policy: "cross-origin" },
     }),
   );
-  app.use(
-    cors({
-      origin: corsOrigins,
-      credentials: true,
-    }),
-  );
+  app.use(cors(getCorsOptions()));
   app.use(cookieParser());
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
   app.use(express.json({ limit: "10mb" }));
