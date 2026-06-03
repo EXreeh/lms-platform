@@ -20,8 +20,13 @@ function extractToken(req: Request): string | null {
 
 export function authenticate(req: Request, _res: Response, next: NextFunction): void {
   const token = extractToken(req);
+  const viaBearer = Boolean(req.headers.authorization?.startsWith("Bearer "));
+  const viaCookie = Boolean(req.cookies?.[env.JWT_COOKIE_NAME]);
 
   if (!token) {
+    console.warn(
+      `[Auth] /me unauthorized — no token (cookie=${viaCookie}, bearer=${viaBearer}, cookieName=${env.JWT_COOKIE_NAME})`,
+    );
     next(ApiError.unauthorized("Authentication required"));
     return;
   }
@@ -35,6 +40,7 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
       });
 
       if (!user) {
+        console.warn(`[Auth] /me unauthorized — user not found (${payload.sub})`);
         next(ApiError.unauthorized("Invalid or expired token"));
         return;
       }
@@ -50,7 +56,9 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
         role: user.role,
       };
       next();
-    } catch {
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "token verify failed";
+      console.warn(`[Auth] /me unauthorized — ${reason} (bearer=${viaBearer}, cookie=${viaCookie})`);
       next(ApiError.unauthorized("Invalid or expired token"));
     }
   })();

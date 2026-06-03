@@ -17,7 +17,13 @@ const envSchema = z.object({
     .transform((v) => v === "true")
     .default("false"),
   COOKIE_SAME_SITE: z.enum(["strict", "lax", "none"]).default("lax"),
-  COOKIE_DOMAIN: z.string().optional(),
+  COOKIE_DOMAIN: z
+    .string()
+    .optional()
+    .transform((v) => {
+      const trimmed = v?.trim();
+      return trimmed ? trimmed : undefined;
+    }),
   FRONTEND_URL: z.string().default("http://localhost:3000"),
   CORS_ORIGIN: z.string().optional(),
   OTP_SECRET: z.string().min(16).default("cognitiax-otp-secret-key"),
@@ -34,7 +40,7 @@ const envSchema = z.object({
     .default("false"),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
-  EMAIL_FROM: z.string().default("CognitiaX AI <noreply@cognitiax.ai>"),
+  EMAIL_FROM: z.string().default("CognitiaX AI <admin@cognitiaxai.com>"),
   MAIL_DEV_LOG: z
     .string()
     .transform((v) => v === "true")

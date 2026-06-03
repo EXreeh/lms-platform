@@ -31,6 +31,7 @@ export function requestRegistrationOtp(payload: RegisterRequestPayload) {
   return apiRequest<OtpMessageResponse>("/auth/register/request-otp", {
     method: "POST",
     body: payload,
+    credentials: "include",
   });
 }
 
@@ -38,6 +39,7 @@ export function resendRegistrationOtp(email: string) {
   return apiRequest<OtpMessageResponse>("/auth/register/resend-otp", {
     method: "POST",
     body: { email },
+    credentials: "include",
   });
 }
 
@@ -64,10 +66,11 @@ export function logoutUser() {
   });
 }
 
-export function fetchCurrentUser() {
+export function fetchCurrentUser(options?: { bearerToken?: string }) {
   return apiRequest<MeResponse>("/auth/me", {
     method: "GET",
     auth: true,
+    bearerToken: options?.bearerToken,
     credentials: "include",
   });
 }
@@ -96,6 +99,7 @@ export function requestPasswordResetOtp(email: string) {
   return apiRequest<OtpMessageResponse>("/auth/password/forgot", {
     method: "POST",
     body: { email },
+    credentials: "include",
   });
 }
 
@@ -103,6 +107,7 @@ export function resendPasswordResetOtp(email: string) {
   return apiRequest<OtpMessageResponse>("/auth/password/resend-otp", {
     method: "POST",
     body: { email },
+    credentials: "include",
   });
 }
 
@@ -110,6 +115,7 @@ export function verifyPasswordResetOtp(email: string, otp: string) {
   return apiRequest<PasswordResetVerifyResponse>("/auth/password/verify-otp", {
     method: "POST",
     body: { email, otp },
+    credentials: "include",
   });
 }
 
@@ -121,6 +127,7 @@ export function resetPassword(payload: {
   return apiRequest<OtpMessageResponse>("/auth/password/reset", {
     method: "POST",
     body: payload,
+    credentials: "include",
   });
 }
 
@@ -141,7 +148,12 @@ export function updateAccountProfile(payload: { firstName: string; lastName: str
       };
       message: string;
     };
-  }>("/auth/profile", { method: "PATCH", body: payload, auth: true });
+  }>("/auth/profile", {
+    method: "PATCH",
+    body: payload,
+    auth: true,
+    credentials: "include",
+  });
 }
 
 export function changeAccountPassword(payload: {
@@ -153,5 +165,6 @@ export function changeAccountPassword(payload: {
     method: "POST",
     body: payload,
     auth: true,
+    credentials: "include",
   });
 }

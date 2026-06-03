@@ -74,7 +74,7 @@ Copy from `backend/.env.example`. Required in production:
 | `FRONTEND_URL` | Production frontend URL, e.g. `https://your-app.vercel.app` |
 | `COOKIE_SECURE` | `true` |
 | `COOKIE_SAME_SITE` | `lax` (same domain) or `none` (cross-subdomain; requires HTTPS) |
-| `COOKIE_DOMAIN` | Optional, e.g. `.yourdomain.com` |
+| `COOKIE_DOMAIN` | Leave **unset** for Vercel + Railway (cross-origin). Only set for shared parent domain |
 | `CORS_ORIGIN` | Optional override; defaults to `FRONTEND_URL` |
 
 Optional:
@@ -225,9 +225,21 @@ Usually a stale JWT after database reset. Logout or clear cookies; the app now v
 
 Ensure `FRONTEND_URL` or `CORS_ORIGIN` matches the exact browser origin (scheme + host + port).
 
-### Cookies not sent
+### Cookies not sent / "session could not be verified"
 
-Check `COOKIE_SECURE`, `COOKIE_SAME_SITE`, and that both apps use HTTPS in production.
+Vercel (frontend) and Railway (API) are **cross-origin**. Browsers may block third-party httpOnly cookies. The app uses the **Bearer token** from the login JSON body for `/auth/me` (stored in `localStorage` for middleware + API).
+
+Railway checklist:
+
+- `NODE_ENV=production`
+- `FRONTEND_URL=https://lmsplatform-mu.vercel.app` (exact, no trailing slash)
+- `JWT_SECRET` set (32+ chars) and unchanged across deploys
+- `COOKIE_DOMAIN` **unset** (empty)
+- `JWT_COOKIE_NAME=cognitiax_token` (default)
+
+Vercel: `NEXT_PUBLIC_API_URL=https://lmsdatabase-production.up.railway.app` (no `/api` suffix). Optional: `NEXT_PUBLIC_AUTH_DEBUG=true` while debugging (browser console).
+
+Check Railway logs for `[Auth] Login success` and `[Auth] GET /me resolved`.
 
 ### Uploads 404
 

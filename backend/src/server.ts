@@ -12,6 +12,8 @@ async function start() {
     await prisma.$connect();
     console.log("Database connected");
     logCorsConfig();
+    console.log(`JWT cookie name: ${env.JWT_COOKIE_NAME}`);
+    console.log(`JWT_SECRET configured: ${Boolean(env.JWT_SECRET && env.JWT_SECRET.length >= 32)}`);
 
     if (env.STORAGE_PROVIDER === "local") {
       await ensureUploadDirectories();

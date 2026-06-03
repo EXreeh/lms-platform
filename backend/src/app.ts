@@ -15,6 +15,11 @@ import { setUploadStaticHeaders } from "./utils/static-upload-headers.js";
 export function createApp() {
   const app = express();
 
+  // Required behind Railway/reverse proxies so secure cookies and HTTPS behave correctly
+  if (env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
+
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: "cross-origin" },

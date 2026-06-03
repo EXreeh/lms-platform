@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import * as authService from "./auth.service.js";
 import { ApiError } from "../../utils/api-error.js";
-import { setAuthCookie, clearAuthCookie } from "../../utils/auth-cookie.js";
+import { setAuthCookie, clearAuthCookie, cookieOptionsForLog } from "../../utils/auth-cookie.js";
 import type {
   LoginInput,
   RegisterRequestOtpInput,
@@ -48,7 +48,10 @@ export async function login(req: Request, res: Response): Promise<void> {
   const result = await authService.login(input);
 
   setAuthCookie(res, result.token);
-  console.log(`[Auth] Login → ${result.user.email} (${result.user.role})`);
+  console.log(
+    `[Auth] Login success → id=${result.user.id} email=${result.user.email} role=${result.user.role}`,
+  );
+  console.log("[Auth] Login cookie options:", cookieOptionsForLog());
 
   res.json({
     success: true,
@@ -68,14 +71,15 @@ export async function logout(req: Request, res: Response): Promise<void> {
 }
 
 export async function me(req: Request, res: Response): Promise<void> {
+  console.log("[Auth] GET /me called");
+
   if (!req.user) {
+    console.warn("[Auth] GET /me failed — req.user missing after authenticate");
     throw ApiError.unauthorized();
   }
 
   const user = await authService.getProfile(req.user.id);
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[Auth] /me → ${user.email} (${user.role})`);
-  }
+  console.log(`[Auth] GET /me resolved → id=${user.id} email=${user.email} role=${user.role}`);
 
   res.json({
     success: true,

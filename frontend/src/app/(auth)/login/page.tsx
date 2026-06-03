@@ -14,6 +14,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { loginUser } from "@/lib/auth-api";
 import { useAuth } from "@/context/auth-context";
 import { ApiClientError } from "@/lib/api";
+import { logAuth, logAuthError } from "@/lib/auth-debug";
 import { getSafeRedirectPath } from "@/lib/safe-redirect";
 import { brand } from "@/lib/design-tokens";
 import { layout } from "@/lib/layout";
@@ -36,17 +37,30 @@ function LoginForm() {
     const form = new FormData(event.currentTarget);
 
     try {
+      logAuth("login:submit");
       const response = await loginUser({
         email: String(form.get("email")),
         password: String(form.get("password")),
       });
-      await login(response.data.token, redirectTo);
+      logAuth("login:api-ok", {
+        userId: response.data.user.id,
+        role: response.data.user.role,
+        hasToken: Boolean(response.data.token),
+      });
+      await login(response.data.token, redirectTo, response.data.user);
     } catch (err) {
-      if (err instanceof Error && err.message.includes("establish session")) {
-        setError("Signed in but session could not be loaded. Please try again.");
+      if (err instanceof ApiClientError && err.code === "SESSION_VERIFY_FAILED") {
+        logAuthError("login:session-verify-failed", {
+          status: err.status,
+          message: err.message,
+        });
+        setError(
+          "Signed in but session could not be verified. Open the browser console (F12) for details, or set NEXT_PUBLIC_AUTH_DEBUG=true on Vercel.",
+        );
         return;
       }
       if (err instanceof ApiClientError) {
+        logAuthError("login:error", { status: err.status, code: err.code, message: err.message });
         setError(err.message);
         if (err.errors) {
           const mapped: Record<string, string> = {};

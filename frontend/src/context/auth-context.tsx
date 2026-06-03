@@ -18,7 +18,8 @@ import {
   syncMiddlewareCookie,
 } from "@/lib/auth-storage";
 import { getSafeRedirectPath } from "@/lib/safe-redirect";
-import { logAuth } from "@/lib/auth-debug";
+import { logAuth, logAuthError } from "@/lib/auth-debug";
+import { ApiClientError } from "@/lib/api";
 import {
   destroySession,
   isAuthSessionError,
@@ -29,9 +30,13 @@ interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (token: string, redirectTo?: string | null) => Promise<void>;
+  login: (
+    token: string,
+    redirectTo?: string | null,
+    fallbackUser?: User,
+  ) => Promise<void>;
   logout: () => Promise<void>;
-  refreshUser: (options?: { force?: boolean }) => Promise<User | null>;
+  refreshUser: (options?: { force?: boolean; bearerToken?: string }) => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -51,44 +56,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const refreshUser = useCallback(async (options?: { force?: boolean }): Promise<User | null> => {
-    if (meInFlight.current && !options?.force) {
-      return meInFlight.current;
-    }
+  const refreshUser = useCallback(
+    async (options?: {
+      force?: boolean;
+      bearerToken?: string;
+      preserveSessionOnFailure?: boolean;
+    }): Promise<User | null> => {
+      if (meInFlight.current && !options?.force) {
+        return meInFlight.current;
+      }
 
-    const run = async (): Promise<User | null> => {
-      logAuth("me:fetch");
-      try {
-        const response = await fetchCurrentUser();
-        const nextUser = response.data.user;
+      const run = async (): Promise<User | null> => {
+        logAuth("me:fetch", { hasBearer: Boolean(options?.bearerToken) });
+        try {
+          const response = await fetchCurrentUser({
+            bearerToken: options?.bearerToken,
+          });
+          const nextUser = response.data.user;
 
-        if (!isValidUser(nextUser)) {
-          await destroySession();
-          applyUser(null);
+          if (!isValidUser(nextUser)) {
+            if (!options?.preserveSessionOnFailure) {
+              await destroySession();
+            }
+            applyUser(null);
+            return null;
+          }
+
+          applyUser(nextUser);
+          logAuth("me:ok", { userId: nextUser.id, role: nextUser.role });
+          return nextUser;
+        } catch (error) {
+          const detail =
+            error instanceof ApiClientError
+              ? { status: error.status, code: error.code, message: error.message }
+              : { message: error instanceof Error ? error.message : "unknown" };
+          logAuthError("me:failed", detail);
+
+          if (isAuthSessionError(error) && !options?.preserveSessionOnFailure) {
+            await destroySession();
+            applyUser(null);
+          }
           return null;
         }
+      };
 
-        applyUser(nextUser);
-        logAuth("me:ok", { userId: nextUser.id, role: nextUser.role });
-        return nextUser;
-      } catch (error) {
-        if (isAuthSessionError(error)) {
-          await destroySession();
-          applyUser(null);
-          logAuth("me:unauthorized");
+      const promise = run().finally(() => {
+        if (meInFlight.current === promise) {
+          meInFlight.current = null;
         }
-        return null;
-      }
-    };
-
-    const promise = run().finally(() => {
-      if (meInFlight.current === promise) {
-        meInFlight.current = null;
-      }
-    });
-    meInFlight.current = promise;
-    return promise;
-  }, [applyUser]);
+      });
+      meInFlight.current = promise;
+      return promise;
+    },
+    [applyUser],
+  );
 
   useEffect(() => {
     if (hasBootstrapped.current) return;
@@ -101,23 +122,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser]);
 
   const login = useCallback(
-    async (token: string, redirectTo?: string | null) => {
-      logAuth("login:start");
+    async (token: string, redirectTo?: string | null, fallbackUser?: User) => {
+      logAuth("login:establish-session", { hasFallbackUser: Boolean(fallbackUser) });
       applyUser(null);
       clearAuthStorage();
       syncMiddlewareCookie(token);
 
-      const nextUser = await refreshUser({ force: true });
-      if (!nextUser) {
-        throw new Error("Unable to establish session after login");
+      const nextUser = await refreshUser({
+        force: true,
+        bearerToken: token,
+        preserveSessionOnFailure: true,
+      });
+
+      const resolved =
+        nextUser ?? (fallbackUser && isValidUser(fallbackUser) ? fallbackUser : null);
+
+      if (!resolved) {
+        logAuthError("login:session-not-established", {
+          message: "GET /auth/me failed after login",
+        });
+        throw new ApiClientError(
+          "Session could not be verified after login. Check console for details.",
+          401,
+          "SESSION_VERIFY_FAILED",
+        );
       }
 
+      applyUser(resolved);
+      syncMiddlewareCookie(token);
+
       const safe = getSafeRedirectPath(redirectTo ?? null);
-      const destination = safe ?? getDashboardPathForRole(nextUser.role);
+      const destination = safe ?? getDashboardPathForRole(resolved.role);
 
       router.refresh();
       router.push(destination);
-      logAuth("login:done", { destination, role: nextUser.role });
+      logAuth("login:done", { destination, role: resolved.role });
     },
     [applyUser, refreshUser, router],
   );

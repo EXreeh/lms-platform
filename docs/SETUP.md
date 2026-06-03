@@ -60,9 +60,9 @@ MAIL_DEV_LOG=false
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_SECURE=false
-SMTP_USER=your@gmail.com
-SMTP_PASS=your-app-password
-EMAIL_FROM="CognitiaX AI <your@gmail.com>"
+SMTP_USER=admin@cognitiaxai.com
+SMTP_PASS=your-gmail-app-password
+EMAIL_FROM="CognitiaX AI <admin@cognitiaxai.com>"
 ```
 
 Use a [Google App Password](https://myaccount.google.com/apppasswords) with 2FA enabled.
