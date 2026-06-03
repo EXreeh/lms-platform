@@ -132,7 +132,7 @@ Copy from `frontend/.env.example`:
 
 | Variable | Production value |
 |----------|------------------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL, e.g. `https://api.yourdomain.com/api` |
+| `NEXT_PUBLIC_API_URL` | Backend origin only (no `/api`), e.g. `https://lmsdatabase-production.up.railway.app` |
 | `NEXT_PUBLIC_APP_URL` | Frontend URL, e.g. `https://your-app.vercel.app` |
 
 Do **not** set `API_PROXY_URL` in production unless you use Next.js rewrites to proxy the API. Prefer pointing `NEXT_PUBLIC_API_URL` directly at the backend.

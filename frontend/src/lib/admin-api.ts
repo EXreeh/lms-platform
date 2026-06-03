@@ -214,9 +214,9 @@ export function fetchAdminCertificates() {
 
 export async function downloadAdminCertificate(certificateId: string, filename: string) {
   const { getAuthToken } = await import("./auth-storage");
-  const { API_URL } = await import("./constants");
+  const { apiUrl } = await import("./constants");
   const token = getAuthToken();
-  const res = await fetch(`${API_URL}/admin/certificates/${certificateId}/download`, {
+  const res = await fetch(apiUrl(`/admin/certificates/${certificateId}/download`), {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     credentials: "include",
   });

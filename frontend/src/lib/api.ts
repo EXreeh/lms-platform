@@ -1,4 +1,4 @@
-import { API_URL } from "./constants";
+import { apiUrl } from "./constants";
 import { getAuthToken } from "./auth-storage";
 
 export class ApiClientError extends Error {
@@ -35,7 +35,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     }
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetch(apiUrl(path), {
     ...rest,
     headers: requestHeaders,
     credentials,
@@ -46,7 +46,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   if (!response.ok) {
     if (process.env.NODE_ENV === "development") {
-      console.error("[API]", path, { status: response.status, body: data });
+      console.error("[API]", apiUrl(path), { status: response.status, body: data });
     }
     throw new ApiClientError(
       data.message ?? "Request failed",

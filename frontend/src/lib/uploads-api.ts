@@ -1,4 +1,4 @@
-import { UPLOAD_API_URL } from "./constants";
+import { uploadApiUrl } from "./constants";
 import { getAuthToken } from "./auth-storage";
 import { ApiClientError } from "./api";
 import {
@@ -70,7 +70,7 @@ export function uploadFile(
     throw err;
   }
 
-  const url = `${UPLOAD_API_URL}${ENDPOINTS[kind]}`;
+  const url = uploadApiUrl(ENDPOINTS[kind]);
   logUploadRequest(kind, url);
 
   return new Promise((resolve, reject) => {

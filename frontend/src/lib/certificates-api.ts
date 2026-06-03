@@ -1,5 +1,5 @@
 import type { Certificate, CertificateEligibility, CertificateVerification } from "@/types/certificate";
-import { API_URL } from "./constants";
+import { apiUrl } from "./constants";
 import { getAuthToken } from "./auth-storage";
 import { apiRequest } from "./api";
 
@@ -39,7 +39,7 @@ export function verifyCertificate(code: string) {
 
 export async function downloadCertificate(certificateId: string, filename: string) {
   const token = getAuthToken();
-  const res = await fetch(`${API_URL}/certificates/${certificateId}/download`, {
+  const res = await fetch(apiUrl(`/certificates/${certificateId}/download`), {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     credentials: "include",
   });
