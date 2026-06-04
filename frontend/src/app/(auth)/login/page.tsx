@@ -47,7 +47,7 @@ function LoginForm() {
         role: response.data.user.role,
         hasToken: Boolean(response.data.token),
       });
-      await login(response.data.token, redirectTo, response.data.user);
+      await login(response.data.token, redirectTo);
     } catch (err) {
       if (err instanceof ApiClientError && err.code === "SESSION_VERIFY_FAILED") {
         logAuthError("login:session-verify-failed", {

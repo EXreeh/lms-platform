@@ -62,6 +62,7 @@ export function loginUser(payload: LoginPayload) {
 export function logoutUser() {
   return apiRequest<{ success: boolean; message: string }>("/auth/logout", {
     method: "POST",
+    auth: true,
     credentials: "include",
   });
 }
@@ -92,7 +93,7 @@ export function fetchAccountProfile() {
       };
       stats: Record<string, number>;
     };
-  }>("/auth/account", { auth: true });
+  }>("/auth/account", { auth: true, credentials: "include" });
 }
 
 export function requestPasswordResetOtp(email: string) {

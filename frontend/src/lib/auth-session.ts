@@ -27,7 +27,13 @@ export function isAuthSessionError(error: unknown): boolean {
   return false;
 }
 
-/** Clears httpOnly cookie via backend, then all client auth storage. */
+/** Synchronous client cleanup (navbar → public immediately). */
+export function clearClientAuthState(): void {
+  clearAuthStorage();
+  clearClientSessionStorage();
+}
+
+/** Backend logout + client cleanup (for invalid /me, etc.). */
 export async function destroySession(): Promise<void> {
   logAuth("destroySession:start");
   try {
@@ -38,8 +44,7 @@ export async function destroySession(): Promise<void> {
       message: error instanceof Error ? error.message : "unknown",
     });
   } finally {
-    clearAuthStorage();
-    clearClientSessionStorage();
+    clearClientAuthState();
     logAuth("destroySession:client-cleared");
   }
 }

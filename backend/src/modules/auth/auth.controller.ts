@@ -62,6 +62,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 
 export async function logout(req: Request, res: Response): Promise<void> {
   console.log(`[Auth] Logout request${req.user ? ` → ${req.user.email}` : ""}`);
+  console.log("[Auth] Logout cookie options:", cookieOptionsForLog());
   clearAuthCookie(res);
 
   res.json({

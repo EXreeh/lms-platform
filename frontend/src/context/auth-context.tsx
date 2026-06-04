@@ -12,15 +12,13 @@ import {
 import { useRouter } from "next/navigation";
 import type { User } from "@/types/auth";
 import { fetchCurrentUser } from "@/lib/auth-api";
-import {
-  clearAuthStorage,
-  getDashboardPathForRole,
-  syncMiddlewareCookie,
-} from "@/lib/auth-storage";
+import { getDashboardPathForRole, syncMiddlewareCookie } from "@/lib/auth-storage";
 import { getSafeRedirectPath } from "@/lib/safe-redirect";
 import { logAuth, logAuthError } from "@/lib/auth-debug";
 import { ApiClientError } from "@/lib/api";
+import { logoutUser } from "@/lib/auth-api";
 import {
+  clearClientAuthState,
   destroySession,
   isAuthSessionError,
   isValidUser,
@@ -30,11 +28,7 @@ interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (
-    token: string,
-    redirectTo?: string | null,
-    fallbackUser?: User,
-  ) => Promise<void>;
+  login: (token: string, redirectTo?: string | null) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: (options?: { force?: boolean; bearerToken?: string }) => Promise<User | null>;
 }
@@ -47,6 +41,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const meInFlight = useRef<Promise<User | null> | null>(null);
   const hasBootstrapped = useRef(false);
+  /** Bumped on login/logout so stale /me responses cannot overwrite state. */
+  const sessionEpoch = useRef(0);
 
   const applyUser = useCallback((nextUser: User | null) => {
     setUser(nextUser);
@@ -60,24 +56,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (options?: {
       force?: boolean;
       bearerToken?: string;
-      preserveSessionOnFailure?: boolean;
+      epoch?: number;
     }): Promise<User | null> => {
       if (meInFlight.current && !options?.force) {
         return meInFlight.current;
       }
 
+      const epoch = options?.epoch ?? sessionEpoch.current;
+
       const run = async (): Promise<User | null> => {
-        logAuth("me:fetch", { hasBearer: Boolean(options?.bearerToken) });
+        logAuth("me:fetch", { hasBearer: Boolean(options?.bearerToken), epoch });
         try {
           const response = await fetchCurrentUser({
             bearerToken: options?.bearerToken,
           });
           const nextUser = response.data.user;
 
+          if (epoch !== sessionEpoch.current) {
+            logAuth("me:stale-ignored", { epoch, current: sessionEpoch.current });
+            return null;
+          }
+
           if (!isValidUser(nextUser)) {
-            if (!options?.preserveSessionOnFailure) {
-              await destroySession();
-            }
+            await destroySession();
             applyUser(null);
             return null;
           }
@@ -86,13 +87,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           logAuth("me:ok", { userId: nextUser.id, role: nextUser.role });
           return nextUser;
         } catch (error) {
+          if (epoch !== sessionEpoch.current) {
+            return null;
+          }
+
           const detail =
             error instanceof ApiClientError
               ? { status: error.status, code: error.code, message: error.message }
               : { message: error instanceof Error ? error.message : "unknown" };
           logAuthError("me:failed", detail);
 
-          if (isAuthSessionError(error) && !options?.preserveSessionOnFailure) {
+          if (isAuthSessionError(error)) {
             await destroySession();
             applyUser(null);
           }
@@ -122,54 +127,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser]);
 
   const login = useCallback(
-    async (token: string, redirectTo?: string | null, fallbackUser?: User) => {
-      logAuth("login:establish-session", { hasFallbackUser: Boolean(fallbackUser) });
+    async (token: string, redirectTo?: string | null) => {
+      sessionEpoch.current += 1;
+      const epoch = sessionEpoch.current;
+      meInFlight.current = null;
+
+      logAuth("login:establish-session", { epoch });
       applyUser(null);
-      clearAuthStorage();
+      clearClientAuthState();
       syncMiddlewareCookie(token);
 
       const nextUser = await refreshUser({
         force: true,
         bearerToken: token,
-        preserveSessionOnFailure: true,
+        epoch,
       });
 
-      const resolved =
-        nextUser ?? (fallbackUser && isValidUser(fallbackUser) ? fallbackUser : null);
-
-      if (!resolved) {
-        logAuthError("login:session-not-established", {
-          message: "GET /auth/me failed after login",
-        });
+      if (!nextUser || epoch !== sessionEpoch.current) {
+        logAuthError("login:session-not-established", { epoch });
         throw new ApiClientError(
-          "Session could not be verified after login. Check console for details.",
+          "Session could not be verified after login.",
           401,
           "SESSION_VERIFY_FAILED",
         );
       }
 
-      applyUser(resolved);
-      syncMiddlewareCookie(token);
-
       const safe = getSafeRedirectPath(redirectTo ?? null);
-      const destination = safe ?? getDashboardPathForRole(resolved.role);
+      const destination = safe ?? getDashboardPathForRole(nextUser.role);
 
       router.refresh();
       router.push(destination);
-      logAuth("login:done", { destination, role: resolved.role });
+      logAuth("login:done", { destination, role: nextUser.role });
     },
     [applyUser, refreshUser, router],
   );
 
   const logout = useCallback(async () => {
+    sessionEpoch.current += 1;
+    meInFlight.current = null;
+
     logAuth("logout:start");
     applyUser(null);
     setIsLoading(false);
 
-    await destroySession();
+    try {
+      await logoutUser();
+      logAuth("logout:api-ok");
+    } catch (error) {
+      logAuth("logout:api-failed", {
+        message: error instanceof Error ? error.message : "unknown",
+      });
+    }
 
+    clearClientAuthState();
     router.refresh();
-    router.push("/");
+    router.push("/login");
     logAuth("logout:done");
   }, [applyUser, router]);
 

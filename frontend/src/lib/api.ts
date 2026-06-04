@@ -89,11 +89,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   if (!response.ok) {
     if (logAuthRequest) {
-      logAuthError(`failed:${path}`, {
-        status: response.status,
-        url,
-        body: data,
-      });
+      logAuthError(`failed:${path}`, { status: response.status, code: (data as { code?: string }).code });
     } else if (process.env.NODE_ENV === "development") {
       console.error("[API]", url, { status: response.status, body: data });
     }

@@ -4,17 +4,18 @@ import { env } from "../config/env.js";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
+/**
+ * Production (cross-origin Vercel → Railway): Secure + SameSite=None.
+ * Development: Secure=false + SameSite=Lax.
+ */
 export function cookieBaseOptions(): CookieOptions {
   const isProduction = env.NODE_ENV === "production";
 
-  const secure = env.COOKIE_SECURE || isProduction;
-  const sameSite: CookieOptions["sameSite"] = isProduction ? "none" : env.COOKIE_SAME_SITE;
-
   const options: CookieOptions = {
     httpOnly: true,
-    secure,
-    sameSite,
     path: "/",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
   };
 
   const domain = env.COOKIE_DOMAIN?.trim();
@@ -36,6 +37,7 @@ export function cookieOptionsForLog(): Record<string, unknown> {
     path: opts.path,
     domain: opts.domain ?? "(host default)",
     maxAgeMs: SEVEN_DAYS_MS,
+    nodeEnv: env.NODE_ENV,
   };
 }
 
