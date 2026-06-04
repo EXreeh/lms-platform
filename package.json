@@ -12,9 +12,12 @@
     "dev": "concurrently -n frontend,backend -c blue,green \"npm run dev -w frontend\" \"npm run dev -w backend\"",
     "dev:frontend": "npm run dev -w frontend",
     "dev:backend": "npm run dev -w backend",
-    "build": "npm run build -w database && npm run build -w backend && npm run build -w frontend",
-    "build:frontend": "npm run build -w frontend",
+    "build": "npm run build:database && npm run build:backend && npm run build -w frontend",
+    "build:database": "npm run generate -w database",
     "build:backend": "npm run build -w backend",
+    "build:railway": "npm run build:database && npm run build:backend",
+    "build:frontend": "npm run build -w frontend",
+    "start": "npm run start -w backend",
     "db:generate": "npm run generate -w database",
     "db:migrate": "npm run migrate -w database",
     "db:push": "npm run push -w database",
@@ -29,5 +32,5 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "postinstall": "npm run db:generate"
+  "postinstall": "npm run build:database"
 }

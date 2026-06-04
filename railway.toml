@@ -1,0 +1,9 @@
+# CognitiaX AI LMS — deploy from monorepo root (not backend/ alone).
+# In Railway: set Root Directory to repository root, or use these commands.
+
+[build]
+buildCommand = "npm ci && npm run build:railway"
+
+[deploy]
+startCommand = "npm run start"
+restartPolicyType = "on_failure"

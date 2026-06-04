@@ -5,27 +5,34 @@
   "type": "module",
   "main": "./generated/client/index.js",
   "types": "./generated/client/index.d.ts",
+  "files": [
+    "generated/client",
+    "prisma"
+  ],
   "exports": {
     ".": {
       "types": "./generated/client/index.d.ts",
-      "import": "./generated/client/index.js"
-    }
+      "import": "./generated/client/index.js",
+      "default": "./generated/client/index.js"
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
-    "generate": "prisma generate",
-    "migrate": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
-    "push": "prisma db push",
-    "studio": "prisma studio",
-    "build": "prisma generate",
+    "generate": "npx prisma generate",
+    "build": "npx prisma generate",
+    "prepare": "npx prisma generate",
+    "migrate": "npx prisma migrate dev",
+    "migrate:deploy": "npx prisma migrate deploy",
+    "push": "npx prisma db push",
+    "studio": "npx prisma studio",
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.8.2"
+    "@prisma/client": "^6.8.2",
+    "prisma": "^6.8.2"
   },
   "devDependencies": {
     "bcrypt": "^5.1.1",
-    "prisma": "^6.8.2",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"
   },

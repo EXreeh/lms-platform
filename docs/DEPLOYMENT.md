@@ -55,9 +55,13 @@ Change these passwords before going live with real users.
 
 ### Build settings
 
-- **Root directory:** repository root (or `backend` if your host supports monorepo subpaths)
-- **Build command:** `npm run build -w backend`
-- **Start command:** `npm run start -w backend`
+Deploy from the **monorepo root** (not `backend/` alone). The backend depends on `@lms/database`, which requires `prisma generate` first.
+
+- **Root directory:** repository root (`.`)
+- **Build command:** `npm ci && npm run build:railway`
+- **Start command:** `npm run start`
+
+`build:railway` runs `prisma generate` in `database/`, then compiles `backend/`. A `railway.toml` at the repo root sets these commands if your service uses it.
 
 The server listens on `process.env.PORT`.
 
