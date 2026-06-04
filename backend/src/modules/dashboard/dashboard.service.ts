@@ -3,6 +3,10 @@ import { prisma } from "../../config/database.js";
 import { mapCourse } from "../courses/courses.mapper.js";
 import * as learningService from "../learning/learning.service.js";
 import { getPlatformStats, listActivity } from "../admin/admin.service.js";
+import * as messagesService from "../messages/messages.service.js";
+import * as batchesService from "../batches/batches.service.js";
+import * as feesService from "../fees/fees.service.js";
+import * as liveClassesService from "../live-classes/live-classes.service.js";
 
 const teacherSelect = {
   id: true,
@@ -18,11 +22,16 @@ const courseListInclude = {
 } as const;
 
 export async function getTeacherDashboard(userId: string) {
-  const courses = await prisma.course.findMany({
-    where: { teacherId: userId, deleteStatus: { not: "DELETED" } },
-    include: courseListInclude,
-    orderBy: { updatedAt: "desc" },
-  });
+  const [courses, batches, unreadMessages, upcomingLive] = await Promise.all([
+    prisma.course.findMany({
+      where: { teacherId: userId, deleteStatus: { not: "DELETED" } },
+      include: courseListInclude,
+      orderBy: { updatedAt: "desc" },
+    }),
+    batchesService.getTeacherBatches(userId),
+    messagesService.getUnreadCount(userId),
+    liveClassesService.listLiveClasses({ teacherId: userId, upcoming: true }),
+  ]);
 
   const mapped = courses.map((c) => ({
     ...mapCourse(c),
@@ -53,6 +62,10 @@ export async function getTeacherDashboard(userId: string) {
     courseSlug: c.slug,
   }));
 
+  const batchStudentCount = batches.reduce((sum, b) => sum + b.studentCount, 0);
+  const latestMessages = await messagesService.getInbox(userId);
+  const latestMessage = latestMessages[0] ?? null;
+
   return {
     stats: {
       totalCourses: courses.length,
@@ -61,7 +74,14 @@ export async function getTeacherDashboard(userId: string) {
       underReview: underReview.length,
       totalEnrollments,
       totalLessons,
+      assignedBatches: batches.length,
+      batchStudentCount,
+      unreadMessages,
+      upcomingLiveClasses: upcomingLive.length,
     },
+    batches,
+    latestMessage,
+    upcomingLiveClasses: upcomingLive.slice(0, 5),
     publishedCourses: published,
     underReviewCourses: underReview,
     draftCourses: drafts,
@@ -70,8 +90,11 @@ export async function getTeacherDashboard(userId: string) {
   };
 }
 
-export async function getAdminDashboard() {
-  const [stats, recentUsers, courses, teachers, activityResult] = await Promise.all([
+export async function getAdminDashboard(adminUserId: string) {
+  await feesService.refreshOverdueStatuses();
+
+  const [stats, recentUsers, courses, teachers, activityResult, feeAnalytics, activeBatches, upcomingLive, unreadMessages] =
+    await Promise.all([
     getPlatformStats(),
     prisma.user.findMany({
       orderBy: { createdAt: "desc" },
@@ -108,6 +131,10 @@ export async function getAdminDashboard() {
       take: 10,
     }),
     listActivity({ page: 1, limit: 15 }),
+    feesService.getFeeAnalytics(),
+    batchesService.getActiveBatchCount(),
+    liveClassesService.getUpcomingCount(),
+    messagesService.getUnreadCount(adminUserId),
   ]);
 
   const coursesForModeration = courses
@@ -126,6 +153,12 @@ export async function getAdminDashboard() {
       pendingModeration: stats.pendingModeration,
       totalEnrollments: stats.totalEnrollments,
       activeUsers: stats.activeUsers,
+      totalFeesCollected: feeAnalytics.totalCollected,
+      totalPendingFees: feeAnalytics.totalPending,
+      overdueStudents: feeAnalytics.overdueStudents,
+      activeBatches,
+      upcomingLiveClasses: upcomingLive,
+      unreadMessages,
     },
     recentRegistrations: recentUsers.map((u) => ({
       id: u.id,
@@ -152,11 +185,22 @@ export async function getAdminDashboard() {
 }
 
 export async function getStudentDashboard(userId: string) {
-  const [enrollments, analytics, continueLearning] = await Promise.all([
+  await feesService.refreshOverdueStatuses();
+
+  const [enrollments, analytics, continueLearning, feeDashboard, batch, unreadMessages, upcomingLive] =
+    await Promise.all([
     learningService.getEnrolledCourses(userId),
     learningService.getStudentAnalytics(userId),
     learningService.getContinueLearning(userId),
+    feesService.getStudentFeeDashboard(userId),
+    batchesService.getStudentBatch(userId),
+    messagesService.getUnreadCount(userId),
+    liveClassesService.listLiveClasses({ studentId: userId, upcoming: true }),
   ]);
+
+  const latestMessages = await messagesService.getInbox(userId);
+  const latestMessage = latestMessages[0] ?? null;
+  const primaryPlan = feeDashboard.plans[0];
 
   const enrolledCourses = enrollments.map((e) => ({
     enrollmentId: e.id,
@@ -186,7 +230,22 @@ export async function getStudentDashboard(userId: string) {
       hoursLearned: analytics.hoursLearned,
       lessonsCompleted: analytics.totalLessonsCompleted,
       averageProgress: analytics.averageProgress,
+      totalFee: feeDashboard.totalFee,
+      paidFee: feeDashboard.paidFee,
+      pendingFee: feeDashboard.pendingFee,
+      feeAccessLabel: primaryPlan?.accessLabel ?? "Active",
+      unreadMessages,
     },
+    feeSummary: {
+      totalFee: feeDashboard.totalFee,
+      paidFee: feeDashboard.paidFee,
+      pendingFee: feeDashboard.pendingFee,
+      dueDate: primaryPlan?.dueDate ?? null,
+      accessLabel: primaryPlan?.accessLabel ?? "Active",
+    },
+    batch,
+    latestMessage,
+    upcomingLiveClass: upcomingLive[0] ?? null,
     enrolledCourses,
     continueLearning: continueLearning
       ? {

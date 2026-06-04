@@ -32,6 +32,8 @@ const envSchema = z.object({
   OTP_RESEND_COOLDOWN_SECONDS: z.coerce.number().default(60),
   OTP_MAX_SENDS_PER_HOUR: z.coerce.number().default(5),
   RESET_TOKEN_EXPIRES_IN: z.string().default("15m"),
+  EMAIL_PROVIDER: z.enum(["smtp", "resend"]).default("smtp"),
+  RESEND_API_KEY: z.string().optional(),
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_SECURE: z
@@ -81,5 +83,15 @@ export const corsOrigins = Array.from(
   ),
 );
 
-export const isEmailConfigured = Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+export const isSmtpConfigured = Boolean(
+  env.SMTP_HOST?.trim() && env.SMTP_USER?.trim() && env.SMTP_PASS?.trim(),
+);
+
+export const isResendConfigured = Boolean(env.RESEND_API_KEY?.trim());
+
+export const isEmailProviderConfigured =
+  env.EMAIL_PROVIDER === "resend" ? isResendConfigured : isSmtpConfigured;
+
+/** @deprecated Use isEmailProviderConfigured */
+export const isEmailConfigured = isEmailProviderConfigured;
 export const isRazorpayConfigured = Boolean(env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET);

@@ -22,7 +22,7 @@ async function start() {
     const smtpVerified = await verifyEmailTransport();
     if (!smtpVerified && env.NODE_ENV === "production") {
       console.warn(
-        "[SMTP] Server starting without verified SMTP — registration OTP emails may fail until SMTP is fixed.",
+        `[Email] Server starting without verified ${env.EMAIL_PROVIDER} provider — OTP emails may fail until email env is fixed.`,
       );
     }
 

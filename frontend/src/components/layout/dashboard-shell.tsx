@@ -21,12 +21,25 @@ const roleBadgeColors: Record<string, string> = {
 };
 
 export function DashboardShell({ title, description, badge, children }: DashboardShellProps) {
-  const { user, isLoading, isAuthenticated, isLoggingOut } = useAuth();
+  const { user, isLoading, isAuthenticated, isLoggingOut, authDegraded } = useAuth();
 
   const awaitingSession = isLoading && !isLoggingOut && user === null;
   const ready = Boolean(user?.role) && isAuthenticated && !isLoggingOut;
 
-  if (awaitingSession || !ready) {
+  if (awaitingSession) {
+    return (
+      <PageBackground variant="dashboard">
+        <Navbar />
+        <AuthLoading
+          slowMessage={
+            authDegraded ? "Server is taking longer than usual. Please try again." : undefined
+          }
+        />
+      </PageBackground>
+    );
+  }
+
+  if (!ready) {
     return (
       <PageBackground variant="dashboard">
         <Navbar />

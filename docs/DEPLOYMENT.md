@@ -83,7 +83,10 @@ Copy from `backend/.env.example`. Required in production:
 
 Optional:
 
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` — OTP and password reset (required in production; set `MAIL_DEV_LOG=false`)
+- `EMAIL_PROVIDER` — `resend` (recommended on Railway) or `smtp`
+- `EMAIL_FROM` — e.g. `CognitiaX AI <admin@cognitiaxai.com>` (must match a verified Resend domain when using Resend)
+- `RESEND_API_KEY` — when `EMAIL_PROVIDER=resend`
+- `SMTP_*` — when `EMAIL_PROVIDER=smtp`; set `MAIL_DEV_LOG=false` in production
 - `STORAGE_PROVIDER=local` — file uploads (ensure persistent volume for `uploads/`)
 - `UPLOADS_DIR`, `STORAGE_PUBLIC_URL`
 

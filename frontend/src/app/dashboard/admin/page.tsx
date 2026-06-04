@@ -59,14 +59,26 @@ export default function AdminDashboardPage() {
             </div>
           ) : data ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
                 <StatCard label="Students" value={data.stats.totalStudents} icon="🎓" accent="green" />
                 <StatCard label="Teachers" value={data.stats.totalTeachers} icon="👨‍🏫" accent="gold" />
                 <StatCard label="Courses" value={data.stats.totalCourses} icon="📚" />
-                <StatCard label="Enrollments" value={data.stats.totalEnrollments} icon="📋" accent="green" />
-                <StatCard label="Active users" value={data.stats.activeUsers} icon="⚡" accent="gold" />
-                <StatCard label="Published" value={data.stats.publishedCourses} icon="✓" accent="green" />
-                <StatCard label="Pending review" value={data.stats.pendingModeration} icon="⏳" accent="gold" />
+                <StatCard
+                  label="Fees collected"
+                  value={`₹${(data.stats.totalFeesCollected ?? 0).toLocaleString()}`}
+                  icon="💰"
+                  accent="green"
+                />
+                <StatCard
+                  label="Pending fees"
+                  value={`₹${(data.stats.totalPendingFees ?? 0).toLocaleString()}`}
+                  icon="⏳"
+                  accent="gold"
+                />
+                <StatCard label="Overdue" value={data.stats.overdueStudents ?? 0} icon="⚠" />
+                <StatCard label="Active batches" value={data.stats.activeBatches ?? 0} icon="📅" />
+                <StatCard label="Live classes" value={data.stats.upcomingLiveClasses ?? 0} icon="▶" />
+                <StatCard label="Unread msgs" value={data.stats.unreadMessages ?? 0} icon="✉" />
               </div>
 
               <div className="flex flex-wrap gap-3">
@@ -79,8 +91,14 @@ export default function AdminDashboardPage() {
                 <Link href="/dashboard/admin/activity">
                   <Button variant="secondary">View activity</Button>
                 </Link>
-                <Link href="/dashboard/admin/payments">
-                  <Button variant="secondary">Revenue & payments</Button>
+                <Link href="/dashboard/admin/fees">
+                  <Button variant="secondary">Fee management</Button>
+                </Link>
+                <Link href="/dashboard/admin/batches">
+                  <Button variant="secondary">Batches</Button>
+                </Link>
+                <Link href="/dashboard/admin/messages">
+                  <Button variant="secondary">Messages</Button>
                 </Link>
               </div>
 

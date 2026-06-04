@@ -8,8 +8,9 @@ export async function teacher(req: Request, res: Response): Promise<void> {
   res.json({ success: true, data });
 }
 
-export async function admin(_req: Request, res: Response): Promise<void> {
-  const data = await dashboardService.getAdminDashboard();
+export async function admin(req: Request, res: Response): Promise<void> {
+  if (!req.user) throw ApiError.unauthorized();
+  const data = await dashboardService.getAdminDashboard(req.user.id);
   res.json({ success: true, data });
 }
 

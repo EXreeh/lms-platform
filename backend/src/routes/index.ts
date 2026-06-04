@@ -10,10 +10,17 @@ import { certificatesRoutes } from "../modules/certificates/certificates.routes.
 import { paymentsRoutes } from "../modules/payments/payments.routes.js";
 import { uploadsRoutes } from "../modules/uploads/uploads.routes.js";
 import { adminRoutes } from "../modules/admin/admin.routes.js";
+import { feesRoutes } from "../modules/fees/fees.routes.js";
+import { batchesRoutes } from "../modules/batches/batches.routes.js";
+import { messagesRoutes } from "../modules/messages/messages.routes.js";
+import { liveClassesRoutes } from "../modules/live-classes/live-classes.routes.js";
 
 export const apiRouter = Router();
 
 apiRouter.get("/health", async (_req, res) => {
+  const started = Date.now();
+  console.log("[Health] GET /health hit");
+
   let database: "connected" | "disconnected" = "disconnected";
 
   try {
@@ -24,12 +31,15 @@ apiRouter.get("/health", async (_req, res) => {
   }
 
   const status = database === "connected" ? "ok" : "degraded";
+  const ms = Date.now() - started;
+  console.log(`[Health] GET /health ${status} — ${ms}ms database=${database}`);
 
   res.status(status === "ok" ? 200 : 503).json({
     status,
     app: "CognitiaX AI LMS",
     timestamp: new Date().toISOString(),
     database,
+    responseMs: ms,
   });
 });
 
@@ -44,3 +54,7 @@ apiRouter.use("/certificates", certificatesRoutes);
 apiRouter.use("/payments", paymentsRoutes);
 apiRouter.use("/uploads", uploadsRoutes);
 apiRouter.use("/admin", adminRoutes);
+apiRouter.use("/fees", feesRoutes);
+apiRouter.use("/batches", batchesRoutes);
+apiRouter.use("/messages", messagesRoutes);
+apiRouter.use("/live-classes", liveClassesRoutes);

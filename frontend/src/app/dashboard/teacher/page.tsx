@@ -87,6 +87,54 @@ export default function TeacherDashboardPage() {
                 />
               </div>
 
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                  label="Assigned batches"
+                  value={data.stats.assignedBatches ?? 0}
+                  icon="📅"
+                  accent="gold"
+                />
+                <StatCard
+                  label="Batch students"
+                  value={data.stats.batchStudentCount ?? 0}
+                  icon="👥"
+                />
+                <StatCard
+                  label="Unread messages"
+                  value={data.stats.unreadMessages ?? 0}
+                  icon="✉"
+                  accent="green"
+                />
+                <StatCard
+                  label="Upcoming live"
+                  value={data.stats.upcomingLiveClasses ?? 0}
+                  icon="▶"
+                />
+              </div>
+
+              {(data.latestMessage || (data.upcomingLiveClasses && data.upcomingLiveClasses.length > 0)) && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {data.latestMessage && (
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <h2 className="font-serif font-bold">Latest message</h2>
+                      <p className="mt-2 text-sm font-medium">{data.latestMessage.subject}</p>
+                      <Link href="/dashboard/teacher/messages" className="mt-3 inline-block text-sm text-green-700 dark:text-gold-400">
+                        Inbox →
+                      </Link>
+                    </div>
+                  )}
+                  {data.upcomingLiveClasses?.[0] && (
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <h2 className="font-serif font-bold">Next live class</h2>
+                      <p className="mt-2 font-medium">{data.upcomingLiveClasses[0].title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(data.upcomingLiveClasses[0].scheduledAt).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="grid gap-8 lg:grid-cols-3">
                 <div className="lg:col-span-2 space-y-8">
                   <h2 className="font-serif text-xl font-bold text-foreground">My courses</h2>

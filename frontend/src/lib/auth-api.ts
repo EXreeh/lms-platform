@@ -7,6 +7,16 @@ import type {
 } from "@/types/auth";
 import { apiRequest } from "./api";
 
+export const AUTH_ME_TIMEOUT_MS = 3000;
+
+export class AuthMeTimeoutError extends Error {
+  readonly name = "AuthMeTimeoutError";
+
+  constructor() {
+    super("Session check timed out");
+  }
+}
+
 export interface RegisterRequestPayload {
   firstName: string;
   lastName: string;
@@ -70,14 +80,44 @@ export function logoutUser() {
 export function fetchCurrentUser(options?: {
   bearerToken?: string;
   signal?: AbortSignal;
+  timeoutMs?: number;
 }) {
+  const timeoutMs = options?.timeoutMs ?? AUTH_ME_TIMEOUT_MS;
+  const controller = new AbortController();
+  let timedOut = false;
+
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+
+  if (options?.signal) {
+    if (options.signal.aborted) {
+      controller.abort();
+    } else {
+      options.signal.addEventListener("abort", () => controller.abort(), { once: true });
+    }
+  }
+
   return apiRequest<MeResponse>("/auth/me", {
     method: "GET",
     auth: true,
     bearerToken: options?.bearerToken,
     credentials: "include",
-    signal: options?.signal,
-  });
+    signal: controller.signal,
+  })
+    .catch((error) => {
+      if (timedOut) {
+        throw new AuthMeTimeoutError();
+      }
+      if (error instanceof Error && error.name === "AbortError") {
+        throw error;
+      }
+      throw error;
+    })
+    .finally(() => {
+      clearTimeout(timeoutId);
+    });
 }
 
 export function fetchAccountProfile() {

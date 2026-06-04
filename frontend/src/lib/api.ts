@@ -69,12 +69,20 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     });
   }
 
-  const response = await fetch(url, {
-    ...rest,
-    headers: requestHeaders,
-    credentials,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...rest,
+      headers: requestHeaders,
+      credentials,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error;
+    }
+    throw error;
+  }
 
   const data = await response.json().catch(() => ({}));
 

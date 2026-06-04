@@ -72,15 +72,20 @@ export async function logout(req: Request, res: Response): Promise<void> {
 }
 
 export async function me(req: Request, res: Response): Promise<void> {
-  console.log("[Auth] GET /me called");
+  const started = Date.now();
+  console.log("[Auth] GET /me hit");
 
   if (!req.user) {
-    console.warn("[Auth] GET /me failed — req.user missing after authenticate");
+    console.warn(
+      `[Auth] GET /me failed — req.user missing (${Date.now() - started}ms)`,
+    );
     throw ApiError.unauthorized();
   }
 
   const user = await authService.getProfile(req.user.id);
-  console.log(`[Auth] GET /me resolved → id=${user.id} email=${user.email} role=${user.role}`);
+  console.log(
+    `[Auth] GET /me ok — ${Date.now() - started}ms id=${user.id} email=${user.email} role=${user.role}`,
+  );
 
   res.json({
     success: true,

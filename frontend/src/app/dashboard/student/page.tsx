@@ -69,6 +69,58 @@ export default function StudentDashboardPage() {
                 />
               </div>
 
+              {(data.feeSummary || data.batch || data.latestMessage || data.upcomingLiveClass) && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {data.feeSummary && (
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <h2 className="font-serif font-bold">Fee status</h2>
+                      <p className="mt-2 text-sm text-muted-foreground">{data.feeSummary.accessLabel}</p>
+                      <p className="mt-1 text-lg font-semibold">
+                        Pending ₹{data.feeSummary.pendingFee}
+                      </p>
+                      <Link href="/dashboard/student/fees" className="mt-3 inline-block text-sm text-green-700 dark:text-gold-400">
+                        View fees →
+                      </Link>
+                    </div>
+                  )}
+                  {data.batch && (
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <h2 className="font-serif font-bold">My batch</h2>
+                      <p className="mt-2 font-medium">{data.batch.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {data.batch.timing ?? "—"}
+                        {data.batch.daysOfWeek ? ` · ${data.batch.daysOfWeek}` : ""}
+                      </p>
+                      <Link href="/dashboard/student/batch" className="mt-3 inline-block text-sm text-green-700 dark:text-gold-400">
+                        Batch details →
+                      </Link>
+                    </div>
+                  )}
+                  {data.latestMessage && (
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <h2 className="font-serif font-bold">Latest message</h2>
+                      <p className="mt-2 text-sm font-medium">{data.latestMessage.subject}</p>
+                      <p className="text-xs text-muted-foreground">From {data.latestMessage.sender.name}</p>
+                      <Link href="/dashboard/student/messages" className="mt-3 inline-block text-sm text-green-700 dark:text-gold-400">
+                        Open inbox →
+                      </Link>
+                    </div>
+                  )}
+                  {data.upcomingLiveClass && (
+                    <div className="rounded-2xl border border-border bg-card p-5">
+                      <h2 className="font-serif font-bold">Upcoming live class</h2>
+                      <p className="mt-2 font-medium">{data.upcomingLiveClass.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(data.upcomingLiveClass.scheduledAt).toLocaleString()}
+                      </p>
+                      <Link href="/dashboard/student/live-classes" className="mt-3 inline-block text-sm text-green-700 dark:text-gold-400">
+                        Live classes →
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {data.stats.averageProgress !== undefined && data.stats.enrolled > 0 && (
                 <div className="rounded-2xl border border-border bg-card p-5">
                   <h2 className="font-serif text-lg font-bold">Progress overview</h2>

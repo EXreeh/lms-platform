@@ -1,5 +1,6 @@
 import type { Course } from "./course";
 import type { Role } from "./auth";
+import type { Batch, LiveClass, MessageItem } from "./institute";
 
 export interface TeacherDashboardData {
   stats: {
@@ -9,7 +10,14 @@ export interface TeacherDashboardData {
     underReview?: number;
     totalEnrollments: number;
     totalLessons: number;
+    assignedBatches?: number;
+    batchStudentCount?: number;
+    unreadMessages?: number;
+    upcomingLiveClasses?: number;
   };
+  batches?: Batch[];
+  latestMessage?: MessageItem | null;
+  upcomingLiveClasses?: LiveClass[];
   publishedCourses: (Course & { enrollmentCount?: number })[];
   underReviewCourses?: (Course & { enrollmentCount?: number })[];
   draftCourses: (Course & { enrollmentCount?: number })[];
@@ -33,6 +41,12 @@ export interface AdminDashboardData {
     pendingModeration: number;
     totalEnrollments: number;
     activeUsers: number;
+    totalFeesCollected?: number;
+    totalPendingFees?: number;
+    overdueStudents?: number;
+    activeBatches?: number;
+    upcomingLiveClasses?: number;
+    unreadMessages?: number;
   };
   recentRegistrations: {
     id: string;
@@ -60,7 +74,22 @@ export interface StudentDashboardData {
     hoursLearned: number;
     lessonsCompleted?: number;
     averageProgress?: number;
+    totalFee?: number;
+    paidFee?: number;
+    pendingFee?: number;
+    feeAccessLabel?: string;
+    unreadMessages?: number;
   };
+  feeSummary?: {
+    totalFee: number;
+    paidFee: number;
+    pendingFee: number;
+    dueDate: string | null;
+    accessLabel: string;
+  };
+  batch?: Batch | null;
+  latestMessage?: MessageItem | null;
+  upcomingLiveClass?: LiveClass | null;
   enrolledCourses: {
     enrollmentId: string;
     progress: number;

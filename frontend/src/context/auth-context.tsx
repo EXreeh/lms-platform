@@ -9,19 +9,23 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@/types/auth";
-import { fetchCurrentUser, logoutUser } from "@/lib/auth-api";
-import { getDashboardPathForRole, syncMiddlewareCookie } from "@/lib/auth-storage";
+import {
+  AuthMeTimeoutError,
+  fetchCurrentUser,
+  logoutUser,
+} from "@/lib/auth-api";
+import { getDashboardPathForRole, getAuthToken, syncMiddlewareCookie } from "@/lib/auth-storage";
 import { getSafeRedirectPath } from "@/lib/safe-redirect";
 import { logAuth, logAuthError } from "@/lib/auth-debug";
 import { ApiClientError } from "@/lib/api";
 import {
   clearClientAuthState,
-  destroySession,
   isAuthSessionError,
   isValidUser,
 } from "@/lib/auth-session";
+import { getRouteAuthKind, isPublicAuthPath } from "@/lib/auth-routes";
 import {
   hasInitialAuthCheck,
   markInitialAuthCheckDone,
@@ -34,11 +38,16 @@ interface AuthContextValue {
   isLoading: boolean;
   isLoggingOut: boolean;
   isAuthenticated: boolean;
-  /** Clear client auth before a new login request */
+  /** True when /me timed out or backend was slow */
+  authDegraded: boolean;
   resetAuthState: () => void;
   login: (token: string, redirectTo?: string | null) => Promise<void>;
   logout: () => void;
-  refreshUser: (options?: { force?: boolean; bearerToken?: string }) => Promise<User | null>;
+  refreshUser: (options?: {
+    force?: boolean;
+    bearerToken?: string;
+    silent?: boolean;
+  }) => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -52,15 +61,29 @@ async function logoutWithTimeout(ms: number): Promise<void> {
   ]);
 }
 
+function shouldBlockForAuth(pathname: string): boolean {
+  return getRouteAuthKind(pathname) === "protected";
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(() => !hasInitialAuthCheck());
+  const [isLoading, setIsLoading] = useState(() => {
+    if (hasInitialAuthCheck()) return false;
+    if (typeof window !== "undefined" && isPublicAuthPath(window.location.pathname)) {
+      return false;
+    }
+    return shouldBlockForAuth(pathname);
+  });
+  const [authDegraded, setAuthDegraded] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
   const meInFlight = useRef<Promise<User | null> | null>(null);
   const meAbortRef = useRef<AbortController | null>(null);
   const sessionEpoch = useRef(0);
   const isLoggingOutRef = useRef(false);
+  const bootstrapped = useRef(false);
+  const protectedCheckStarted = useRef(false);
 
   const abortPendingMe = useCallback(() => {
     meAbortRef.current?.abort();
@@ -80,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionEpoch.current += 1;
     abortPendingMe();
     applyUser(null);
+    setAuthDegraded(false);
     setIsLoading(false);
     clearClientAuthState();
   }, [abortPendingMe, applyUser]);
@@ -89,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       force?: boolean;
       bearerToken?: string;
       epoch?: number;
+      silent?: boolean;
     }): Promise<User | null> => {
       if (isLoggingOutRef.current) {
         return null;
@@ -124,20 +149,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (!isValidUser(nextUser)) {
             if (!isLoggingOutRef.current) {
-              await destroySession();
+              clearClientAuthState();
             }
             applyUser(null);
+            logAuth("check:fail", { reason: "invalid-user" });
             return null;
           }
 
+          setAuthDegraded(false);
           applyUser(nextUser);
-          logAuth("me:ok", { userId: nextUser.id, role: nextUser.role });
+          logAuth("check:success", { userId: nextUser.id, role: nextUser.role });
           return nextUser;
         } catch (error) {
-          if (
-            error instanceof Error &&
-            error.name === "AbortError"
-          ) {
+          if (error instanceof Error && error.name === "AbortError") {
             return null;
           }
 
@@ -145,14 +169,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return null;
           }
 
+          if (error instanceof AuthMeTimeoutError) {
+            logAuthError("check:timeout");
+            logAuthError("me:timeout");
+            clearClientAuthState();
+            applyUser(null);
+            setAuthDegraded(true);
+            return null;
+          }
+
           const detail =
             error instanceof ApiClientError
               ? { status: error.status, code: error.code, message: error.message }
               : { message: error instanceof Error ? error.message : "unknown" };
+          logAuthError("check:fail", detail);
           logAuthError("me:failed", detail);
 
+          if (error instanceof TypeError) {
+            setAuthDegraded(true);
+            clearClientAuthState();
+            applyUser(null);
+            return null;
+          }
+
           if (isAuthSessionError(error) && !isLoggingOutRef.current) {
-            await destroySession();
+            clearClientAuthState();
             applyUser(null);
           }
           return null;
@@ -174,23 +215,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [applyUser],
   );
 
+  const runSessionCheck = useCallback(
+    async (opts?: { silent?: boolean; bearerToken?: string; force?: boolean }) => {
+      const routeKind = getRouteAuthKind(pathname);
+      logAuth(routeKind === "public" ? "route:public" : "route:protected", { pathname });
+      logAuth("check:started", { pathname, silent: Boolean(opts?.silent) });
+
+      if (!opts?.silent && shouldBlockForAuth(pathname)) {
+        setIsLoading(true);
+      }
+
+      try {
+        await refreshUser({
+          force: opts?.force,
+          bearerToken: opts?.bearerToken,
+          silent: opts?.silent,
+        });
+      } finally {
+        markInitialAuthCheckDone();
+        if (!opts?.silent && shouldBlockForAuth(pathname)) {
+          setIsLoading(false);
+        } else {
+          setIsLoading(false);
+        }
+      }
+    },
+    [pathname, refreshUser],
+  );
+
   useEffect(() => {
+    if (bootstrapped.current) return;
+    bootstrapped.current = true;
+
     if (hasInitialAuthCheck()) {
       setIsLoading(false);
       return;
     }
 
-    void (async () => {
-      await refreshUser();
+    if (isPublicAuthPath(pathname)) {
+      logAuth("route:public", { pathname });
       markInitialAuthCheckDone();
       setIsLoading(false);
-    })();
-  }, [refreshUser]);
+
+      if (getAuthToken()) {
+        void runSessionCheck({ silent: true });
+      }
+      return;
+    }
+
+    void runSessionCheck();
+  }, [pathname, runSessionCheck]);
+
+  useEffect(() => {
+    protectedCheckStarted.current = false;
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!hasInitialAuthCheck()) return;
+    if (isPublicAuthPath(pathname)) return;
+    if (user || isLoggingOutRef.current) return;
+    if (!shouldBlockForAuth(pathname)) return;
+    if (protectedCheckStarted.current) return;
+
+    protectedCheckStarted.current = true;
+    void runSessionCheck().finally(() => {
+      protectedCheckStarted.current = false;
+    });
+  }, [pathname, user, runSessionCheck]);
 
   const login = useCallback(
     async (token: string, redirectTo?: string | null) => {
       isLoggingOutRef.current = false;
       setIsLoggingOut(false);
+      setAuthDegraded(false);
       sessionEpoch.current += 1;
       const epoch = sessionEpoch.current;
       abortPendingMe();
@@ -216,6 +313,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
       }
 
+      markInitialAuthCheckDone();
       const safe = getSafeRedirectPath(redirectTo ?? null);
       const destination = safe ?? getDashboardPathForRole(nextUser.role);
 
@@ -233,6 +331,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     logAuth("logout:start");
     applyUser(null);
+    setAuthDegraded(false);
     setIsLoading(false);
     clearClientAuthState();
 
@@ -256,19 +355,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [abortPendingMe, applyUser, router]);
 
   const isAuthenticated = Boolean(user) && !isLoggingOut;
+  const blocksUI = shouldBlockForAuth(pathname);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user: isLoggingOut ? null : user,
-      isLoading: isLoading && !isLoggingOut && user === null,
+      isLoading: blocksUI && isLoading && !isLoggingOut && user === null,
       isLoggingOut,
       isAuthenticated,
+      authDegraded,
       resetAuthState,
       login,
       logout,
       refreshUser,
     }),
-    [user, isLoading, isLoggingOut, isAuthenticated, resetAuthState, login, logout, refreshUser],
+    [
+      user,
+      isLoading,
+      isLoggingOut,
+      isAuthenticated,
+      authDegraded,
+      blocksUI,
+      resetAuthState,
+      login,
+      logout,
+      refreshUser,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

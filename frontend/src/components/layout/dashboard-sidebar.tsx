@@ -38,6 +38,24 @@ const teacherNav: NavItem[] = [
     match: (p) => p.startsWith("/dashboard/teacher/resources"),
   },
   {
+    href: "/dashboard/teacher/batches",
+    label: "My Batches",
+    icon: "👥",
+    match: (p) => p.startsWith("/dashboard/teacher/batches"),
+  },
+  {
+    href: "/dashboard/teacher/messages",
+    label: "Messages",
+    icon: "✉",
+    match: (p) => p.startsWith("/dashboard/teacher/messages"),
+  },
+  {
+    href: "/dashboard/teacher/live-classes",
+    label: "Live Classes",
+    icon: "▶",
+    match: (p) => p.startsWith("/dashboard/teacher/live-classes"),
+  },
+  {
     href: "/dashboard/teacher/courses/new",
     label: "Create course",
     icon: "＋",
@@ -73,6 +91,30 @@ const studentNav: NavItem[] = [
     match: (p) => p.startsWith("/dashboard/student/resources"),
   },
   {
+    href: "/dashboard/student/fees",
+    label: "My Fees",
+    icon: "₹",
+    match: (p) => p.startsWith("/dashboard/student/fees"),
+  },
+  {
+    href: "/dashboard/student/batch",
+    label: "My Batch",
+    icon: "👥",
+    match: (p) => p.startsWith("/dashboard/student/batch"),
+  },
+  {
+    href: "/dashboard/student/messages",
+    label: "Messages",
+    icon: "✉",
+    match: (p) => p.startsWith("/dashboard/student/messages"),
+  },
+  {
+    href: "/dashboard/student/live-classes",
+    label: "Live Classes",
+    icon: "▶",
+    match: (p) => p.startsWith("/dashboard/student/live-classes"),
+  },
+  {
     href: "/dashboard/profile",
     label: "Profile",
     icon: "👤",
@@ -92,6 +134,30 @@ const adminNav: NavItem[] = [
     label: "Review",
     icon: "✓",
     match: (p) => p.startsWith("/dashboard/admin/review"),
+  },
+  {
+    href: "/dashboard/admin/fees",
+    label: "Fees",
+    icon: "₹",
+    match: (p) => p.startsWith("/dashboard/admin/fees"),
+  },
+  {
+    href: "/dashboard/admin/batches",
+    label: "Batches",
+    icon: "📅",
+    match: (p) => p.startsWith("/dashboard/admin/batches"),
+  },
+  {
+    href: "/dashboard/admin/messages",
+    label: "Messages",
+    icon: "✉",
+    match: (p) => p.startsWith("/dashboard/admin/messages"),
+  },
+  {
+    href: "/dashboard/admin/live-classes",
+    label: "Live Classes",
+    icon: "▶",
+    match: (p) => p.startsWith("/dashboard/admin/live-classes"),
   },
   {
     href: "/dashboard/admin/users",

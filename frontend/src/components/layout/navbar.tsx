@@ -10,11 +10,13 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { useAuth } from "@/context/auth-context";
 import { isValidRole } from "@/lib/auth-session";
 import type { Role } from "@/types/auth";
+import { useUnreadMessages, UnreadBadge } from "@/components/institute/unread-badge";
 
 interface NavLink {
   href: string;
   label: string;
   match?: (path: string) => boolean;
+  showUnreadBadge?: boolean;
 }
 
 function isActive(pathname: string, link: NavLink): boolean {
@@ -50,6 +52,27 @@ const studentNav: NavLink[] = [
     match: (p) =>
       p.includes("/certificate") || p.startsWith("/dashboard/student/certificates"),
   },
+  {
+    href: "/dashboard/student/fees",
+    label: "My Fees",
+    match: (p) => p.startsWith("/dashboard/student/fees"),
+  },
+  {
+    href: "/dashboard/student/batch",
+    label: "My Batch",
+    match: (p) => p.startsWith("/dashboard/student/batch"),
+  },
+  {
+    href: "/dashboard/student/messages",
+    label: "Messages",
+    match: (p) => p.startsWith("/dashboard/student/messages"),
+    showUnreadBadge: true,
+  },
+  {
+    href: "/dashboard/student/live-classes",
+    label: "Live Classes",
+    match: (p) => p.startsWith("/dashboard/student/live-classes"),
+  },
 ];
 
 const teacherNav: NavLink[] = [
@@ -76,6 +99,22 @@ const teacherNav: NavLink[] = [
     label: "Resources",
     match: (p) => p.startsWith("/dashboard/teacher/resources"),
   },
+  {
+    href: "/dashboard/teacher/batches",
+    label: "My Batches",
+    match: (p) => p.startsWith("/dashboard/teacher/batches"),
+  },
+  {
+    href: "/dashboard/teacher/messages",
+    label: "Messages",
+    match: (p) => p.startsWith("/dashboard/teacher/messages"),
+    showUnreadBadge: true,
+  },
+  {
+    href: "/dashboard/teacher/live-classes",
+    label: "Live Classes",
+    match: (p) => p.startsWith("/dashboard/teacher/live-classes"),
+  },
   { href: "/courses", label: "Courses" },
 ];
 
@@ -101,6 +140,27 @@ const adminNav: NavLink[] = [
     href: "/dashboard/admin/resources",
     label: "Resources",
     match: (p) => p.startsWith("/dashboard/admin/resources"),
+  },
+  {
+    href: "/dashboard/admin/fees",
+    label: "Fees",
+    match: (p) => p.startsWith("/dashboard/admin/fees"),
+  },
+  {
+    href: "/dashboard/admin/batches",
+    label: "Batches",
+    match: (p) => p.startsWith("/dashboard/admin/batches"),
+  },
+  {
+    href: "/dashboard/admin/messages",
+    label: "Messages",
+    match: (p) => p.startsWith("/dashboard/admin/messages"),
+    showUnreadBadge: true,
+  },
+  {
+    href: "/dashboard/admin/live-classes",
+    label: "Live Classes",
+    match: (p) => p.startsWith("/dashboard/admin/live-classes"),
   },
   {
     href: "/dashboard/admin/activity",
@@ -133,10 +193,12 @@ function NavLinkItem({
   link,
   pathname,
   onNavigate,
+  unreadCount,
 }: {
   link: NavLink;
   pathname: string;
   onNavigate?: () => void;
+  unreadCount: number;
 }) {
   const active = isActive(pathname, link);
   return (
@@ -150,6 +212,7 @@ function NavLinkItem({
       }`}
     >
       {link.label}
+      {link.showUnreadBadge ? <UnreadBadge count={unreadCount} /> : null}
     </Link>
   );
 }
@@ -285,6 +348,7 @@ export function Navbar() {
   const pathname = usePathname();
   const { user, logout, isLoggingOut, isAuthenticated } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const unreadCount = useUnreadMessages();
 
   const links = resolveNavLinks(user, isLoggingOut, isAuthenticated);
 
@@ -298,7 +362,12 @@ export function Navbar() {
           aria-label="Main navigation"
         >
           {links.map((link) => (
-            <NavLinkItem key={`${link.href}-${link.label}`} link={link} pathname={pathname} />
+            <NavLinkItem
+              key={`${link.href}-${link.label}`}
+              link={link}
+              pathname={pathname}
+              unreadCount={unreadCount}
+            />
           ))}
         </nav>
 
@@ -344,6 +413,7 @@ export function Navbar() {
                   link={link}
                   pathname={pathname}
                   onNavigate={() => setMobileOpen(false)}
+                  unreadCount={unreadCount}
                 />
               ))}
               <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
