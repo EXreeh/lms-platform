@@ -21,6 +21,7 @@ import {
 } from "@/lib/auth-api";
 import { useAuth } from "@/context/auth-context";
 import { ApiClientError } from "@/lib/api";
+import { getEmailErrorMessage } from "@/lib/email-error-messages";
 import { getPasswordStrength } from "@/lib/password-validation";
 
 export default function RegisterPage() {
@@ -73,7 +74,7 @@ export default function RegisterPage() {
       setOtpOpen(true);
     } catch (err) {
       if (err instanceof ApiClientError) {
-        setError(err.message);
+        setError(getEmailErrorMessage(err.code, err.message));
         if (err.errors) {
           const mapped: Record<string, string> = {};
           for (const [key, messages] of Object.entries(err.errors)) {

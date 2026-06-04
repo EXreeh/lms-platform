@@ -19,6 +19,7 @@ import {
   resetPassword,
 } from "@/lib/auth-api";
 import { ApiClientError } from "@/lib/api";
+import { getEmailErrorMessage } from "@/lib/email-error-messages";
 import { getPasswordStrength } from "@/lib/password-validation";
 
 type Step = "email" | "reset" | "success";
@@ -44,7 +45,11 @@ export default function ForgotPasswordPage() {
       await requestPasswordResetOtp(email.trim().toLowerCase());
       setOtpOpen(true);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Something went wrong.");
+      setError(
+        err instanceof ApiClientError
+          ? getEmailErrorMessage(err.code, err.message)
+          : "Something went wrong.",
+      );
     } finally {
       setIsLoading(false);
     }

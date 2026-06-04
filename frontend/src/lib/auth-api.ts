@@ -67,12 +67,16 @@ export function logoutUser() {
   });
 }
 
-export function fetchCurrentUser(options?: { bearerToken?: string }) {
+export function fetchCurrentUser(options?: {
+  bearerToken?: string;
+  signal?: AbortSignal;
+}) {
   return apiRequest<MeResponse>("/auth/me", {
     method: "GET",
     auth: true,
     bearerToken: options?.bearerToken,
     credentials: "include",
+    signal: options?.signal,
   });
 }
 

@@ -121,11 +121,11 @@ function navForRole(role?: Role): NavLink[] {
 
 function resolveNavLinks(
   user: ReturnType<typeof useAuth>["user"],
-  isLoading: boolean,
+  isLoggingOut: boolean,
   isAuthenticated: boolean,
 ): NavLink[] {
-  if (isLoading || !isAuthenticated) return publicNav;
-  if (user && isValidRole(user.role)) return navForRole(user.role);
+  if (isLoggingOut || !isAuthenticated || !user) return publicNav;
+  if (isValidRole(user.role)) return navForRole(user.role);
   return publicNav;
 }
 
@@ -156,7 +156,7 @@ function NavLinkItem({
 
 function AuthActions({
   user,
-  isLoading,
+  isLoggingOut,
   isAuthenticated,
   pathname,
   logout,
@@ -164,22 +164,48 @@ function AuthActions({
   compact,
 }: {
   user: ReturnType<typeof useAuth>["user"];
-  isLoading: boolean;
+  isLoggingOut: boolean;
   isAuthenticated: boolean;
   pathname: string;
-  logout: () => Promise<void>;
+  logout: () => void;
   onNavigate?: () => void;
   compact?: boolean;
 }) {
-  if (isLoading) {
+  if (isLoggingOut || !isAuthenticated || !user) {
+    if (compact) {
+      return (
+        <>
+          <Link href="/login" onClick={onNavigate}>
+            <Button variant="secondary" className="w-full">
+              Login
+            </Button>
+          </Link>
+          <Link href="/register" onClick={onNavigate}>
+            <Button variant="gold" className="w-full">
+              Register
+            </Button>
+          </Link>
+        </>
+      );
+    }
     return (
-      <span className="px-2 text-xs text-muted-foreground" aria-live="polite">
-        Loading…
-      </span>
+      <>
+        <Link
+          href="/login"
+          className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          Login
+        </Link>
+        <Link href="/register">
+          <Button size="sm" variant="gold">
+            Register
+          </Button>
+        </Link>
+      </>
     );
   }
 
-  if (isAuthenticated && user && isValidRole(user.role)) {
+  if (user && isValidRole(user.role)) {
     const profileActive = pathname.startsWith("/dashboard/profile");
     if (compact) {
       return (
@@ -192,7 +218,7 @@ function AuthActions({
               Profile
             </Button>
           </Link>
-          <Button variant="ghost" className="w-full" onClick={() => void logout()}>
+          <Button variant="ghost" className="w-full" onClick={logout}>
             Logout
           </Button>
         </>
@@ -214,7 +240,7 @@ function AuthActions({
         <span className="hidden max-w-[9rem] truncate text-sm text-muted-foreground xl:inline">
           {user.name}
         </span>
-        <Button variant="ghost" size="sm" onClick={() => void logout()}>
+        <Button variant="ghost" size="sm" onClick={logout}>
           Logout
         </Button>
       </>
@@ -257,10 +283,10 @@ function AuthActions({
 
 export function Navbar() {
   const pathname = usePathname();
-  const { user, logout, isLoading, isAuthenticated } = useAuth();
+  const { user, logout, isLoggingOut, isAuthenticated } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const links = resolveNavLinks(user, isLoading, isAuthenticated);
+  const links = resolveNavLinks(user, isLoggingOut, isAuthenticated);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/80 bg-card/90 backdrop-blur-xl">
@@ -281,7 +307,7 @@ export function Navbar() {
           <div className="hidden items-center gap-1 sm:flex sm:gap-2">
             <AuthActions
               user={user}
-              isLoading={isLoading}
+              isLoggingOut={isLoggingOut}
               isAuthenticated={isAuthenticated}
               pathname={pathname}
               logout={logout}
@@ -323,7 +349,7 @@ export function Navbar() {
               <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
                 <AuthActions
                   user={user}
-                  isLoading={isLoading}
+                  isLoggingOut={isLoggingOut}
                   isAuthenticated={isAuthenticated}
                   pathname={pathname}
                   logout={logout}

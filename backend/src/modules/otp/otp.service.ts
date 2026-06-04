@@ -66,15 +66,21 @@ export async function createAndSendOtp(params: {
     },
   });
 
-  console.log(`🔐 OTP send started (${params.purpose}) → ${params.email}`);
+  console.log(`[OTP] send started (${params.purpose}) → ${params.email}`);
 
   try {
     await params.send(code);
-    console.log(`✅ OTP email sent (${params.purpose}) → ${params.email}`);
+    console.log(`[OTP] send succeeded (${params.purpose}) → ${params.email}`);
   } catch (error) {
     await prisma.otpChallenge.delete({ where: { id: challenge.id } }).catch(() => undefined);
+    if (error instanceof ApiError) {
+      console.error(
+        `[OTP] send failed (${params.purpose}) → ${params.email}: ${error.code ?? "ERROR"} — ${error.message}`,
+      );
+      throw error;
+    }
     const reason = error instanceof Error ? error.message : String(error);
-    console.error(`❌ OTP email failed (${params.purpose}) → ${params.email}: ${reason}`);
+    console.error(`[OTP] send failed (${params.purpose}) → ${params.email}: ${reason}`);
     throw error;
   }
 }

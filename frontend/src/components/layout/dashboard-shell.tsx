@@ -21,10 +21,12 @@ const roleBadgeColors: Record<string, string> = {
 };
 
 export function DashboardShell({ title, description, badge, children }: DashboardShellProps) {
-  const { user, isLoading, isAuthenticated } = useAuth();
-  const role = user?.role;
+  const { user, isLoading, isAuthenticated, isLoggingOut } = useAuth();
 
-  if (isLoading || !isAuthenticated || !role) {
+  const awaitingSession = isLoading && !isLoggingOut && user === null;
+  const ready = Boolean(user?.role) && isAuthenticated && !isLoggingOut;
+
+  if (awaitingSession || !ready) {
     return (
       <PageBackground variant="dashboard">
         <Navbar />
@@ -33,15 +35,17 @@ export function DashboardShell({ title, description, badge, children }: Dashboar
     );
   }
 
+  const roleLabel = user!.role;
+
   return (
     <PageBackground variant="dashboard">
       <Navbar />
       <main className={`${layout.dashboard} py-10`}>
         <div className="mb-10">
           <span
-            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${roleBadgeColors[role]}`}
+            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wider ${roleBadgeColors[roleLabel]}`}
           >
-            {badge ?? `${role} Portal`}
+            {badge ?? `${roleLabel} Portal`}
           </span>
           <h1 className="mt-4 font-serif text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             {title}

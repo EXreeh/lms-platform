@@ -20,7 +20,7 @@ import { brand } from "@/lib/design-tokens";
 import { layout } from "@/lib/layout";
 
 function LoginForm() {
-  const { login } = useAuth();
+  const { login, resetAuthState } = useAuth();
   const searchParams = useSearchParams();
   const redirectTo = getSafeRedirectPath(searchParams.get("redirect"));
   const sessionExpired = searchParams.get("session") === "expired";
@@ -37,6 +37,7 @@ function LoginForm() {
     const form = new FormData(event.currentTarget);
 
     try {
+      resetAuthState();
       logAuth("login:submit");
       const response = await loginUser({
         email: String(form.get("email")),
