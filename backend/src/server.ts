@@ -19,7 +19,12 @@ async function start() {
       await ensureUploadDirectories();
     }
 
-    await verifyEmailTransport();
+    const smtpVerified = await verifyEmailTransport();
+    if (!smtpVerified && env.NODE_ENV === "production") {
+      console.warn(
+        "[SMTP] Server starting without verified SMTP — registration OTP emails may fail until SMTP is fixed.",
+      );
+    }
 
     app.listen(env.PORT, () => {
       console.log(`LMS API running on http://localhost:${env.PORT}`);

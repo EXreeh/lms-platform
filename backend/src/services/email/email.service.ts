@@ -10,11 +10,26 @@ export type EmailErrorCode =
   | "SMTP_CONNECTION_FAILED"
   | "EMAIL_SEND_FAILED";
 
+/** Safe user-facing messages returned in API responses (no secrets). */
+export const EMAIL_USER_MESSAGES: Record<EmailErrorCode, string> = {
+  SMTP_AUTH_FAILED: "Email authentication failed. Please contact support.",
+  SMTP_CONNECTION_FAILED:
+    "We could not reach the mail server. Please try again in a few minutes.",
+  EMAIL_SEND_FAILED: "OTP email could not be sent. Please try again later.",
+};
+
 interface ClassifiedEmailError {
   code: EmailErrorCode;
   message: string;
-  logReason: string;
 }
+
+type NodemailerErrorLike = {
+  code?: string;
+  responseCode?: number;
+  command?: string;
+  response?: string;
+  message?: string;
+};
 
 /** Use CognitiaX AI <SMTP_USER> so Gmail accepts the From address. */
 export function resolveEmailFrom(): string {
@@ -31,13 +46,27 @@ export function resolveEmailFrom(): string {
 }
 
 function logSmtpConfig(): void {
-  console.log("[SMTP] Configuration:");
+  console.log("[SMTP] Safe configuration (no password):");
   console.log(`  SMTP_HOST=${env.SMTP_HOST ?? "(not set)"}`);
   console.log(`  SMTP_PORT=${env.SMTP_PORT}`);
   console.log(`  SMTP_SECURE=${env.SMTP_SECURE}`);
   console.log(`  SMTP_USER=${env.SMTP_USER ?? "(not set)"}`);
   console.log(`  EMAIL_FROM=${resolveEmailFrom()}`);
   console.log(`  requireTLS=${env.SMTP_PORT === 587 && !env.SMTP_SECURE}`);
+}
+
+/** Log exact Nodemailer fields for Railway debugging — never logs SMTP_PASS. */
+export function logNodemailerError(context: string, error: unknown): void {
+  const err = error as NodemailerErrorLike;
+  console.error(`[SMTP] ${context} — Nodemailer error details:`);
+  console.error(`  code=${err.code ?? "(none)"}`);
+  console.error(`  responseCode=${err.responseCode ?? "(none)"}`);
+  console.error(`  command=${err.command ?? "(none)"}`);
+  console.error(`  message=${err.message ?? String(error)}`);
+  if (err.response) {
+    const response = String(err.response).replace(/\s+/g, " ").trim();
+    console.error(`  response=${response.slice(0, 400)}`);
+  }
 }
 
 function createSmtpTransporter(): nodemailer.Transporter {
@@ -54,7 +83,6 @@ function createSmtpTransporter(): nodemailer.Transporter {
     socketTimeout: 20_000,
   };
 
-  // Gmail / port 587: STARTTLS (secure=false, requireTLS=true)
   if (env.SMTP_PORT === 587 && !env.SMTP_SECURE) {
     options.requireTLS = true;
   }
@@ -73,38 +101,32 @@ function getTransporter(): nodemailer.Transporter {
   return transporter;
 }
 
-function classifySmtpError(error: unknown): ClassifiedEmailError {
-  const err = error as {
-    code?: string;
-    responseCode?: number;
-    message?: string;
-  };
-  const msg = err?.message ?? String(error);
+export function classifySmtpError(error: unknown): ClassifiedEmailError {
+  const err = error as NodemailerErrorLike;
+  const code = err.code?.toUpperCase();
+  const responseCode = err.responseCode;
+  const msg = err.message ?? String(error);
   const lower = msg.toLowerCase();
 
   if (
-    err?.code === "EAUTH" ||
-    err?.responseCode === 535 ||
-    err?.responseCode === 534 ||
+    code === "EAUTH" ||
+    responseCode === 535 ||
+    responseCode === 534 ||
     lower.includes("invalid login") ||
     lower.includes("authentication failed") ||
-    lower.includes("username and password not accepted") ||
-    lower.includes("bad credentials")
+    lower.includes("username and password not accepted")
   ) {
-    return {
-      code: "SMTP_AUTH_FAILED",
-      message:
-        "Email authentication failed. Verify SMTP_USER and SMTP_PASS (Gmail App Password) on the server.",
-      logReason: msg,
-    };
+    return { code: "SMTP_AUTH_FAILED", message: EMAIL_USER_MESSAGES.SMTP_AUTH_FAILED };
   }
 
   if (
-    err?.code === "ECONNREFUSED" ||
-    err?.code === "ETIMEDOUT" ||
-    err?.code === "ENOTFOUND" ||
-    err?.code === "ESOCKET" ||
-    err?.code === "ECONNRESET" ||
+    code === "ECONNECTION" ||
+    code === "ECONNREFUSED" ||
+    code === "ETIMEDOUT" ||
+    code === "ENOTFOUND" ||
+    code === "ESOCKET" ||
+    code === "ECONNRESET" ||
+    code === "ETIMEOUT" ||
     lower.includes("connect") ||
     lower.includes("timeout") ||
     lower.includes("getaddrinfo") ||
@@ -112,25 +134,21 @@ function classifySmtpError(error: unknown): ClassifiedEmailError {
   ) {
     return {
       code: "SMTP_CONNECTION_FAILED",
-      message: "Could not connect to the email server. Please try again later.",
-      logReason: msg,
+      message: EMAIL_USER_MESSAGES.SMTP_CONNECTION_FAILED,
     };
   }
 
-  return {
-    code: "EMAIL_SEND_FAILED",
-    message: "OTP email could not be sent. Please try again later.",
-    logReason: msg,
-  };
+  return { code: "EMAIL_SEND_FAILED", message: EMAIL_USER_MESSAGES.EMAIL_SEND_FAILED };
 }
 
 function throwEmailApiError(error: unknown): never {
+  logNodemailerError("send failed", error);
   const classified = classifySmtpError(error);
-  console.error(`[SMTP] ${classified.code}: ${classified.logReason}`);
+  console.error(`[SMTP] mapped error code=${classified.code}`);
   throw ApiError.internal(classified.message, classified.code);
 }
 
-/** Verify SMTP at startup. Logs SMTP ready or SMTP failed with reason. */
+/** Verify SMTP at startup; logs config + verification SUCCESS or FAILED. */
 export async function verifyEmailTransport(): Promise<boolean> {
   logSmtpConfig();
 
@@ -142,17 +160,19 @@ export async function verifyEmailTransport(): Promise<boolean> {
     ]
       .filter(Boolean)
       .join(", ");
-    console.error(`[SMTP] SMTP failed: not configured (missing: ${missing || "unknown"})`);
+    console.error(`[SMTP] verification result: FAILED (not configured — missing: ${missing})`);
     return false;
   }
 
   try {
     await getTransporter().verify();
-    console.log("[SMTP] SMTP ready");
+    console.log("[SMTP] verification result: SUCCESS");
+    console.log("[SMTP] SMTP ready — transport verified");
     return true;
   } catch (error) {
-    const { logReason } = classifySmtpError(error);
-    console.error(`[SMTP] SMTP failed: ${logReason}`);
+    logNodemailerError("verification failed", error);
+    const classified = classifySmtpError(error);
+    console.error(`[SMTP] verification result: FAILED (mapped=${classified.code})`);
     return false;
   }
 }
@@ -182,7 +202,7 @@ export async function sendEmail(params: {
       return;
     }
     throw ApiError.internal(
-      "OTP email could not be sent. Email service is not configured.",
+      EMAIL_USER_MESSAGES.EMAIL_SEND_FAILED,
       "EMAIL_SEND_FAILED",
     );
   }

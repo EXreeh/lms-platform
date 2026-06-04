@@ -1,13 +1,14 @@
-/** User-facing messages for OTP / password-reset email failures. */
-export function getEmailErrorMessage(code?: string, fallback?: string): string {
-  switch (code) {
-    case "SMTP_AUTH_FAILED":
-      return "We could not send the verification email because the mail server rejected our login. Please try again later or contact support.";
-    case "SMTP_CONNECTION_FAILED":
-      return "We could not reach the mail server. Please try again in a few minutes.";
-    case "EMAIL_SEND_FAILED":
-      return fallback ?? "OTP email could not be sent. Please try again later.";
-    default:
-      return fallback ?? "OTP email could not be sent. Please try again later.";
+/** User-facing OTP email errors — must match backend EMAIL_USER_MESSAGES / API codes. */
+const EMAIL_MESSAGES: Record<string, string> = {
+  SMTP_AUTH_FAILED: "Email authentication failed. Please contact support.",
+  SMTP_CONNECTION_FAILED:
+    "We could not reach the mail server. Please try again in a few minutes.",
+  EMAIL_SEND_FAILED: "OTP email could not be sent. Please try again later.",
+};
+
+export function getEmailErrorMessage(code?: string, _fallback?: string): string {
+  if (code && code in EMAIL_MESSAGES) {
+    return EMAIL_MESSAGES[code];
   }
+  return EMAIL_MESSAGES.EMAIL_SEND_FAILED;
 }
