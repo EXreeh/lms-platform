@@ -3,6 +3,7 @@ import { prisma } from "../../config/database.js";
 import { ApiError } from "../../utils/api-error.js";
 import { batchInclude, mapBatch } from "./batches.helpers.js";
 import { toNumber } from "../fees/fees.helpers.js";
+import { logPrismaRouteError } from "../../utils/prisma-safe.js";
 
 async function studentAccessMap(studentIds: string[]) {
   if (studentIds.length === 0) return {};
@@ -167,10 +168,24 @@ export async function removeStudentFromBatch(batchId: string, studentId: string)
 }
 
 export async function getTeacherBatches(teacherId: string) {
-  return listBatches({ teacherId });
+  try {
+    return await listBatches({ teacherId });
+  } catch (error) {
+    logPrismaRouteError("/api/dashboard/teacher", error, "getTeacherBatches");
+    return [];
+  }
 }
 
 export async function getStudentBatch(studentId: string) {
+  try {
+    return await loadStudentBatch(studentId);
+  } catch (error) {
+    logPrismaRouteError("/api/dashboard/student", error, "getStudentBatch");
+    return null;
+  }
+}
+
+async function loadStudentBatch(studentId: string) {
   const membership = await prisma.batchStudent.findFirst({
     where: { studentId, batch: { status: "ACTIVE" } },
     include: { batch: { include: batchInclude } },
@@ -199,5 +214,10 @@ export async function assertTeacherBatchAccess(teacherId: string, batchId: strin
 }
 
 export async function getActiveBatchCount() {
-  return prisma.batch.count({ where: { status: "ACTIVE" } });
+  try {
+    return await prisma.batch.count({ where: { status: "ACTIVE" } });
+  } catch (error) {
+    logPrismaRouteError("/api/dashboard/admin", error, "getActiveBatchCount");
+    return 0;
+  }
 }

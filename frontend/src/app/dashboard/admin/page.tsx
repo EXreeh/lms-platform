@@ -27,7 +27,11 @@ export default function AdminDashboardPage() {
       const res = await fetchAdminDashboard();
       setData(res.data);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to load dashboard");
+      setError(
+        err instanceof ApiClientError && err.status < 500
+          ? err.message
+          : "Dashboard data could not be loaded. Please try again.",
+      );
     } finally {
       setIsLoading(false);
     }

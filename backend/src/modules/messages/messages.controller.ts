@@ -47,8 +47,11 @@ export async function sent(req: Request, res: Response): Promise<void> {
 
 export async function unreadCount(req: Request, res: Response): Promise<void> {
   const user = requireUser(req);
+  const started = Date.now();
+  console.log("[API] GET /api/messages/unread-count hit");
   const count = await messagesService.getUnreadCount(user.id);
-  res.json({ success: true, data: { count } });
+  console.log(`[API] GET /api/messages/unread-count ok — ${Date.now() - started}ms count=${count}`);
+  res.json({ success: true, data: { count, unreadCount: count } });
 }
 
 export async function getOne(req: Request, res: Response): Promise<void> {

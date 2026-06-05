@@ -27,7 +27,9 @@ export default function StudentDashboardPage() {
         const res = await fetchStudentDashboard();
         setData(res.data);
       } catch (err) {
-        setError(formatApiError(err, "Could not load your dashboard."));
+        setError(
+          formatApiError(err, "Dashboard data could not be loaded. Please try again."),
+        );
       } finally {
         setIsLoading(false);
       }
@@ -48,6 +50,24 @@ export default function StudentDashboardPage() {
           ) : error ? (
             <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900 dark:bg-red-950/30">
               <p className="text-red-700 dark:text-red-300">{error}</p>
+              <Button
+                className="mt-4"
+                variant="secondary"
+                onClick={() => {
+                  setIsLoading(true);
+                  setError(null);
+                  void fetchStudentDashboard()
+                    .then((res) => setData(res.data))
+                    .catch((err) =>
+                      setError(
+                        formatApiError(err, "Dashboard data could not be loaded. Please try again."),
+                      ),
+                    )
+                    .finally(() => setIsLoading(false));
+                }}
+              >
+                Retry
+              </Button>
             </div>
           ) : data ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">

@@ -9,4 +9,4 @@ cmds = ["npm ci"]
 cmds = ["npm run build:railway"]
 
 [start]
-cmd = "npm run start"
+cmd = "npm run migrate:deploy -w database && npm run start -w backend"

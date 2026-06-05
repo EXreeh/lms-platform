@@ -1,6 +1,7 @@
 import type { MessageType, Prisma, Role } from "@lms/database";
 import { prisma } from "../../config/database.js";
 import { ApiError } from "../../utils/api-error.js";
+import { logPrismaRouteError } from "../../utils/prisma-safe.js";
 
 const messageInclude = {
   sender: { select: { id: true, firstName: true, lastName: true, email: true, role: true } },
@@ -197,6 +198,15 @@ export async function sendMessage(input: {
 }
 
 export async function getInbox(userId: string, filters?: { unreadOnly?: boolean }) {
+  try {
+    return await loadInbox(userId, filters);
+  } catch (error) {
+    logPrismaRouteError("/api/messages/inbox", error, "getInbox");
+    return [];
+  }
+}
+
+async function loadInbox(userId: string, filters?: { unreadOnly?: boolean }) {
   const where: Prisma.MessageRecipientWhereInput = { userId };
   if (filters?.unreadOnly) where.readAt = null;
 

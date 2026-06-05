@@ -1,13 +1,15 @@
 import type { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
 import { ApiError } from "../utils/api-error.js";
+import { logPrismaRouteError } from "../utils/prisma-safe.js";
 
 export function errorHandler(
   err: unknown,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ): void {
+  const route = `${req.method} ${req.originalUrl}`;
   if (err instanceof ApiError) {
     res.status(err.statusCode).json({
       success: false,
@@ -30,7 +32,8 @@ export function errorHandler(
     return;
   }
 
-  console.error(err);
+  logPrismaRouteError(route, err);
+  console.error(`[API] ${route} 500`, err);
   res.status(500).json({
     success: false,
     code: "STORAGE_ERROR",

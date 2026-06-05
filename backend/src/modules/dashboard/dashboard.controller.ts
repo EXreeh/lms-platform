@@ -10,7 +10,10 @@ export async function teacher(req: Request, res: Response): Promise<void> {
 
 export async function admin(req: Request, res: Response): Promise<void> {
   if (!req.user) throw ApiError.unauthorized();
+  const started = Date.now();
+  console.log("[API] GET /api/dashboard/admin hit");
   const data = await dashboardService.getAdminDashboard(req.user.id);
+  console.log(`[API] GET /api/dashboard/admin ok — ${Date.now() - started}ms`);
   res.json({ success: true, data });
 }
 

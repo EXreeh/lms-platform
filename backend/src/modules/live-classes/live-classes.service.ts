@@ -1,6 +1,7 @@
 import type { Prisma } from "@lms/database";
 import { prisma } from "../../config/database.js";
 import { ApiError } from "../../utils/api-error.js";
+import { logPrismaRouteError } from "../../utils/prisma-safe.js";
 
 const include = {
   batch: { select: { id: true, name: true } },
@@ -26,6 +27,20 @@ function mapLiveClass(row: Prisma.LiveClassGetPayload<{ include: typeof include 
 }
 
 export async function listLiveClasses(filters: {
+  batchId?: string;
+  teacherId?: string;
+  studentId?: string;
+  upcoming?: boolean;
+}) {
+  try {
+    return await queryLiveClasses(filters);
+  } catch (error) {
+    logPrismaRouteError("/api/dashboard", error, "listLiveClasses");
+    return [];
+  }
+}
+
+async function queryLiveClasses(filters: {
   batchId?: string;
   teacherId?: string;
   studentId?: string;
@@ -83,10 +98,15 @@ export async function createLiveClass(input: {
 }
 
 export async function getUpcomingCount() {
-  return prisma.liveClass.count({
-    where: {
-      scheduledAt: { gte: new Date() },
-      status: { in: ["SCHEDULED", "LIVE"] },
-    },
-  });
+  try {
+    return await prisma.liveClass.count({
+      where: {
+        scheduledAt: { gte: new Date() },
+        status: { in: ["SCHEDULED", "LIVE"] },
+      },
+    });
+  } catch (error) {
+    logPrismaRouteError("/api/dashboard/admin", error, "getUpcomingCount");
+    return 0;
+  }
 }

@@ -3,6 +3,28 @@ import { prisma } from "../../config/database.js";
 import { ApiError } from "../../utils/api-error.js";
 import { computeFeeStatus, mapFeePlan, toNumber } from "./fees.helpers.js";
 import * as messagesService from "../messages/messages.service.js";
+import { logPrismaRouteError } from "../../utils/prisma-safe.js";
+
+const EMPTY_FEE_ANALYTICS = {
+  totalCollected: 0,
+  totalPending: 0,
+  overdueStudents: 0,
+  planCount: 0,
+};
+
+const EMPTY_STUDENT_FEE_DASHBOARD = {
+  totalFee: 0,
+  paidFee: 0,
+  pendingFee: 0,
+  plans: [] as ReturnType<typeof mapFeePlan>[],
+  reminders: [] as Array<{
+    id: string;
+    feePlanId: string;
+    message: string;
+    reminderDate: string;
+    status: string;
+  }>,
+};
 
 const feeInclude = {
   student: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -86,26 +108,31 @@ export async function listFeePlans(filters: {
 }
 
 export async function getFeeAnalytics() {
-  const plans = await prisma.feePlan.findMany({
-    select: { totalAmount: true, paidAmount: true, pendingAmount: true, status: true },
-  });
+  try {
+    const plans = await prisma.feePlan.findMany({
+      select: { totalAmount: true, paidAmount: true, pendingAmount: true, status: true },
+    });
 
-  let totalCollected = 0;
-  let totalPending = 0;
-  let overdueCount = 0;
+    let totalCollected = 0;
+    let totalPending = 0;
+    let overdueCount = 0;
 
-  for (const p of plans) {
-    totalCollected += toNumber(p.paidAmount);
-    totalPending += toNumber(p.pendingAmount);
-    if (p.status === "OVERDUE") overdueCount += 1;
+    for (const p of plans) {
+      totalCollected += toNumber(p.paidAmount);
+      totalPending += toNumber(p.pendingAmount);
+      if (p.status === "OVERDUE") overdueCount += 1;
+    }
+
+    return {
+      totalCollected,
+      totalPending,
+      overdueStudents: overdueCount,
+      planCount: plans.length,
+    };
+  } catch (error) {
+    logPrismaRouteError("/api/dashboard/admin", error, "getFeeAnalytics");
+    return EMPTY_FEE_ANALYTICS;
   }
-
-  return {
-    totalCollected,
-    totalPending,
-    overdueStudents: overdueCount,
-    planCount: plans.length,
-  };
 }
 
 export async function getFeePlanById(id: string) {
@@ -220,6 +247,15 @@ export async function sendFeeReminder(
 }
 
 export async function getStudentFeeDashboard(studentId: string) {
+  try {
+    return await loadStudentFeeDashboard(studentId);
+  } catch (error) {
+    logPrismaRouteError("/api/dashboard/student", error, "getStudentFeeDashboard");
+    return EMPTY_STUDENT_FEE_DASHBOARD;
+  }
+}
+
+async function loadStudentFeeDashboard(studentId: string) {
   const plans = await prisma.feePlan.findMany({
     where: { studentId },
     include: {
@@ -258,20 +294,24 @@ export async function getStudentFeeDashboard(studentId: string) {
 }
 
 export async function refreshOverdueStatuses() {
-  const overdue = await prisma.feePlan.findMany({
-    where: {
-      pendingAmount: { gt: 0 },
-      dueDate: { lt: new Date() },
-      status: { not: "PAID" },
-    },
-  });
+  try {
+    const overdue = await prisma.feePlan.findMany({
+      where: {
+        pendingAmount: { gt: 0 },
+        dueDate: { lt: new Date() },
+        status: { not: "PAID" },
+      },
+    });
 
-  await Promise.all(
-    overdue.map((p) =>
-      prisma.feePlan.update({
-        where: { id: p.id },
-        data: { status: "OVERDUE" },
-      }),
-    ),
-  );
+    await Promise.all(
+      overdue.map((p) =>
+        prisma.feePlan.update({
+          where: { id: p.id },
+          data: { status: "OVERDUE" },
+        }),
+      ),
+    );
+  } catch (error) {
+    logPrismaRouteError("/api/dashboard/admin", error, "refreshOverdueStatuses");
+  }
 }

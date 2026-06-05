@@ -33,7 +33,11 @@ export default function TeacherDashboardPage() {
           setData(res.data);
         }
       } catch (err) {
-        setError(err instanceof ApiClientError ? err.message : "Failed to load dashboard");
+        setError(
+          err instanceof ApiClientError && err.status < 500
+            ? err.message
+            : "Dashboard data could not be loaded. Please try again.",
+        );
         setData(getDemoTeacherDashboard());
         setShowDemo(true);
       } finally {
