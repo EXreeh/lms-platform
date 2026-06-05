@@ -3,7 +3,6 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
-import rateLimit from "express-rate-limit";
 import { env } from "./config/env.js";
 import { getCorsOptions } from "./config/cors.js";
 import { apiRouter } from "./routes/index.js";
@@ -30,15 +29,6 @@ export function createApp() {
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
-
-  app.use(
-    rateLimit({
-      windowMs: 15 * 60 * 1000,
-      max: 100,
-      standardHeaders: true,
-      legacyHeaders: false,
-    }),
-  );
 
   app.use(
     "/uploads",

@@ -4,7 +4,11 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { optionalAuthenticate } from "../../middleware/optional-authenticate.js";
 import { validateBody } from "../../middleware/validate.js";
 import { validateQuery } from "../../middleware/validate-query.js";
-import { otpRateLimiter, checkEmailRateLimiter } from "../../middleware/otp-rate-limit.js";
+import {
+  otpRateLimiter,
+  checkEmailRateLimiter,
+  loginRateLimiter,
+} from "../../middleware/rate-limit.js";
 import {
   loginSchema,
   checkEmailSchema,
@@ -48,7 +52,12 @@ authRoutes.post(
   asyncHandler(authController.registerVerifyOtp),
 );
 
-authRoutes.post("/login", validateBody(loginSchema), asyncHandler(authController.login));
+authRoutes.post(
+  "/login",
+  loginRateLimiter,
+  validateBody(loginSchema),
+  asyncHandler(authController.login),
+);
 
 authRoutes.post("/logout", optionalAuthenticate, asyncHandler(authController.logout));
 

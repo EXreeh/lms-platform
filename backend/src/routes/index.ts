@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../config/database.js";
+import { generalWriteRateLimiter } from "../middleware/rate-limit.js";
 import { authRoutes } from "../modules/auth/auth.routes.js";
 import { coursesRoutes } from "../modules/courses/courses.routes.js";
 import { dashboardRoutes } from "./dashboard.routes.js";
@@ -16,6 +17,8 @@ import { messagesRoutes } from "../modules/messages/messages.routes.js";
 import { liveClassesRoutes } from "../modules/live-classes/live-classes.routes.js";
 
 export const apiRouter = Router();
+
+apiRouter.use(generalWriteRateLimiter);
 
 apiRouter.get("/health", async (_req, res) => {
   const started = Date.now();

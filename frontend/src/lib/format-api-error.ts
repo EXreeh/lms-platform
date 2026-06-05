@@ -15,6 +15,7 @@ const FRIENDLY_BY_CODE: Record<string, string> = {
   FORBIDDEN: "You do not have permission to perform this action.",
   NOT_FOUND: "The requested item could not be found.",
   ALREADY_PAID: "Payment for this course was already completed.",
+  RATE_LIMIT: "Too many requests. Please wait a moment and try again.",
 };
 
 const FRIENDLY_BY_STATUS: Record<number, string> = {
