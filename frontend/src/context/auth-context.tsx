@@ -17,8 +17,8 @@ import {
   fetchCurrentUser,
   logoutUser,
 } from "@/lib/auth-api";
-import { getDashboardPathForRole, getAuthToken, syncMiddlewareCookie } from "@/lib/auth-storage";
-import { getSafeRedirectPath } from "@/lib/safe-redirect";
+import { getAuthToken, syncMiddlewareCookie } from "@/lib/auth-storage";
+import { getDashboardRedirectForRole } from "@/lib/safe-redirect";
 import { logAuth, logAuthError } from "@/lib/auth-debug";
 import { ApiClientError } from "@/lib/api";
 import {
@@ -36,6 +36,8 @@ const LOGOUT_API_TIMEOUT_MS = 2500;
 
 interface AuthContextValue {
   user: User | null;
+  /** Bumps on login/logout to remount session-scoped UI */
+  sessionKey: number;
   isLoading: boolean;
   isLoggingOut: boolean;
   isAuthenticated: boolean;
@@ -70,6 +72,7 @@ function shouldBlockForAuth(pathname: string): boolean {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
+  const [sessionKey, setSessionKey] = useState(0);
   const [isLoading, setIsLoading] = useState(() => {
     if (hasInitialAuthCheck()) return false;
     if (typeof window !== "undefined" && isPublicAuthPath(window.location.pathname)) {
@@ -84,8 +87,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const meAbortRef = useRef<AbortController | null>(null);
   const sessionEpoch = useRef(0);
   const isLoggingOutRef = useRef(false);
+  const logoutEpochRef = useRef(0);
   const bootstrapped = useRef(false);
   const protectedCheckStarted = useRef(false);
+
+  const bumpSessionKey = useCallback(() => {
+    setSessionKey((k) => k + 1);
+  }, []);
 
   const abortPendingMe = useCallback(() => {
     meAbortRef.current?.abort();
@@ -321,21 +329,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       markInitialAuthCheckDone();
-      const safe = getSafeRedirectPath(redirectTo ?? null);
-      const destination = safe ?? getDashboardPathForRole(nextUser.role);
+      bumpSessionKey();
+      const destination = getDashboardRedirectForRole(nextUser.role, redirectTo);
 
       router.replace(destination);
+      router.refresh();
       logAuth("login:fresh-user", {
         userId: nextUser.id,
         role: nextUser.role,
         destination,
       });
     },
-    [abortPendingMe, applyUser, refreshUser, router],
+    [abortPendingMe, applyUser, bumpSessionKey, refreshUser, router],
   );
 
   const logout = useCallback(() => {
     sessionEpoch.current += 1;
+    logoutEpochRef.current = sessionEpoch.current;
     isLoggingOutRef.current = true;
     setIsLoggingOut(true);
     abortPendingMe();
@@ -346,10 +356,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthDegraded(false);
     setIsLoading(false);
     clearClientAuthState();
+    bumpSessionKey();
 
     router.replace("/login");
+    router.refresh();
 
     void (async () => {
+      const epochAtLogout = logoutEpochRef.current;
       try {
         await logoutWithTimeout(LOGOUT_API_TIMEOUT_MS);
         logAuth("logout:api-ok");
@@ -358,13 +371,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           message: error instanceof Error ? error.message : "unknown",
         });
       } finally {
+        if (epochAtLogout !== sessionEpoch.current) {
+          logAuth("logout:skipped-stale", { epochAtLogout, current: sessionEpoch.current });
+          return;
+        }
         clearClientAuthState();
         isLoggingOutRef.current = false;
         setIsLoggingOut(false);
         logAuth("logout:done");
       }
     })();
-  }, [abortPendingMe, applyUser, router]);
+  }, [abortPendingMe, applyUser, bumpSessionKey, router]);
 
   const isAuthenticated = Boolean(user) && !isLoggingOut;
   const blocksUI = shouldBlockForAuth(pathname);
@@ -372,6 +389,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       user: isLoggingOut ? null : user,
+      sessionKey,
       isLoading: blocksUI && isLoading && !isLoggingOut && user === null,
       isLoggingOut,
       isAuthenticated,
@@ -383,6 +401,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       user,
+      sessionKey,
       isLoading,
       isLoggingOut,
       isAuthenticated,
@@ -395,7 +414,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      <div key={sessionKey}>{children}</div>
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

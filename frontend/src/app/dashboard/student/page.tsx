@@ -11,30 +11,49 @@ import { ContinueLearningCard } from "@/components/learning/continue-learning-ca
 import { CourseProgressCard } from "@/components/learning/course-progress-card";
 import { DashboardStatsSkeleton } from "@/components/learning/learning-skeleton";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/auth-context";
 import { fetchStudentDashboard } from "@/lib/dashboard-api";
 import type { StudentDashboardData } from "@/types/dashboard";
 import { formatWatchTime } from "@/lib/video-utils";
 import { formatApiError } from "@/lib/format-api-error";
 
 export default function StudentDashboardPage() {
+  const { user } = useAuth();
   const [data, setData] = useState<StudentDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user?.id) {
+      setData(null);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+
     void (async () => {
       try {
         const res = await fetchStudentDashboard();
+        if (cancelled) return;
         setData(res.data);
       } catch (err) {
+        if (cancelled) return;
         setError(
           formatApiError(err, "Dashboard data could not be loaded. Please try again."),
         );
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     })();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   return (
     <DashboardShell

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
@@ -11,16 +11,19 @@ import { ModerationSection } from "@/components/dashboard/moderation-section";
 import { Spinner } from "@/components/ui/spinner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/auth-context";
 import { fetchAdminDashboard } from "@/lib/dashboard-api";
 import type { AdminDashboardData } from "@/types/dashboard";
 import { ApiClientError } from "@/lib/api";
 
 export default function AdminDashboardPage() {
+  const { user } = useAuth();
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async () => {
+    if (!user?.id) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -35,11 +38,11 @@ export default function AdminDashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [user?.id]);
 
   useEffect(() => {
     void loadDashboard();
-  }, []);
+  }, [loadDashboard]);
 
   return (
     <DashboardShell

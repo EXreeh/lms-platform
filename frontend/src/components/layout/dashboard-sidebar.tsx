@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import { useAuth } from "@/context/auth-context";
+import { isValidRole } from "@/lib/auth-session";
 
 interface NavItem {
   href: string;
@@ -195,8 +197,11 @@ interface DashboardSidebarProps {
   role: "TEACHER" | "ADMIN" | "STUDENT";
 }
 
-export function DashboardSidebar({ role }: DashboardSidebarProps) {
+export function DashboardSidebar({ role: fallbackRole }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const { user, isAuthenticated } = useAuth();
+  const role =
+    isAuthenticated && user && isValidRole(user.role) ? user.role : fallbackRole;
   const items =
     role === "STUDENT" ? studentNav : role === "ADMIN" ? adminNav : teacherNav;
 

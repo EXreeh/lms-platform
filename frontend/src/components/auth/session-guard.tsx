@@ -3,8 +3,12 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import { isProtectedPath } from "@/lib/auth-session";
+import { isProtectedPath, isValidRole } from "@/lib/auth-session";
 import { isPublicAuthPath } from "@/lib/auth-routes";
+import {
+  dashboardPathForRole,
+  isDashboardRoleMismatch,
+} from "@/lib/auth-role-route";
 import { AuthLoading } from "@/components/auth/auth-loading";
 
 /**
@@ -24,6 +28,11 @@ export function SessionGuard({ children }: { children: React.ReactNode }) {
     if (!user && isProtected) {
       const loginUrl = `/login?redirect=${encodeURIComponent(pathname)}&session=expired`;
       router.replace(loginUrl);
+      return;
+    }
+    if (user && isValidRole(user.role) && isDashboardRoleMismatch(pathname, user.role)) {
+      router.replace(dashboardPathForRole(user.role));
+      router.refresh();
     }
   }, [isLoading, user, pathname, router, isProtected, isPublic]);
 

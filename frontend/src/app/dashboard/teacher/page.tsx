@@ -11,21 +11,33 @@ import { CourseSection } from "@/components/dashboard/course-section";
 import { DemoBanner } from "@/components/dashboard/demo-banner";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/auth-context";
 import { fetchTeacherDashboard } from "@/lib/dashboard-api";
 import { getDemoTeacherDashboard, isDemoCourseId } from "@/lib/demo-dashboard";
 import type { TeacherDashboardData } from "@/types/dashboard";
 import { ApiClientError } from "@/lib/api";
 
 export default function TeacherDashboardPage() {
+  const { user } = useAuth();
   const [data, setData] = useState<TeacherDashboardData | null>(null);
   const [showDemo, setShowDemo] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user?.id) {
+      setData(null);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+
     void (async () => {
       try {
         const res = await fetchTeacherDashboard();
+        if (cancelled) return;
         if (res.data.isEmpty) {
           setData(getDemoTeacherDashboard());
           setShowDemo(true);
@@ -33,6 +45,7 @@ export default function TeacherDashboardPage() {
           setData(res.data);
         }
       } catch (err) {
+        if (cancelled) return;
         setError(
           err instanceof ApiClientError && err.status < 500
             ? err.message
@@ -41,10 +54,16 @@ export default function TeacherDashboardPage() {
         setData(getDemoTeacherDashboard());
         setShowDemo(true);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     })();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   return (
     <DashboardShell

@@ -315,9 +315,13 @@ export function Navbar() {
   const unreadCount = useUnreadMessages();
 
   const links = resolveNavLinks(user, isLoggingOut, isAuthenticated);
+  const navKey = user?.id ?? (isLoggingOut ? "logging-out" : "guest");
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/80 bg-card/90 backdrop-blur-xl">
+    <header
+      key={navKey}
+      className="sticky top-0 z-50 border-b border-border/80 bg-card/90 backdrop-blur-xl"
+    >
       <div className="mx-auto flex h-[4.25rem] w-full max-w-[1600px] items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
         <Logo size="md" />
 
