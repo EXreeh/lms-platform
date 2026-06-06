@@ -15,11 +15,41 @@ export const listUsersQuerySchema = z.object({
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
-export const createTeacherSchema = z.object({
+const createAccountBaseSchema = z.object({
   firstName: z.string().min(1).max(80),
   lastName: z.string().min(1).max(80),
-  email: z.string().email(),
+  email: z.string().email().transform((v) => v.toLowerCase().trim()),
   password: z.string().min(8).max(128),
+});
+
+const optionalFeePlanSchema = z
+  .object({
+    totalAmount: z.number().positive(),
+    dueDate: z.string().min(1),
+  })
+  .optional()
+  .nullable();
+
+const optionalSalarySchema = z
+  .object({
+    month: z.number().int().min(1).max(12),
+    year: z.number().int().min(2000).max(2100),
+    baseSalary: z.number().nonnegative(),
+    bonus: z.number().nonnegative().optional(),
+    deductions: z.number().nonnegative().optional(),
+  })
+  .optional()
+  .nullable();
+
+export const createStudentSchema = createAccountBaseSchema.extend({
+  batchId: z.string().min(1).optional().nullable(),
+  courseId: z.string().min(1).optional().nullable(),
+  feePlan: optionalFeePlanSchema,
+});
+
+export const createTeacherSchema = createAccountBaseSchema.extend({
+  batchId: z.string().min(1).optional().nullable(),
+  salary: optionalSalarySchema,
 });
 
 export const changeRoleSchema = z.object({
@@ -78,6 +108,7 @@ export const listActivityQuerySchema = z.object({
 });
 
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
+export type CreateStudentInput = z.infer<typeof createStudentSchema>;
 export type CreateTeacherInput = z.infer<typeof createTeacherSchema>;
 export type ChangeRoleInput = z.infer<typeof changeRoleSchema>;
 export type SuspendUserInput = z.infer<typeof suspendUserSchema>;

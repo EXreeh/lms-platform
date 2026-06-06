@@ -1,6 +1,5 @@
 import { prisma } from "../../config/database.js";
 import { ApiError } from "../../utils/api-error.js";
-import { logActivity } from "../admin/activity.service.js";
 import { mapCourse } from "../courses/courses.mapper.js";
 import { activeEntityFilter } from "../courses/courses.helpers.js";
 import { logAction } from "../../utils/logger.js";
@@ -50,15 +49,8 @@ async function getPublishedCourseOrThrow(idOrSlug: string) {
 }
 
 async function getEnrollmentOrThrow(studentId: string, courseId: string) {
-  const enrollment = await prisma.enrollment.findUnique({
-    where: { studentId_courseId: { studentId, courseId } },
-  });
-
-  if (!enrollment) {
-    throw ApiError.forbidden("You must enroll in this course first");
-  }
-
-  return enrollment;
+  const { assertStudentCourseAccess } = await import("../course-access/course-access.service.js");
+  return assertStudentCourseAccess(studentId, courseId);
 }
 
 async function getLessonWithCourse(lessonId: string) {
@@ -120,64 +112,28 @@ async function recalculateEnrollmentProgress(studentId: string, courseId: string
   logAction("progress.recalculate", { studentId, courseId, completedCount, total, progressPercentage });
 }
 
-export async function enrollInCourse(studentId: string, idOrSlug: string) {
-  const course = await getPublishedCourseOrThrow(idOrSlug);
-
-  const existing = await prisma.enrollment.findUnique({
-    where: { studentId_courseId: { studentId, courseId: course.id } },
-  });
-
-  if (existing) {
-    throw ApiError.conflict("Already enrolled in this course", "ALREADY_ENROLLED");
-  }
-
-  const { assertPaidEnrollment } = await import("../payments/payments.service.js");
-  await assertPaidEnrollment(studentId, course.id, Number(course.price));
-
-  const enrollment = await prisma.enrollment.create({
-    data: {
-      studentId,
-      courseId: course.id,
-      progressPercentage: 0,
-      completed: false,
-    },
-  });
-
-  const student = await prisma.user.findUnique({
-    where: { id: studentId },
-    select: { firstName: true, lastName: true },
-  });
-
-  await logActivity({
-    type: "ENROLLMENT",
-    userId: studentId,
-    courseId: course.id,
-    metadata: {
-      title: course.title,
-      userName: student ? `${student.firstName} ${student.lastName}`.trim() : undefined,
-    },
-  });
-
-  return {
-    message: "Enrolled successfully",
-    enrollment: mapEnrollment(enrollment),
-    course: mapCourse(course, true),
-  };
+export async function enrollInCourse(_studentId: string, _idOrSlug: string) {
+  throw ApiError.forbidden(
+    "Self-enrollment is disabled. Contact your institute admin to get course access.",
+    "SELF_ENROLL_DISABLED",
+  );
 }
 
 export async function getEnrolledCourses(studentId: string) {
-  const enrollments = await prisma.enrollment.findMany({
-    where: { studentId },
-    include: {
-      course: { include: courseInclude },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
-
-  return enrollments.map((e) => ({
-    ...mapEnrollment(e),
-    course: mapCourse(e.course, true),
-  }));
+  const { getAssignedCoursesForStudent } = await import(
+    "../course-access/course-access.service.js"
+  );
+  const assigned = await getAssignedCoursesForStudent(studentId);
+  return assigned
+    .filter((a) => a.enrollment)
+    .map((a) => ({
+      ...a.enrollment!,
+      course: a.course,
+      accessType: a.accessType,
+      accessLabel: a.accessLabel,
+      accessActive: a.accessActive,
+      lifetimeAccess: a.lifetimeAccess,
+    }));
 }
 
 export async function getCourseProgress(studentId: string, idOrSlug: string) {

@@ -36,6 +36,25 @@ export default function StudentBatchPage() {
               {batch.description && (
                 <p className="mt-2 text-muted-foreground">{batch.description}</p>
               )}
+              {(batch.assignedCourses?.length ?? 0) > 0 || batch.course ? (
+                <div className="mt-6">
+                  <h3 className="text-sm font-medium text-muted-foreground">Assigned courses</h3>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {(batch.assignedCourses?.length
+                      ? batch.assignedCourses
+                      : batch.course
+                        ? [batch.course]
+                        : []
+                    ).map((c) => (
+                      <li key={c.id}>
+                        <a href={`/courses/${c.slug}`} className="text-green-700 hover:underline dark:text-green-400">
+                          {c.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <dl className="mt-6 grid gap-4 sm:grid-cols-2 text-sm">
                 <div>
                   <dt className="text-muted-foreground">Teacher</dt>

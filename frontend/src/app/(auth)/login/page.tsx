@@ -87,15 +87,15 @@ function LoginForm() {
           title="Welcome back"
           subtitle={`Sign in to your ${brand.name} dashboard`}
           footer={
-            <>
-              Don&apos;t have an account?{" "}
+            <span className="text-muted-foreground">
+              Accounts are created by your institute administrator.{" "}
               <Link
                 href="/register"
                 className="font-semibold text-green-700 hover:text-green-600 dark:text-gold-400 dark:hover:text-gold-300"
               >
-                Create account
+                Learn more
               </Link>
-            </>
+            </span>
           }
         >
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { AuthNavbar } from "@/components/layout/auth-navbar";
 import { PageBackground } from "@/components/layout/page-background";
@@ -12,41 +12,23 @@ import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { fetchCourse } from "@/lib/courses-api";
 import type { Course } from "@/types/course";
-import { formatPrice, formatDuration, isFreeCourse } from "@/types/course";
+import { formatDuration } from "@/types/course";
 import { ApiClientError } from "@/lib/api";
 import { useAuth } from "@/context/auth-context";
-import { useToast } from "@/context/toast-context";
-import { useCoursePurchase } from "@/hooks/use-course-purchase";
 import { layout } from "@/lib/layout";
 
 export default function CourseDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const { user, isAuthenticated } = useAuth();
-  const { success, error: toastError } = useToast();
   const slug = params.slug as string;
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [enrollMsg, setEnrollMsg] = useState<string | null>(null);
+  const [accessMsg, setAccessMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const { isProcessing, handlePurchase } = useCoursePurchase({
-    courseId: course?.id ?? "",
-    courseSlug: slug,
-    courseTitle: course?.title ?? "",
-    price: course?.price ?? 0,
-    userName: user ? `${user.firstName} ${user.lastName}`.trim() : undefined,
-    userEmail: user?.email,
-    toastSuccess: success,
-    toastError: (msg) => {
-      setEnrollMsg(msg);
-      toastError(msg);
-    },
-  });
 
   useEffect(() => {
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("access") === "denied") {
-      setEnrollMsg("Only enrolled students can access this course. Enroll below to start learning.");
+      setAccessMsg("You do not have access to this course. Contact your institute admin.");
     }
   }, [slug]);
 
@@ -69,25 +51,9 @@ export default function CourseDetailPage() {
       0,
     ) ?? 0;
 
-  async function handleEnroll() {
-    if (!course) return;
-    if (!isAuthenticated) {
-      router.push(`/login?redirect=/courses/${slug}`);
-      return;
-    }
-    if (user?.role === "ADMIN") {
-      router.push(`/courses/${slug}/learn`);
-      return;
-    }
-    if (user?.role !== "STUDENT") {
-      setEnrollMsg("Only students can enroll. Sign in with a student account.");
-      return;
-    }
-    setEnrollMsg(null);
-    await handlePurchase();
-  }
-
-  const isPaid = course ? !isFreeCourse(course.price) : false;
+  const isStudent = user?.role === "STUDENT";
+  const canLearn = Boolean(course?.enrolled);
+  const isAssigned = Boolean(course?.assigned ?? course?.enrolled);
 
   return (
     <PageBackground variant="default">
@@ -168,8 +134,13 @@ export default function CourseDetailPage() {
                         </Button>
                       </Link>
                     </>
-                  ) : course.enrolled ? (
+                  ) : canLearn ? (
                     <>
+                      {course.accessLabel && (
+                        <p className="text-sm font-medium text-green-700 dark:text-green-400">
+                          {course.accessLabel}
+                        </p>
+                      )}
                       <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
                         <div
                           className="h-full gradient-brand"
@@ -187,34 +158,42 @@ export default function CourseDetailPage() {
                         </Button>
                       </Link>
                     </>
-                  ) : (
+                  ) : isStudent ? (
                     <>
-                      <p className="text-3xl font-bold text-foreground">{formatPrice(course.price)}</p>
-                      <Button
-                        className="mt-4 w-full"
-                        size="lg"
-                        variant="gold"
-                        onClick={handleEnroll}
-                        disabled={isProcessing}
-                      >
-                        {isProcessing
-                          ? isPaid
-                            ? "Processing…"
-                            : "Enrolling…"
-                          : isPaid
-                            ? "Buy now"
-                            : "Enroll now"}
-                      </Button>
-                      {enrollMsg ? (
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                        {isAssigned ? (course.accessLabel ?? "Pending fee") : "Not assigned"}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {isAssigned
+                          ? "Complete your institute fee to unlock learning, or contact admin."
+                          : "This course is not assigned to you. Contact your institute admin."}
+                      </p>
+                      {accessMsg ? (
                         <p className="mt-2 text-center text-xs text-red-600 dark:text-red-400" role="alert">
-                          {enrollMsg}
+                          {accessMsg}
                         </p>
-                      ) : (
-                        <p className="mt-2 text-center text-xs text-muted-foreground">
-                          {isPaid ? "Secure checkout via Razorpay" : "Full access after enrollment"}
-                        </p>
-                      )}
+                      ) : null}
+                      <Link href={isAssigned ? "/dashboard/student/fees" : "/dashboard/student/messages"} className="mt-4 block">
+                        <Button className="w-full" size="lg" variant="secondary">
+                          {isAssigned ? "View my fees" : "Message admin"}
+                        </Button>
+                      </Link>
                     </>
+                  ) : !isAuthenticated ? (
+                    <>
+                      <p className="text-sm text-muted-foreground">
+                        Institute students sign in to access assigned courses.
+                      </p>
+                      <Link href={`/login?redirect=/courses/${slug}`} className="mt-4 block">
+                        <Button className="w-full" size="lg" variant="gold">
+                          Sign in
+                        </Button>
+                      </Link>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Course management is available from your dashboard.
+                    </p>
                   )}
                   <ul className="mt-6 space-y-3 border-t border-border pt-6 text-sm text-muted-foreground">
                     <li className="flex justify-between">

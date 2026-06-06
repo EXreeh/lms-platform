@@ -2,7 +2,9 @@ import type { Request, Response } from "express";
 import rateLimit, { type Options } from "express-rate-limit";
 import { env } from "../config/env.js";
 
-function rateLimitBody(message: string) {
+export const RATE_LIMIT_MESSAGE = "Too many attempts. Please wait a few minutes.";
+
+function rateLimitBody(message: string = RATE_LIMIT_MESSAGE) {
   return {
     success: false,
     message,
@@ -10,7 +12,7 @@ function rateLimitBody(message: string) {
   };
 }
 
-function sendRateLimitResponse(res: Response, message: string): void {
+function sendRateLimitResponse(res: Response, message: string = RATE_LIMIT_MESSAGE): void {
   res.status(429).json(rateLimitBody(message));
 }
 
@@ -24,52 +26,82 @@ function isReadOnlyRequest(req: Request): boolean {
   return req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS";
 }
 
-/** Applies to mutating API calls only — GET routes (courses, /me, dashboard, etc.) are excluded. */
-export const generalWriteRateLimiter = rateLimit({
+/** Paths with dedicated strict limiters — excluded from the general API cap. */
+const SENSITIVE_AUTH_PATHS = new Set([
+  "/auth/login",
+  "/auth/register/request-otp",
+  "/auth/register/resend-otp",
+  "/auth/register/verify",
+  "/auth/password/forgot",
+  "/auth/password/resend-otp",
+  "/auth/password/verify-otp",
+  "/auth/password/reset",
+  "/auth/check-email",
+]);
+
+function shouldSkipGeneralLimiter(req: Request): boolean {
+  if (isReadOnlyRequest(req)) return true;
+  if (req.path === "/health") return true;
+  if (SENSITIVE_AUTH_PATHS.has(req.path)) return true;
+  return false;
+}
+
+function emailFromBody(req: Request): string {
+  const email = req.body?.email;
+  return typeof email === "string" ? email.trim().toLowerCase() : "";
+}
+
+/**
+ * Broad safety net for mutating API calls.
+ * GET routes (/auth/me, /dashboard/*, /courses, /messages/unread-count, etc.) are never limited.
+ */
+export const generalApiRateLimiter = rateLimit({
   ...baseOptions,
   windowMs: 15 * 60 * 1000,
-  max: 400,
-  skip: (req) => isReadOnlyRequest(req) || req.path === "/health",
+  max: 1000,
+  skip: shouldSkipGeneralLimiter,
   handler: (_req, res) => {
-    sendRateLimitResponse(
-      res,
-      "You're making requests too quickly. Please wait a moment and try again.",
-    );
+    sendRateLimitResponse(res);
   },
 });
 
-/** Login attempts — reasonable cap without blocking normal retries. */
+/** Login — 20 attempts per 15 minutes per IP. */
 export const loginRateLimiter = rateLimit({
   ...baseOptions,
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 20,
   handler: (_req, res) => {
-    sendRateLimitResponse(
-      res,
-      "Too many login attempts. Please wait a few minutes and try again.",
-    );
+    sendRateLimitResponse(res);
   },
 });
 
-/** OTP send / verify / password reset — keep strict. */
+/**
+ * OTP / register / password-reset — 5 attempts per 10 minutes per email + IP.
+ */
 export const otpRateLimiter = rateLimit({
   ...baseOptions,
-  windowMs: 15 * 60 * 1000,
-  max: 12,
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => `${req.ip}:${emailFromBody(req)}`,
   handler: (_req, res) => {
-    sendRateLimitResponse(
-      res,
-      "Too many verification attempts. Please wait before requesting another code.",
-    );
+    sendRateLimitResponse(res);
   },
 });
 
-/** Email availability checks during registration. */
+/** Email availability during registration — moderate, separate from OTP. */
 export const checkEmailRateLimiter = rateLimit({
   ...baseOptions,
-  windowMs: 60 * 1000,
-  max: 40,
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => {
+    const email =
+      typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
+    return `${req.ip}:${email}`;
+  },
   handler: (_req, res) => {
-    sendRateLimitResponse(res, "Too many email checks. Please slow down.");
+    sendRateLimitResponse(res);
   },
 });
+
+/** @deprecated Use generalApiRateLimiter */
+export const generalWriteRateLimiter = generalApiRateLimiter;

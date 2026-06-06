@@ -35,9 +35,9 @@ export async function getOne(req: Request, res: Response): Promise<void> {
 }
 
 export async function create(req: Request, res: Response): Promise<void> {
-  requireUser(req);
+  const user = requireUser(req);
   const body = createBatchSchema.parse(req.body);
-  const data = await batchesService.createBatch(body);
+  const data = await batchesService.createBatch(body, user.id);
   res.status(201).json({ success: true, data });
 }
 
@@ -49,9 +49,13 @@ export async function update(req: Request, res: Response): Promise<void> {
 }
 
 export async function addStudents(req: Request, res: Response): Promise<void> {
-  requireUser(req);
+  const user = requireUser(req);
   const { studentIds } = batchStudentsSchema.parse(req.body);
-  const data = await batchesService.addStudentsToBatch(req.params.batchId, studentIds);
+  const data = await batchesService.addStudentsToBatch(
+    req.params.batchId,
+    studentIds,
+    user.id,
+  );
   res.json({ success: true, data });
 }
 

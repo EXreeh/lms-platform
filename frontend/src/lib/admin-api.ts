@@ -33,13 +33,55 @@ export function fetchAdminUser(userId: string) {
   });
 }
 
-export function createTeacherAccount(body: {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-}) {
-  return apiRequest<{ success: boolean; data: { user: AdminUser } }>("/admin/users", {
+export interface CreateAccountOptions {
+  batchId?: string | null;
+  courseId?: string | null;
+  feePlan?: { totalAmount: number; dueDate: string } | null;
+  salary?: {
+    month: number;
+    year: number;
+    baseSalary: number;
+    bonus?: number;
+    deductions?: number;
+  } | null;
+}
+
+export function createStudentAccount(
+  body: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+  } & CreateAccountOptions,
+) {
+  return apiRequest<{
+    success: boolean;
+    data: {
+      user: AdminUser;
+      credentialsDelivered: { messageSent: boolean; emailSent: boolean };
+    };
+  }>("/admin/users/students", {
+    method: "POST",
+    body,
+    auth: true,
+  });
+}
+
+export function createTeacherAccount(
+  body: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+  } & CreateAccountOptions,
+) {
+  return apiRequest<{
+    success: boolean;
+    data: {
+      user: AdminUser;
+      credentialsDelivered: { messageSent: boolean; emailSent: boolean };
+    };
+  }>("/admin/users/teachers", {
     method: "POST",
     body,
     auth: true,

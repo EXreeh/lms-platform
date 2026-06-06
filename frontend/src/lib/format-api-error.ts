@@ -2,6 +2,12 @@ import { ApiClientError } from "./api";
 
 const FRIENDLY_BY_CODE: Record<string, string> = {
   ALREADY_ENROLLED: "You are already enrolled in this course.",
+  SELF_ENROLL_DISABLED:
+    "Self-enrollment is disabled. Contact your institute admin for course access.",
+  SELF_REGISTRATION_DISABLED:
+    "Account creation is managed by CognitiaX AI administration. Please contact your institute admin.",
+  COURSE_ACCESS_DENIED:
+    "You do not have access to this course. Contact your institute admin.",
   PAYMENT_REQUIRED: "Please complete payment before enrolling in this course.",
   FREE_COURSE: "This course is free — use Enroll instead of checkout.",
   INVALID_SIGNATURE: "Payment could not be verified. Please contact support if you were charged.",
@@ -15,7 +21,7 @@ const FRIENDLY_BY_CODE: Record<string, string> = {
   FORBIDDEN: "You do not have permission to perform this action.",
   NOT_FOUND: "The requested item could not be found.",
   ALREADY_PAID: "Payment for this course was already completed.",
-  RATE_LIMIT: "Too many requests. Please wait a moment and try again.",
+  RATE_LIMIT: "Too many attempts. Please wait a few minutes.",
 };
 
 const FRIENDLY_BY_STATUS: Record<number, string> = {
@@ -24,7 +30,7 @@ const FRIENDLY_BY_STATUS: Record<number, string> = {
   403: "You do not have permission to do that.",
   404: "We could not find what you were looking for.",
   409: "This action conflicts with the current state.",
-  429: "Too many requests. Please wait a moment and try again.",
+  429: "Too many attempts. Please wait a few minutes.",
   500: "Our server encountered an error. Please try again shortly.",
   503: "The service is temporarily unavailable. Please try again later.",
 };

@@ -253,10 +253,10 @@ export async function listCourseResourcesForStudent(studentId: string, courseId:
   });
   if (!course) throw ApiError.notFound("Course not found");
 
-  const enrollment = await prisma.enrollment.findUnique({
-    where: { studentId_courseId: { studentId, courseId } },
-  });
-  if (!enrollment) throw ApiError.forbidden("You must enroll in this course first");
+  const { assertStudentCourseAccess } = await import(
+    "../course-access/course-access.service.js"
+  );
+  await assertStudentCourseAccess(studentId, courseId);
 
   return listCourseResources(courseId, "student");
 }
@@ -271,22 +271,20 @@ export async function listLessonResourcesForStudent(studentId: string, lessonId:
     throw ApiError.notFound("Course not available");
   }
 
-  const enrollment = await prisma.enrollment.findUnique({
-    where: {
-      studentId_courseId: { studentId, courseId: lesson.module.courseId },
-    },
-  });
-  if (!enrollment) throw ApiError.forbidden("You must enroll in this course first");
+  const { assertStudentCourseAccess } = await import(
+    "../course-access/course-access.service.js"
+  );
+  await assertStudentCourseAccess(studentId, lesson.module.courseId);
 
   return listLessonResources(lessonId, "student");
 }
 
 export async function listStudentEnrolledResources(studentId: string) {
-  const enrollments = await prisma.enrollment.findMany({
-    where: { studentId },
-    select: { courseId: true },
-  });
-  const courseIds = enrollments.map((e) => e.courseId);
+  const { getAssignedCoursesForStudent } = await import(
+    "../course-access/course-access.service.js"
+  );
+  const assigned = await getAssignedCoursesForStudent(studentId);
+  const courseIds = assigned.filter((a) => a.accessActive).map((a) => a.course.id);
   if (courseIds.length === 0) return [];
 
   const resources = await prisma.resource.findMany({

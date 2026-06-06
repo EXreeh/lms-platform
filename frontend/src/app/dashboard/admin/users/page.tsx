@@ -18,8 +18,11 @@ import {
   suspendUser,
   deleteAdminUser,
   resetUserPassword,
+  createStudentAccount,
   createTeacherAccount,
+  fetchAdminCourses,
 } from "@/lib/admin-api";
+import { fetchBatches } from "@/lib/batches-api";
 import type { AdminUser, AdminUserDetail } from "@/types/admin";
 import type { Role } from "@/types/auth";
 import { ApiClientError } from "@/lib/api";
@@ -45,13 +48,24 @@ export default function AdminUsersPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [showCreate, setShowCreate] = useState(false);
+  const [createMode, setCreateMode] = useState<"student" | "teacher" | null>(null);
   const [createForm, setCreateForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
+    batchId: "",
+    courseId: "",
+    feeTotal: "",
+    feeDueDate: "",
+    salaryMonth: String(new Date().getMonth() + 1),
+    salaryYear: String(new Date().getFullYear()),
+    baseSalary: "",
+    salaryBonus: "0",
+    salaryDeductions: "0",
   });
+  const [batches, setBatches] = useState<{ value: string; label: string }[]>([]);
+  const [courses, setCourses] = useState<{ value: string; label: string }[]>([]);
   const [resetPassword, setResetPassword] = useState("");
 
   const loadUsers = useCallback(async () => {
@@ -78,6 +92,25 @@ export default function AdminUsersPage() {
   useEffect(() => {
     void loadUsers();
   }, [loadUsers]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [batchRes, courseRes] = await Promise.all([
+          fetchBatches(),
+          fetchAdminCourses({ limit: 100 }),
+        ]);
+        setBatches(
+          batchRes.data.map((b) => ({ value: b.id, label: b.name })),
+        );
+        setCourses(
+          courseRes.data.courses.map((c) => ({ value: c.id, label: c.title })),
+        );
+      } catch {
+        /* optional dropdowns */
+      }
+    })();
+  }, []);
 
   async function openDetail(userId: string) {
     setDetailLoading(true);
@@ -126,16 +159,81 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function handleCreateTeacher(e: React.FormEvent) {
+  function resetCreateForm() {
+    setCreateForm({
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      batchId: "",
+      courseId: "",
+      feeTotal: "",
+      feeDueDate: "",
+      salaryMonth: String(new Date().getMonth() + 1),
+      salaryYear: String(new Date().getFullYear()),
+      baseSalary: "",
+      salaryBonus: "0",
+      salaryDeductions: "0",
+    });
+  }
+
+  async function handleCreateAccount(e: React.FormEvent) {
     e.preventDefault();
+    if (!createMode) return;
     try {
-      await createTeacherAccount(createForm);
-      success("Teacher account created");
-      setShowCreate(false);
-      setCreateForm({ firstName: "", lastName: "", email: "", password: "" });
+      const base = {
+        firstName: createForm.firstName.trim(),
+        lastName: createForm.lastName.trim(),
+        email: createForm.email.trim().toLowerCase(),
+        password: createForm.password,
+        batchId: createForm.batchId || null,
+      };
+
+      if (createMode === "student") {
+        const res = await createStudentAccount({
+          ...base,
+          courseId: createForm.courseId || null,
+          feePlan:
+            createForm.feeTotal && createForm.feeDueDate
+              ? {
+                  totalAmount: Number(createForm.feeTotal),
+                  dueDate: new Date(createForm.feeDueDate).toISOString(),
+                }
+              : null,
+        });
+        const delivered = res.data.credentialsDelivered;
+        success(
+          delivered.emailSent
+            ? "Student created — credentials sent via message and email"
+            : "Student created — credentials sent via internal message",
+        );
+      } else {
+        const res = await createTeacherAccount({
+          ...base,
+          salary:
+            createForm.baseSalary
+              ? {
+                  month: Number(createForm.salaryMonth),
+                  year: Number(createForm.salaryYear),
+                  baseSalary: Number(createForm.baseSalary),
+                  bonus: Number(createForm.salaryBonus) || 0,
+                  deductions: Number(createForm.salaryDeductions) || 0,
+                }
+              : null,
+        });
+        const delivered = res.data.credentialsDelivered;
+        success(
+          delivered.emailSent
+            ? "Teacher created — credentials sent via message and email"
+            : "Teacher created — credentials sent via internal message",
+        );
+      }
+
+      setCreateMode(null);
+      resetCreateForm();
       await loadUsers();
     } catch (err) {
-      toastError(err instanceof ApiClientError ? err.message : "Failed to create teacher");
+      toastError(err instanceof ApiClientError ? err.message : "Failed to create account");
     }
   }
 
@@ -185,7 +283,7 @@ export default function AdminUsersPage() {
   return (
     <DashboardShell
       title="User Management"
-      description="Search, filter, and manage platform users."
+      description="Create institute student and teacher accounts. Only administrators can add users."
       badge="Administrator"
     >
       <div className="flex flex-col gap-8 lg:flex-row">
@@ -230,7 +328,10 @@ export default function AdminUsersPage() {
                 setPagination((p) => ({ ...p, page: 1 }));
               }}
             />
-            <Button variant="gold" onClick={() => setShowCreate(true)}>
+            <Button variant="gold" onClick={() => setCreateMode("student")}>
+              Create student
+            </Button>
+            <Button variant="secondary" onClick={() => setCreateMode("teacher")}>
               Create teacher
             </Button>
           </div>
@@ -446,58 +547,122 @@ export default function AdminUsersPage() {
         />
       )}
 
-      {showCreate && (
+      {createMode && (
         <>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowCreate(false)}
+            onClick={() => setCreateMode(null)}
           />
           <motion.form
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            onSubmit={(e) => void handleCreateTeacher(e)}
-            className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 space-y-4 rounded-2xl border border-border bg-card p-6 shadow-xl"
+            onSubmit={(e) => void handleCreateAccount(e)}
+            className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-xl"
           >
-            <h2 className="font-serif text-lg font-bold">Create teacher</h2>
-            <Input
-              label="First name"
-              placeholder="First name"
-              value={createForm.firstName}
-              onChange={(e) => setCreateForm((f) => ({ ...f, firstName: e.target.value }))}
-              required
-            />
-            <Input
-              label="Last name"
-              placeholder="Last name"
-              value={createForm.lastName}
-              onChange={(e) => setCreateForm((f) => ({ ...f, lastName: e.target.value }))}
-              required
-            />
+            <h2 className="font-serif text-lg font-bold">
+              Create {createMode === "student" ? "student" : "teacher"} account
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Login credentials will be sent as an internal message
+              {createMode === "student" ? " (and by email when configured)." : " (and by email when configured)."}
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label="First name"
+                value={createForm.firstName}
+                onChange={(e) => setCreateForm((f) => ({ ...f, firstName: e.target.value }))}
+                required
+              />
+              <Input
+                label="Last name"
+                value={createForm.lastName}
+                onChange={(e) => setCreateForm((f) => ({ ...f, lastName: e.target.value }))}
+                required
+              />
+            </div>
             <Input
               label="Email"
               type="email"
-              placeholder="Email"
               value={createForm.email}
               onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))}
               required
             />
             <Input
-              label="Password"
+              label="Temporary password"
               type="password"
-              placeholder="Temporary password"
               value={createForm.password}
               onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))}
               required
               minLength={8}
             />
+            <Select
+              label="Assigned batch (optional)"
+              options={[{ value: "", label: "None" }, ...batches]}
+              value={createForm.batchId}
+              onChange={(e) => setCreateForm((f) => ({ ...f, batchId: e.target.value }))}
+            />
+            {createMode === "student" ? (
+              <>
+                <Select
+                  label="Assigned course (optional)"
+                  options={[{ value: "", label: "None" }, ...courses]}
+                  value={createForm.courseId}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, courseId: e.target.value }))}
+                />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Input
+                    label="Fee total ₹ (optional)"
+                    type="number"
+                    value={createForm.feeTotal}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, feeTotal: e.target.value }))}
+                  />
+                  <Input
+                    label="Fee due date (optional)"
+                    type="date"
+                    value={createForm.feeDueDate}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, feeDueDate: e.target.value }))}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Select
+                  label="Salary month (optional)"
+                  options={Array.from({ length: 12 }, (_, i) => ({
+                    value: String(i + 1),
+                    label: new Date(2000, i, 1).toLocaleString("en", { month: "long" }),
+                  }))}
+                  value={createForm.salaryMonth}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, salaryMonth: e.target.value }))}
+                />
+                <Input
+                  label="Salary year"
+                  type="number"
+                  value={createForm.salaryYear}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, salaryYear: e.target.value }))}
+                />
+                <Input
+                  label="Base salary ₹ (optional)"
+                  type="number"
+                  value={createForm.baseSalary}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, baseSalary: e.target.value }))}
+                />
+                <Input
+                  label="Bonus ₹"
+                  type="number"
+                  value={createForm.salaryBonus}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, salaryBonus: e.target.value }))}
+                />
+              </div>
+            )}
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={() => setShowCreate(false)}>
+              <Button type="button" variant="secondary" onClick={() => setCreateMode(null)}>
                 Cancel
               </Button>
               <Button type="submit" variant="gold">
-                Create
+                Create account
               </Button>
             </div>
           </motion.form>

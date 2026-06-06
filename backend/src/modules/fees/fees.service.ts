@@ -57,14 +57,27 @@ async function syncFeeAmounts(planId: string) {
   if (fullyPaid) {
     accessGranted = true;
     lifetimeAccess = true;
+    const { grantAccessFromFeePlan } = await import(
+      "../course-access/course-access.service.js"
+    );
+    const assignerId = plan.payments[0]?.recordedById ?? plan.studentId;
     if (plan.courseId) {
-      await prisma.enrollment.upsert({
-        where: {
-          studentId_courseId: { studentId: plan.studentId, courseId: plan.courseId },
-        },
-        create: { studentId: plan.studentId, courseId: plan.courseId },
-        update: {},
+      await grantAccessFromFeePlan(plan.studentId, plan.courseId, assignerId, true);
+    }
+    if (plan.batchId) {
+      const batchCourses = await prisma.batchCourse.findMany({
+        where: { batchId: plan.batchId },
+        select: { courseId: true },
       });
+      const legacy = await prisma.batch.findUnique({
+        where: { id: plan.batchId },
+        select: { courseId: true },
+      });
+      const courseIds = new Set(batchCourses.map((c) => c.courseId));
+      if (legacy?.courseId) courseIds.add(legacy.courseId);
+      for (const courseId of courseIds) {
+        await grantAccessFromFeePlan(plan.studentId, courseId, assignerId, true);
+      }
     }
   }
 

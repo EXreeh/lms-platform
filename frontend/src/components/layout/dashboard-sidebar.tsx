@@ -14,28 +14,9 @@ interface NavItem {
 const teacherNav: NavItem[] = [
   {
     href: "/dashboard/teacher",
-    label: "Overview",
+    label: "Dashboard",
     icon: "◈",
     match: (p) => p === "/dashboard/teacher",
-  },
-  {
-    href: "/dashboard/teacher",
-    label: "My courses",
-    icon: "📚",
-    match: (p) => p.startsWith("/dashboard/teacher/courses"),
-  },
-  { href: "/courses", label: "Marketplace", icon: "◎" },
-  {
-    href: "/dashboard/teacher/quizzes",
-    label: "Quizzes",
-    icon: "?",
-    match: (p) => p.startsWith("/dashboard/teacher/quizzes"),
-  },
-  {
-    href: "/dashboard/teacher/resources",
-    label: "Resources",
-    icon: "📎",
-    match: (p) => p.startsWith("/dashboard/teacher/resources"),
   },
   {
     href: "/dashboard/teacher/batches",
@@ -44,10 +25,22 @@ const teacherNav: NavItem[] = [
     match: (p) => p.startsWith("/dashboard/teacher/batches"),
   },
   {
+    href: "/dashboard/teacher/courses",
+    label: "My Courses",
+    icon: "📚",
+    match: (p) => p.startsWith("/dashboard/teacher/courses"),
+  },
+  {
     href: "/dashboard/teacher/messages",
     label: "Messages",
     icon: "✉",
     match: (p) => p.startsWith("/dashboard/teacher/messages"),
+  },
+  {
+    href: "/dashboard/teacher/salary",
+    label: "My Salary",
+    icon: "💰",
+    match: (p) => p.startsWith("/dashboard/teacher/salary"),
   },
   {
     href: "/dashboard/teacher/live-classes",
@@ -56,18 +49,11 @@ const teacherNav: NavItem[] = [
     match: (p) => p.startsWith("/dashboard/teacher/live-classes"),
   },
   {
-    href: "/dashboard/teacher/courses/new",
-    label: "Create course",
-    icon: "＋",
-    match: (p) => p === "/dashboard/teacher/courses/new",
-  },
-  {
     href: "/dashboard/profile",
     label: "Profile",
     icon: "👤",
     match: (p) => p.startsWith("/dashboard/profile"),
   },
-  { href: "/courses", label: "Catalog", icon: "◇" },
 ];
 
 const studentNav: NavItem[] = [
@@ -77,30 +63,23 @@ const studentNav: NavItem[] = [
     icon: "◈",
     match: (p) => p === "/dashboard/student",
   },
-  { href: "/courses", label: "Browse courses", icon: "◎" },
   {
-    href: "/dashboard/student/certificates",
-    label: "Certificates",
-    icon: "🏆",
-    match: (p) => p.startsWith("/dashboard/student/certificates") || p.includes("/certificate"),
-  },
-  {
-    href: "/dashboard/student/resources",
-    label: "Resources",
-    icon: "📎",
-    match: (p) => p.startsWith("/dashboard/student/resources"),
-  },
-  {
-    href: "/dashboard/student/fees",
-    label: "My Fees",
-    icon: "₹",
-    match: (p) => p.startsWith("/dashboard/student/fees"),
+    href: "/dashboard/student/courses",
+    label: "My Courses",
+    icon: "📚",
+    match: (p) => p.startsWith("/dashboard/student/courses"),
   },
   {
     href: "/dashboard/student/batch",
     label: "My Batch",
     icon: "👥",
     match: (p) => p.startsWith("/dashboard/student/batch"),
+  },
+  {
+    href: "/dashboard/student/fees",
+    label: "My Fees",
+    icon: "₹",
+    match: (p) => p.startsWith("/dashboard/student/fees"),
   },
   {
     href: "/dashboard/student/messages",
@@ -115,6 +94,18 @@ const studentNav: NavItem[] = [
     match: (p) => p.startsWith("/dashboard/student/live-classes"),
   },
   {
+    href: "/dashboard/student/resources",
+    label: "Resources",
+    icon: "📎",
+    match: (p) => p.startsWith("/dashboard/student/resources"),
+  },
+  {
+    href: "/dashboard/student/certificates",
+    label: "Certificates",
+    icon: "🏆",
+    match: (p) => p.startsWith("/dashboard/student/certificates") || p.includes("/certificate"),
+  },
+  {
     href: "/dashboard/profile",
     label: "Profile",
     icon: "👤",
@@ -125,44 +116,20 @@ const studentNav: NavItem[] = [
 const adminNav: NavItem[] = [
   {
     href: "/dashboard/admin",
-    label: "Overview",
+    label: "Dashboard",
     icon: "◈",
     match: (p) => p === "/dashboard/admin",
   },
   {
-    href: "/dashboard/admin/review",
-    label: "Review",
-    icon: "✓",
-    match: (p) => p.startsWith("/dashboard/admin/review"),
-  },
-  {
-    href: "/dashboard/admin/fees",
-    label: "Fees",
-    icon: "₹",
-    match: (p) => p.startsWith("/dashboard/admin/fees"),
-  },
-  {
-    href: "/dashboard/admin/batches",
-    label: "Batches",
-    icon: "📅",
-    match: (p) => p.startsWith("/dashboard/admin/batches"),
-  },
-  {
-    href: "/dashboard/admin/messages",
-    label: "Messages",
-    icon: "✉",
-    match: (p) => p.startsWith("/dashboard/admin/messages"),
-  },
-  {
-    href: "/dashboard/admin/live-classes",
-    label: "Live Classes",
-    icon: "▶",
-    match: (p) => p.startsWith("/dashboard/admin/live-classes"),
-  },
-  {
     href: "/dashboard/admin/users",
-    label: "Users",
-    icon: "👥",
+    label: "Students",
+    icon: "🎓",
+    match: (p) => p.startsWith("/dashboard/admin/users"),
+  },
+  {
+    href: "/dashboard/admin/users?role=TEACHER",
+    label: "Teachers",
+    icon: "👨‍🏫",
     match: (p) => p.startsWith("/dashboard/admin/users"),
   },
   {
@@ -172,28 +139,49 @@ const adminNav: NavItem[] = [
     match: (p) => p.startsWith("/dashboard/admin/courses"),
   },
   {
-    href: "/dashboard/admin/activity",
-    label: "Activity",
-    icon: "◎",
-    match: (p) => p.startsWith("/dashboard/admin/activity"),
+    href: "/dashboard/admin/batches",
+    label: "Batches",
+    icon: "📅",
+    match: (p) => p.startsWith("/dashboard/admin/batches"),
   },
   {
-    href: "/dashboard/admin/resources",
-    label: "Resources",
-    icon: "📎",
-    match: (p) => p.startsWith("/dashboard/admin/resources"),
+    href: "/dashboard/admin/fees",
+    label: "Fees",
+    icon: "₹",
+    match: (p) => p.startsWith("/dashboard/admin/fees"),
   },
   {
-    href: "/dashboard/admin/certificates",
-    label: "Certificates",
-    icon: "🏆",
-    match: (p) => p.startsWith("/dashboard/admin/certificates"),
+    href: "/dashboard/admin/course-access",
+    label: "Course Access",
+    icon: "🔐",
+    match: (p) => p.startsWith("/dashboard/admin/course-access"),
   },
   {
-    href: "/dashboard/admin/payments",
-    label: "Payments",
+    href: "/dashboard/admin/messages",
+    label: "Messages",
+    icon: "✉",
+    match: (p) => p.startsWith("/dashboard/admin/messages"),
+  },
+  {
+    href: "/dashboard/admin/teacher-salaries",
+    label: "Teacher Salaries",
     icon: "💰",
-    match: (p) => p.startsWith("/dashboard/admin/payments"),
+    match: (p) => p.startsWith("/dashboard/admin/teacher-salaries"),
+  },
+  {
+    href: "/dashboard/admin/live-classes",
+    label: "Live Classes",
+    icon: "▶",
+    match: (p) => p.startsWith("/dashboard/admin/live-classes"),
+  },
+  {
+    href: "/dashboard/admin/activity",
+    label: "Reports",
+    icon: "◎",
+    match: (p) =>
+      p.startsWith("/dashboard/admin/activity") ||
+      p.startsWith("/dashboard/admin/payments") ||
+      p.startsWith("/dashboard/admin/certificates"),
   },
   {
     href: "/dashboard/profile",
@@ -201,7 +189,6 @@ const adminNav: NavItem[] = [
     icon: "👤",
     match: (p) => p.startsWith("/dashboard/profile"),
   },
-  { href: "/courses", label: "Catalog", icon: "◇" },
 ];
 
 interface DashboardSidebarProps {

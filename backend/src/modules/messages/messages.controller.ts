@@ -1,7 +1,11 @@
 import type { Request, Response } from "express";
 import { ApiError } from "../../utils/api-error.js";
 import * as messagesService from "./messages.service.js";
-import { inboxQuerySchema, sendMessageSchema } from "./messages.validation.js";
+import {
+  composeTargetsQuerySchema,
+  inboxQuerySchema,
+  sendMessageSchema,
+} from "./messages.validation.js";
 
 function requireUser(req: Request) {
   if (!req.user) throw ApiError.unauthorized();
@@ -10,7 +14,8 @@ function requireUser(req: Request) {
 
 export async function composeTargets(req: Request, res: Response): Promise<void> {
   const user = requireUser(req);
-  const data = await messagesService.getComposeTargets(user.id, user.role);
+  const query = composeTargetsQuerySchema.parse(req.query);
+  const data = await messagesService.getComposeTargets(user.id, user.role, query);
   res.json({ success: true, data });
 }
 
@@ -23,6 +28,7 @@ export async function send(req: Request, res: Response): Promise<void> {
     recipientIds: body.recipientIds,
     batchId: body.batchId,
     broadcastAllStudents: body.broadcastAllStudents,
+    broadcastAllTeachers: body.broadcastAllTeachers,
     subject: body.subject,
     content: body.content,
     type: body.type,

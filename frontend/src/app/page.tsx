@@ -18,7 +18,7 @@ const features = [
   {
     title: "Student Portal",
     description:
-      "Access courses, track progress, and complete interactive lessons from any device.",
+      "Access institute-assigned courses, track progress, and learn from any device.",
     icon: "◈",
   },
   {
@@ -60,21 +60,19 @@ export default function LandingPage() {
                 <span className="gradient-text-brand">{brand.name}</span>
               </h1>
               <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-                {brand.tagline}. A premium learning experience built for students, educators,
-                and institutions — secure, scalable, and ready for the future of education.
+                {brand.tagline}. A private institute learning portal for assigned students,
+                teachers, and administrators — secure, organized, and built for your campus.
               </p>
               <div className="mt-10 flex flex-wrap gap-3">
-                <Link href="/register">
-                  <Button size="lg" variant="gold">
-                    Start learning free
-                  </Button>
-                </Link>
                 <Link href="/login">
-                  <Button variant="secondary" size="lg">
-                    Sign in
+                  <Button size="lg" variant="gold">
+                    Sign in to portal
                   </Button>
                 </Link>
               </div>
+              <p className="mt-4 text-sm text-muted-foreground">
+                Institute accounts are created by administration. Contact your admin for access.
+              </p>
               <dl className="mt-12 grid grid-cols-3 gap-6 border-t border-border pt-10">
                 {stats.map((stat) => (
                   <div key={stat.label}>
@@ -135,16 +133,16 @@ export default function LandingPage() {
           <div className="relative overflow-hidden rounded-3xl gradient-brand px-8 py-14 text-center sm:px-16">
             <div className="absolute inset-0 bg-[url('/brand/cognitiax-logo.png')] bg-center bg-no-repeat opacity-[0.04] bg-[length:40%]" aria-hidden />
             <h2 className="relative font-serif text-3xl font-bold text-white sm:text-4xl">
-              Ready to transform learning?
+              Your institute learning portal
             </h2>
             <p className="relative mx-auto mt-4 max-w-xl text-green-50/90">
-              Join {brand.name} — courses, video lessons, quizzes, and progress tracking
-              coming in upcoming releases.
+              Assigned courses, batches, fees, messaging, and progress tracking — all in one
+              private portal for {brand.name}.
             </p>
             <div className="relative mt-8 flex flex-wrap justify-center gap-3">
-              <Link href="/register">
+              <Link href="/login">
                 <Button variant="gold" size="lg">
-                  Create your account
+                  Sign in
                 </Button>
               </Link>
             </div>

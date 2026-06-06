@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../config/database.js";
-import { generalWriteRateLimiter } from "../middleware/rate-limit.js";
+import { generalApiRateLimiter } from "../middleware/rate-limit.js";
 import { authRoutes } from "../modules/auth/auth.routes.js";
 import { coursesRoutes } from "../modules/courses/courses.routes.js";
 import { dashboardRoutes } from "./dashboard.routes.js";
@@ -15,10 +15,12 @@ import { feesRoutes } from "../modules/fees/fees.routes.js";
 import { batchesRoutes } from "../modules/batches/batches.routes.js";
 import { messagesRoutes } from "../modules/messages/messages.routes.js";
 import { liveClassesRoutes } from "../modules/live-classes/live-classes.routes.js";
+import { courseAccessRoutes } from "../modules/course-access/course-access.routes.js";
+import { teacherSalaryRoutes } from "../modules/teacher-salary/teacher-salary.routes.js";
 
 export const apiRouter = Router();
 
-apiRouter.use(generalWriteRateLimiter);
+apiRouter.use(generalApiRateLimiter);
 
 apiRouter.get("/health", async (_req, res) => {
   const started = Date.now();
@@ -61,3 +63,5 @@ apiRouter.use("/fees", feesRoutes);
 apiRouter.use("/batches", batchesRoutes);
 apiRouter.use("/messages", messagesRoutes);
 apiRouter.use("/live-classes", liveClassesRoutes);
+apiRouter.use("/course-access", courseAccessRoutes);
+apiRouter.use("/teacher-salaries", teacherSalaryRoutes);

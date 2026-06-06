@@ -1,6 +1,8 @@
 export type FeeStatus = "PENDING" | "PARTIAL" | "PAID" | "OVERDUE";
 export type PaymentMode = "CASH" | "UPI" | "BANK_TRANSFER" | "CARD" | "OTHER";
 export type BatchStatus = "ACTIVE" | "COMPLETED" | "CANCELLED";
+export type AccessType = "ADMIN_ASSIGNED" | "BATCH_ASSIGNED" | "FULL_FEE_PAID" | "TRIAL";
+export type SalaryStatus = "PENDING" | "PAID" | "HOLD";
 export type MessageType =
   | "GENERAL"
   | "FEE_REMINDER"
@@ -74,6 +76,7 @@ export interface Batch {
   createdAt: string;
   updatedAt: string;
   course?: { id: string; title: string; slug: string } | null;
+  assignedCourses?: { id: string; title: string; slug: string }[];
   teacher?: { id: string; name: string; email: string } | null;
   studentCount: number;
   liveClassCount?: number;
@@ -101,6 +104,30 @@ export interface MessageItem {
   sender: { id: string; name: string; email: string; role: string };
   recipientCount: number;
   recipients?: { id: string; name: string; email: string; role: string; readAt: string | null }[];
+}
+
+export interface TeacherSalary {
+  id: string;
+  teacherId: string;
+  teacherName: string;
+  teacherEmail: string;
+  month: number;
+  year: number;
+  baseSalary: number;
+  bonus: number;
+  deductions: number;
+  netSalary: number;
+  status: SalaryStatus;
+  statusLabel?: string;
+  paidAt: string | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeacherSalaryDashboard {
+  currentMonth: TeacherSalary | null;
+  history: TeacherSalary[];
 }
 
 export interface LiveClass {

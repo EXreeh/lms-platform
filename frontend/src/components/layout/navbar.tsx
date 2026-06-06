@@ -31,36 +31,23 @@ const publicNav: NavLink[] = [
 ];
 
 const studentNav: NavLink[] = [
-  { href: "/", label: "Home" },
   { href: "/dashboard/student", label: "Dashboard", match: (p) => p === "/dashboard/student" },
-  { href: "/courses", label: "Courses" },
   {
-    href: "/dashboard/student",
-    label: "My Learning",
+    href: "/dashboard/student/courses",
+    label: "My Courses",
     match: (p) =>
-      (p.startsWith("/courses/") && (p.includes("/learn") || p.includes("/quizzes"))) ||
-      p.startsWith("/dashboard/student/payments"),
-  },
-  {
-    href: "/dashboard/student/resources",
-    label: "Resources",
-    match: (p) => p.startsWith("/dashboard/student/resources"),
-  },
-  {
-    href: "/dashboard/student/certificates",
-    label: "Certificates",
-    match: (p) =>
-      p.includes("/certificate") || p.startsWith("/dashboard/student/certificates"),
-  },
-  {
-    href: "/dashboard/student/fees",
-    label: "My Fees",
-    match: (p) => p.startsWith("/dashboard/student/fees"),
+      p.startsWith("/dashboard/student/courses") ||
+      (p.startsWith("/courses/") && (p.includes("/learn") || p.includes("/quizzes"))),
   },
   {
     href: "/dashboard/student/batch",
     label: "My Batch",
     match: (p) => p.startsWith("/dashboard/student/batch"),
+  },
+  {
+    href: "/dashboard/student/fees",
+    label: "My Fees",
+    match: (p) => p.startsWith("/dashboard/student/fees"),
   },
   {
     href: "/dashboard/student/messages",
@@ -73,35 +60,34 @@ const studentNav: NavLink[] = [
     label: "Live Classes",
     match: (p) => p.startsWith("/dashboard/student/live-classes"),
   },
+  {
+    href: "/dashboard/student/resources",
+    label: "Resources",
+    match: (p) => p.startsWith("/dashboard/student/resources"),
+  },
+  {
+    href: "/dashboard/student/certificates",
+    label: "Certificates",
+    match: (p) =>
+      p.includes("/certificate") || p.startsWith("/dashboard/student/certificates"),
+  },
 ];
 
 const teacherNav: NavLink[] = [
-  { href: "/", label: "Home" },
   { href: "/dashboard/teacher", label: "Dashboard", match: (p) => p === "/dashboard/teacher" },
-  {
-    href: "/dashboard/teacher/courses",
-    label: "My Courses",
-    match: (p) =>
-      p.startsWith("/dashboard/teacher/courses") && p !== "/dashboard/teacher/courses/new",
-  },
-  {
-    href: "/dashboard/teacher/courses/new",
-    label: "Create Course",
-    match: (p) => p === "/dashboard/teacher/courses/new",
-  },
-  {
-    href: "/dashboard/teacher/quizzes",
-    label: "Quizzes",
-    match: (p) => p.startsWith("/dashboard/teacher/quizzes"),
-  },
-  {
-    href: "/dashboard/teacher/resources",
-    label: "Resources",
-    match: (p) => p.startsWith("/dashboard/teacher/resources"),
-  },
   {
     href: "/dashboard/teacher/batches",
     label: "My Batches",
+    match: (p) => p.startsWith("/dashboard/teacher/batches"),
+  },
+  {
+    href: "/dashboard/teacher/courses",
+    label: "My Courses",
+    match: (p) => p.startsWith("/dashboard/teacher/courses"),
+  },
+  {
+    href: "/dashboard/teacher/batches",
+    label: "Students",
     match: (p) => p.startsWith("/dashboard/teacher/batches"),
   },
   {
@@ -111,19 +97,27 @@ const teacherNav: NavLink[] = [
     showUnreadBadge: true,
   },
   {
+    href: "/dashboard/teacher/salary",
+    label: "My Salary",
+    match: (p) => p.startsWith("/dashboard/teacher/salary"),
+  },
+  {
     href: "/dashboard/teacher/live-classes",
     label: "Live Classes",
     match: (p) => p.startsWith("/dashboard/teacher/live-classes"),
   },
-  { href: "/courses", label: "Courses" },
 ];
 
 const adminNav: NavLink[] = [
-  { href: "/", label: "Home" },
   { href: "/dashboard/admin", label: "Dashboard", match: (p) => p === "/dashboard/admin" },
   {
     href: "/dashboard/admin/users",
-    label: "Users",
+    label: "Students",
+    match: (p) => p.startsWith("/dashboard/admin/users"),
+  },
+  {
+    href: "/dashboard/admin/users",
+    label: "Teachers",
     match: (p) => p.startsWith("/dashboard/admin/users"),
   },
   {
@@ -132,14 +126,9 @@ const adminNav: NavLink[] = [
     match: (p) => p.startsWith("/dashboard/admin/courses"),
   },
   {
-    href: "/dashboard/admin/review",
-    label: "Review Queue",
-    match: (p) => p.startsWith("/dashboard/admin/review"),
-  },
-  {
-    href: "/dashboard/admin/resources",
-    label: "Resources",
-    match: (p) => p.startsWith("/dashboard/admin/resources"),
+    href: "/dashboard/admin/batches",
+    label: "Batches",
+    match: (p) => p.startsWith("/dashboard/admin/batches"),
   },
   {
     href: "/dashboard/admin/fees",
@@ -147,15 +136,20 @@ const adminNav: NavLink[] = [
     match: (p) => p.startsWith("/dashboard/admin/fees"),
   },
   {
-    href: "/dashboard/admin/batches",
-    label: "Batches",
-    match: (p) => p.startsWith("/dashboard/admin/batches"),
+    href: "/dashboard/admin/course-access",
+    label: "Access",
+    match: (p) => p.startsWith("/dashboard/admin/course-access"),
   },
   {
     href: "/dashboard/admin/messages",
     label: "Messages",
     match: (p) => p.startsWith("/dashboard/admin/messages"),
     showUnreadBadge: true,
+  },
+  {
+    href: "/dashboard/admin/teacher-salaries",
+    label: "Teacher Salaries",
+    match: (p) => p.startsWith("/dashboard/admin/teacher-salaries"),
   },
   {
     href: "/dashboard/admin/live-classes",
@@ -237,34 +231,19 @@ function AuthActions({
   if (isLoggingOut || !isAuthenticated || !user) {
     if (compact) {
       return (
-        <>
-          <Link href="/login" onClick={onNavigate}>
-            <Button variant="secondary" className="w-full">
-              Login
-            </Button>
-          </Link>
-          <Link href="/register" onClick={onNavigate}>
-            <Button variant="gold" className="w-full">
-              Register
-            </Button>
-          </Link>
-        </>
+        <Link href="/login" onClick={onNavigate}>
+          <Button variant="gold" className="w-full">
+            Sign in
+          </Button>
+        </Link>
       );
     }
     return (
-      <>
-        <Link
-          href="/login"
-          className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          Login
-        </Link>
-        <Link href="/register">
-          <Button size="sm" variant="gold">
-            Register
-          </Button>
-        </Link>
-      </>
+      <Link href="/login">
+        <Button size="sm" variant="gold">
+          Sign in
+        </Button>
+      </Link>
     );
   }
 
@@ -312,35 +291,20 @@ function AuthActions({
 
   if (compact) {
     return (
-      <>
-        <Link href="/login" onClick={onNavigate}>
-          <Button variant="secondary" className="w-full">
-            Login
-          </Button>
-        </Link>
-        <Link href="/register" onClick={onNavigate}>
-          <Button variant="gold" className="w-full">
-            Register
-          </Button>
-        </Link>
-      </>
+      <Link href="/login" onClick={onNavigate}>
+        <Button variant="gold" className="w-full">
+          Sign in
+        </Button>
+      </Link>
     );
   }
 
   return (
-    <>
-      <Link
-        href="/login"
-        className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-      >
-        Login
-      </Link>
-      <Link href="/register">
-        <Button size="sm" variant="gold">
-          Register
-        </Button>
-      </Link>
-    </>
+    <Link href="/login">
+      <Button size="sm" variant="gold">
+        Sign in
+      </Button>
+    </Link>
   );
 }
 

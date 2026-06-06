@@ -8,6 +8,7 @@ import { courseNotDeletedFilter } from "../courses/courses.helpers.js";
 import { activityMessage, logActivity } from "./activity.service.js";
 import type {
   ChangeRoleInput,
+  CreateStudentInput,
   CreateTeacherInput,
   ListActivityQuery,
   ListAdminCoursesQuery,
@@ -15,6 +16,7 @@ import type {
   ResetPasswordInput,
   SuspendUserInput,
 } from "./admin.validation.js";
+import { notifyAccountCredentials } from "./credentials.helper.js";
 
 const teacherSelect = {
   id: true,
@@ -176,7 +178,11 @@ export async function getUserDetails(userId: string) {
   };
 }
 
-export async function createTeacher(actorId: string, input: CreateTeacherInput) {
+async function createInstituteUser(
+  actorId: string,
+  input: { firstName: string; lastName: string; email: string; password: string },
+  role: "STUDENT" | "TEACHER",
+) {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) {
     throw ApiError.conflict("Email already registered", "EMAIL_EXISTS");
@@ -189,7 +195,7 @@ export async function createTeacher(actorId: string, input: CreateTeacherInput) 
       lastName: input.lastName,
       email: input.email,
       password: passwordHash,
-      role: "TEACHER",
+      role,
       emailVerified: true,
     },
     select: {
@@ -210,10 +216,86 @@ export async function createTeacher(actorId: string, input: CreateTeacherInput) 
   await logActivity({
     type: "USER_CREATED",
     userId: actorId,
-    metadata: { targetUserId: user.id, role: "TEACHER", email: user.email },
+    metadata: { targetUserId: user.id, role, email: user.email },
   });
 
-  return mapAdminUser(user);
+  return user;
+}
+
+export async function createStudent(actorId: string, input: CreateStudentInput) {
+  const user = await createInstituteUser(actorId, input, "STUDENT");
+
+  if (input.batchId) {
+    const { addStudentsToBatch } = await import("../batches/batches.service.js");
+    await addStudentsToBatch(input.batchId, [user.id], actorId);
+  }
+
+  if (input.courseId) {
+    const { assignCourseToStudent } = await import("../course-access/course-access.service.js");
+    await assignCourseToStudent(actorId, {
+      studentId: user.id,
+      courseId: input.courseId,
+      accessType: "ADMIN_ASSIGNED",
+    });
+  }
+
+  if (input.feePlan) {
+    const { createFeePlan } = await import("../fees/fees.service.js");
+    await createFeePlan({
+      studentId: user.id,
+      courseId: input.courseId ?? null,
+      batchId: input.batchId ?? null,
+      totalAmount: input.feePlan.totalAmount,
+      dueDate: input.feePlan.dueDate,
+    });
+  }
+
+  const delivery = await notifyAccountCredentials({
+    actorId,
+    userId: user.id,
+    firstName: user.firstName,
+    email: user.email,
+    password: input.password,
+    role: "STUDENT",
+  });
+
+  return { user: mapAdminUser(user), credentialsDelivered: delivery };
+}
+
+export async function createTeacher(actorId: string, input: CreateTeacherInput) {
+  const user = await createInstituteUser(actorId, input, "TEACHER");
+
+  if (input.batchId) {
+    const batch = await prisma.batch.findUnique({ where: { id: input.batchId } });
+    if (!batch) throw ApiError.badRequest("Batch not found");
+    await prisma.batch.update({
+      where: { id: input.batchId },
+      data: { teacherId: user.id },
+    });
+  }
+
+  if (input.salary) {
+    const { createSalary } = await import("../teacher-salary/teacher-salary.service.js");
+    await createSalary({
+      teacherId: user.id,
+      month: input.salary.month,
+      year: input.salary.year,
+      baseSalary: input.salary.baseSalary,
+      bonus: input.salary.bonus,
+      deductions: input.salary.deductions,
+    });
+  }
+
+  const delivery = await notifyAccountCredentials({
+    actorId,
+    userId: user.id,
+    firstName: user.firstName,
+    email: user.email,
+    password: input.password,
+    role: "TEACHER",
+  });
+
+  return { user: mapAdminUser(user), credentialsDelivered: delivery };
 }
 
 export async function changeUserRole(actorId: string, userId: string, input: ChangeRoleInput) {

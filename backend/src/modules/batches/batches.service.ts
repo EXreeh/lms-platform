@@ -72,21 +72,41 @@ export async function getBatchById(id: string, options?: { includeAccess?: boole
   return mapBatch(batch, { studentAccess: access });
 }
 
-export async function createBatch(input: {
-  name: string;
-  description?: string;
-  courseId?: string | null;
-  teacherId?: string | null;
-  startDate: string;
-  endDate?: string | null;
-  timing?: string;
-  daysOfWeek?: string;
-}) {
+export async function createBatch(
+  input: {
+    name: string;
+    description?: string;
+    courseId?: string | null;
+    teacherId?: string | null;
+    studentIds?: string[];
+    startDate: string;
+    endDate?: string | null;
+    timing?: string;
+    daysOfWeek?: string;
+    status?: BatchStatus;
+  },
+  assignedById: string,
+) {
   if (input.teacherId) {
     const teacher = await prisma.user.findFirst({
       where: { id: input.teacherId, role: "TEACHER", suspended: false },
     });
     if (!teacher) throw ApiError.badRequest("Teacher not found");
+  }
+
+  if (input.courseId) {
+    const course = await prisma.course.findUnique({ where: { id: input.courseId } });
+    if (!course) throw ApiError.badRequest("Course not found");
+  }
+
+  const studentIds = [...new Set(input.studentIds ?? [])];
+  if (studentIds.length > 0) {
+    const students = await prisma.user.findMany({
+      where: { id: { in: studentIds }, role: "STUDENT", suspended: false },
+    });
+    if (students.length !== studentIds.length) {
+      throw ApiError.badRequest("One or more students not found");
+    }
   }
 
   const batch = await prisma.batch.create({
@@ -99,11 +119,31 @@ export async function createBatch(input: {
       endDate: input.endDate ? new Date(input.endDate) : null,
       timing: input.timing,
       daysOfWeek: input.daysOfWeek,
+      status: input.status ?? "ACTIVE",
+      ...(input.courseId
+        ? { courses: { create: { courseId: input.courseId } } }
+        : {}),
+      ...(studentIds.length
+        ? {
+            students: {
+              create: studentIds.map((studentId) => ({ studentId })),
+            },
+          }
+        : {}),
     },
     include: batchInclude,
   });
 
-  return mapBatch(batch);
+  if (studentIds.length > 0) {
+    const { syncBatchAccessForStudent } = await import(
+      "../course-access/course-access.service.js"
+    );
+    for (const studentId of studentIds) {
+      await syncBatchAccessForStudent(batch.id, studentId, assignedById);
+    }
+  }
+
+  return getBatchById(batch.id, { includeAccess: true });
 }
 
 export async function updateBatch(
@@ -143,7 +183,11 @@ export async function updateBatch(
   return mapBatch(batch);
 }
 
-export async function addStudentsToBatch(batchId: string, studentIds: string[]) {
+export async function addStudentsToBatch(
+  batchId: string,
+  studentIds: string[],
+  assignedById: string,
+) {
   const batch = await prisma.batch.findUnique({ where: { id: batchId } });
   if (!batch) throw ApiError.notFound("Batch not found");
 
@@ -158,6 +202,13 @@ export async function addStudentsToBatch(batchId: string, studentIds: string[]) 
     data: studentIds.map((studentId) => ({ batchId, studentId })),
     skipDuplicates: true,
   });
+
+  const { syncBatchAccessForStudent } = await import(
+    "../course-access/course-access.service.js"
+  );
+  for (const studentId of studentIds) {
+    await syncBatchAccessForStudent(batchId, studentId, assignedById);
+  }
 
   return getBatchById(batchId, { includeAccess: true });
 }

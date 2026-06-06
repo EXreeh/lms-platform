@@ -3,6 +3,7 @@ import * as adminService from "./admin.service.js";
 import { ApiError } from "../../utils/api-error.js";
 import {
   listUsersQuerySchema,
+  createStudentSchema,
   createTeacherSchema,
   changeRoleSchema,
   suspendUserSchema,
@@ -32,11 +33,18 @@ export async function getUser(req: Request, res: Response): Promise<void> {
   res.json({ success: true, data });
 }
 
+export async function createStudent(req: Request, res: Response): Promise<void> {
+  const admin = requireAdmin(req);
+  const input = createStudentSchema.parse(req.body);
+  const data = await adminService.createStudent(admin.id, input);
+  res.status(201).json({ success: true, data });
+}
+
 export async function createTeacher(req: Request, res: Response): Promise<void> {
   const admin = requireAdmin(req);
   const input = createTeacherSchema.parse(req.body);
-  const user = await adminService.createTeacher(admin.id, input);
-  res.status(201).json({ success: true, data: { user } });
+  const data = await adminService.createTeacher(admin.id, input);
+  res.status(201).json({ success: true, data });
 }
 
 export async function changeRole(req: Request, res: Response): Promise<void> {

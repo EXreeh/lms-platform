@@ -28,10 +28,12 @@ export function createBatch(body: {
   description?: string;
   courseId?: string | null;
   teacherId?: string | null;
+  studentIds?: string[];
   startDate: string;
   endDate?: string | null;
   timing?: string;
   daysOfWeek?: string;
+  status?: string;
 }) {
   return apiRequest<{ success: boolean; data: Batch }>("/batches", {
     method: "POST",

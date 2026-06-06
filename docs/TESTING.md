@@ -22,16 +22,17 @@ npm run dev          # frontend :3000, backend :4000
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Register new student at `/register` | OTP modal opens; email sent or dev log |
-| 2 | Enter valid OTP | Account created; redirect to student dashboard |
-| 3 | Log out from navbar | Session cleared; redirect to `/login` |
-| 4 | Log in with demo student | Redirect to `/dashboard/student` |
-| 5 | Log in as teacher | Redirect to `/dashboard/teacher` |
-| 6 | Log in as admin | Redirect to `/dashboard/admin` |
-| 7 | Forgot password flow | OTP → reset token → new password works |
-| 8 | Refresh page while logged in | Session persists (cookie + local storage) |
-| 9 | Visit `/dashboard/admin` as student | Redirect to student dashboard |
-| 10 | Visit protected learn URL logged out | Redirect to login with `redirect` param |
+| 1 | Visit `/register` | Shows institute-only notice; no signup form |
+| 2 | Admin → Users → Create student | Account created; credentials message sent |
+| 3 | Admin → Users → Create teacher | Account created; credentials message sent |
+| 4 | Log out from navbar | Session cleared; redirect to `/login` |
+| 5 | Log in with demo student | Redirect to `/dashboard/student` |
+| 6 | Log in as teacher | Redirect to `/dashboard/teacher` |
+| 7 | Log in as admin | Redirect to `/dashboard/admin` |
+| 8 | Forgot password flow | OTP → reset token → new password works |
+| 9 | Refresh page while logged in | Session persists (cookie + local storage) |
+| 10 | Visit `/dashboard/admin` as student | Redirect to student dashboard |
+| 11 | Visit protected learn URL logged out | Redirect to login with `redirect` param |
 
 ---
 

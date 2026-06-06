@@ -5,7 +5,6 @@ import { hashPassword, comparePassword } from "../../utils/password.js";
 import { signToken } from "../../utils/jwt.js";
 import { signResetToken, verifyResetToken } from "../../utils/reset-token.js";
 import { sendEmail } from "../../services/email/email.service.js";
-import { otpVerificationEmail } from "../../services/email/templates/otp-verification.js";
 import { passwordResetEmail } from "../../services/email/templates/password-reset.js";
 import { createAndSendOtp, verifyOtp } from "../otp/otp.service.js";
 import { logActivity } from "../admin/activity.service.js";
@@ -16,120 +15,28 @@ import type {
   VerifyOtpInput,
 } from "./auth.validation.js";
 
-const PENDING_REG_TTL_MS = env.OTP_EXPIRES_MINUTES * 60 * 1000 + 5 * 60 * 1000;
+const SELF_REGISTRATION_MESSAGE =
+  "Public registration is disabled. Contact your institute administrator to create an account.";
+
+function assertSelfRegistrationDisabled(): never {
+  throw ApiError.forbidden(SELF_REGISTRATION_MESSAGE, "SELF_REGISTRATION_DISABLED");
+}
 
 export async function checkEmailAvailability(email: string): Promise<{ available: boolean }> {
   const existing = await prisma.user.findUnique({ where: { email } });
   return { available: !existing };
 }
 
-export async function requestRegistrationOtp(input: RegisterRequestOtpInput) {
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
-  if (existing) {
-    throw ApiError.conflict("Email already registered", "EMAIL_EXISTS");
-  }
-
-  const passwordHash = await hashPassword(input.password);
-  const expiresAt = new Date(Date.now() + PENDING_REG_TTL_MS);
-
-  await prisma.pendingRegistration.upsert({
-    where: { email: input.email },
-    create: {
-      email: input.email,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      passwordHash,
-      expiresAt,
-    },
-    update: {
-      firstName: input.firstName,
-      lastName: input.lastName,
-      passwordHash,
-      expiresAt,
-    },
-  });
-
-  await createAndSendOtp({
-    email: input.email,
-    purpose: "REGISTER",
-    send: async (otp) => {
-      const template = otpVerificationEmail({
-        firstName: input.firstName,
-        otp,
-        expiresMinutes: env.OTP_EXPIRES_MINUTES,
-      });
-      await sendEmail({
-        to: input.email,
-        ...template,
-      });
-    },
-  });
-
-  return { message: "Verification code sent to your email" };
+export async function requestRegistrationOtp(_input: RegisterRequestOtpInput): Promise<never> {
+  return assertSelfRegistrationDisabled();
 }
 
-export async function resendRegistrationOtp(email: string) {
-  const pending = await prisma.pendingRegistration.findUnique({ where: { email } });
-  if (!pending || pending.expiresAt < new Date()) {
-    throw ApiError.badRequest(
-      "Registration session expired. Please start again.",
-      "PENDING_EXPIRED",
-    );
-  }
-
-  await createAndSendOtp({
-    email,
-    purpose: "REGISTER",
-    send: async (otp) => {
-      const template = otpVerificationEmail({
-        firstName: pending.firstName,
-        otp,
-        expiresMinutes: env.OTP_EXPIRES_MINUTES,
-      });
-      await sendEmail({ to: email, ...template });
-    },
-  });
-
-  return { message: "Verification code resent" };
+export async function resendRegistrationOtp(_email: string): Promise<never> {
+  return assertSelfRegistrationDisabled();
 }
 
-export async function verifyRegistrationOtp(input: VerifyOtpInput) {
-  const pending = await prisma.pendingRegistration.findUnique({
-    where: { email: input.email },
-  });
-
-  if (!pending || pending.expiresAt < new Date()) {
-    throw ApiError.badRequest(
-      "Registration session expired. Please start again.",
-      "PENDING_EXPIRED",
-    );
-  }
-
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
-  if (existing) {
-    throw ApiError.conflict("Email already registered", "EMAIL_EXISTS");
-  }
-
-  await verifyOtp({ email: input.email, purpose: "REGISTER", code: input.otp });
-
-  const user = await prisma.user.create({
-    data: {
-      firstName: pending.firstName,
-      lastName: pending.lastName,
-      email: pending.email,
-      password: pending.passwordHash,
-      role: "STUDENT",
-      emailVerified: true,
-    },
-    select: publicUserSelect,
-  });
-
-  await prisma.pendingRegistration.delete({ where: { email: input.email } });
-
-  const publicUser = toPublicUser(user);
-  const token = signToken({ sub: user.id, email: user.email, role: user.role });
-
-  return { user: publicUser, token };
+export async function verifyRegistrationOtp(_input: VerifyOtpInput): Promise<never> {
+  return assertSelfRegistrationDisabled();
 }
 
 export async function login(input: LoginInput) {

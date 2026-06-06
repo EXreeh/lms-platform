@@ -4,6 +4,7 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { authorize } from "../../middleware/authorize.js";
 import { validateBody } from "../../middleware/validate.js";
 import {
+  createStudentSchema,
   createTeacherSchema,
   changeRoleSchema,
   suspendUserSchema,
@@ -19,6 +20,16 @@ adminRoutes.get("/stats", asyncHandler(adminController.platformStats));
 adminRoutes.get("/analytics/student-growth", asyncHandler(adminController.studentGrowth));
 
 adminRoutes.get("/users", asyncHandler(adminController.listUsers));
+adminRoutes.post(
+  "/users/students",
+  validateBody(createStudentSchema),
+  asyncHandler(adminController.createStudent),
+);
+adminRoutes.post(
+  "/users/teachers",
+  validateBody(createTeacherSchema),
+  asyncHandler(adminController.createTeacher),
+);
 adminRoutes.post("/users", validateBody(createTeacherSchema), asyncHandler(adminController.createTeacher));
 adminRoutes.get("/users/:userId", asyncHandler(adminController.getUser));
 adminRoutes.patch(

@@ -15,32 +15,18 @@ export async function checkEmail(req: Request, res: Response): Promise<void> {
   res.json({ success: true, data: result });
 }
 
-export async function registerRequestOtp(req: Request, res: Response): Promise<void> {
+export async function registerRequestOtp(req: Request, _res: Response): Promise<void> {
   const input = req.body as RegisterRequestOtpInput;
-  console.log(`[Auth] Registration OTP requested → ${input.email}`);
-  const result = await authService.requestRegistrationOtp(input);
-
-  res.json({ success: true, ...result });
+  console.log(`[Auth] Registration blocked (private institute) → ${input.email}`);
+  await authService.requestRegistrationOtp(input);
 }
 
-export async function registerResendOtp(req: Request, res: Response): Promise<void> {
-  const { email } = req.body as { email: string };
-  const result = await authService.resendRegistrationOtp(email);
-
-  res.json({ success: true, ...result });
+export async function registerResendOtp(req: Request, _res: Response): Promise<void> {
+  await authService.resendRegistrationOtp((req.body as { email: string }).email);
 }
 
-export async function registerVerifyOtp(req: Request, res: Response): Promise<void> {
-  const input = req.body as VerifyOtpInput;
-  const result = await authService.verifyRegistrationOtp(input);
-
-  setAuthCookie(res, result.token);
-
-  res.status(201).json({
-    success: true,
-    message: "Account created successfully",
-    data: result,
-  });
+export async function registerVerifyOtp(req: Request, _res: Response): Promise<void> {
+  await authService.verifyRegistrationOtp(req.body as VerifyOtpInput);
 }
 
 export async function login(req: Request, res: Response): Promise<void> {

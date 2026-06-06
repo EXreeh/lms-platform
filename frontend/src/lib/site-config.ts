@@ -33,7 +33,7 @@ export const footerLinks = {
     { label: "Home", href: "/" },
     { label: "Courses", href: "/courses" },
     { label: "Sign in", href: "/login" },
-    { label: "Register", href: "/register" },
+    { label: "Institute access", href: "/register" },
   ],
   courses: [
     { label: "Browse catalog", href: "/courses" },

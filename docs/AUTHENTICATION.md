@@ -1,12 +1,17 @@
 # Authentication — CognitiaX AI LMS
 
-## Registration (students only)
+## Account creation (admin only — private institute portal)
 
-1. `POST /api/auth/register/request-otp` — validate form, store pending registration, send OTP
-2. `POST /api/auth/register/verify` — verify OTP, create **STUDENT** account
-3. `POST /api/auth/register/resend-otp` — resend code (rate limited)
+Public self-registration is **disabled**. Only administrators can create accounts:
 
-Teacher accounts are created by administrators only.
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/admin/users/students` | Create student (optional batch, course, fee plan) |
+| POST | `/api/admin/users/teachers` | Create teacher (optional batch assignment, salary) |
+
+Credentials are delivered via internal message and email when the email provider is configured.
+
+Legacy register endpoints (`/api/auth/register/*`) return `403 SELF_REGISTRATION_DISABLED`.
 
 ## Login / session
 

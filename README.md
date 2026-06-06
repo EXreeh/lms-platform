@@ -1,6 +1,6 @@
 # CognitiaX AI — LMS Platform
 
-A production-ready Learning Management System monorepo for **CognitiaX AI**, with authentication, role-based dashboards, course delivery, quizzes, resources, certificates, and admin oversight.
+A private institute Learning Management System monorepo for **CognitiaX AI** — admin-managed accounts, assigned course access, batches, fees, messaging, and role-based dashboards.
 
 ## Tech stack
 
@@ -52,7 +52,7 @@ docs/         Setup, features, testing guides
 
 | Audience | Path |
 |----------|------|
-| Public | `/`, `/courses`, `/login`, `/register` |
+| Public | `/`, `/courses`, `/login` (register page shows institute-only notice) |
 | Student | `/dashboard/student`, `/dashboard/student/resources`, `/dashboard/profile` |
 | Teacher | `/dashboard/teacher`, `/dashboard/teacher/courses/new` |
 | Admin | `/dashboard/admin`, `/dashboard/admin/review` |

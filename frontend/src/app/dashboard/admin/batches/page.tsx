@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
+  SearchableUserSelect,
+  type UserSelectOption,
+} from "@/components/ui/searchable-user-select";
+import {
   addBatchStudents,
   createBatch,
   fetchBatch,
@@ -16,10 +20,22 @@ import {
   removeBatchStudent,
   updateBatch,
 } from "@/lib/batches-api";
-import { fetchAdminUsers } from "@/lib/admin-api";
+import { fetchAdminUsers, fetchAdminCourses } from "@/lib/admin-api";
+import { assignCourseToBatch } from "@/lib/course-access-api";
 import type { Batch } from "@/types/institute";
+import type { Role } from "@/types/auth";
 import { useToast } from "@/context/toast-context";
 import { formatApiError } from "@/lib/format-api-error";
+
+async function loadUsers(role: Role, search?: string): Promise<UserSelectOption[]> {
+  const res = await fetchAdminUsers({ role, search: search || undefined, limit: 100 });
+  return res.data.users.map((u) => ({
+    id: u.id,
+    name: `${u.firstName} ${u.lastName}`.trim(),
+    email: u.email,
+    role: u.role,
+  }));
+}
 
 export default function AdminBatchesPage() {
   const { success, error: toastError } = useToast();
@@ -31,17 +47,27 @@ export default function AdminBatchesPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ batchId: string; studentId: string } | null>(
     null,
   );
-  const [teachers, setTeachers] = useState<{ value: string; label: string }[]>([]);
-  const [students, setStudents] = useState<{ value: string; label: string }[]>([]);
+  const [teacherOptions, setTeacherOptions] = useState<UserSelectOption[]>([]);
+  const [studentOptions, setStudentOptions] = useState<UserSelectOption[]>([]);
+  const [addStudentOptions, setAddStudentOptions] = useState<UserSelectOption[]>([]);
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
+  const [addStudentSearch, setAddStudentSearch] = useState("");
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [courses, setCourses] = useState<{ value: string; label: string }[]>([]);
+  const [assignCourseId, setAssignCourseId] = useState("");
   const [form, setForm] = useState({
     name: "",
     description: "",
-    teacherId: "",
+    courseId: "",
+    teacherId: [] as string[],
+    studentIds: [] as string[],
     startDate: "",
     timing: "",
     daysOfWeek: "",
+    status: "ACTIVE",
   });
-  const [addStudentId, setAddStudentId] = useState("");
+  const [addStudentIds, setAddStudentIds] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,39 +86,65 @@ export default function AdminBatchesPage() {
   }, [load]);
 
   useEffect(() => {
-    void (async () => {
-      const [t, s] = await Promise.all([
-        fetchAdminUsers({ role: "TEACHER", limit: 100 }),
-        fetchAdminUsers({ role: "STUDENT", limit: 200 }),
-      ]);
-      setTeachers(
-        t.data.users.map((u) => ({
-          value: u.id,
-          label: `${u.firstName} ${u.lastName}`,
+    void fetchAdminCourses({ limit: 100 }).then((res) => {
+      setCourses(
+        res.data.courses.map((course) => ({
+          value: course.id,
+          label: course.title,
         })),
       );
-      setStudents(
-        s.data.users.map((u) => ({
-          value: u.id,
-          label: `${u.firstName} ${u.lastName}`,
-        })),
-      );
-    })();
+    });
   }, []);
+
+  useEffect(() => {
+    if (!showCreate) return;
+    const timer = setTimeout(() => {
+      setUsersLoading(true);
+      void Promise.all([loadUsers("TEACHER", teacherSearch), loadUsers("STUDENT", studentSearch)])
+        .then(([teachers, students]) => {
+          setTeacherOptions(teachers);
+          setStudentOptions(students);
+        })
+        .finally(() => setUsersLoading(false));
+    }, teacherSearch || studentSearch ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [showCreate, teacherSearch, studentSearch]);
+
+  useEffect(() => {
+    if (!selected) return;
+    const timer = setTimeout(() => {
+      void loadUsers("STUDENT", addStudentSearch).then(setAddStudentOptions);
+    }, addStudentSearch ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [selected, addStudentSearch]);
 
   async function handleCreate() {
     try {
       const res = await createBatch({
         name: form.name,
         description: form.description || undefined,
-        teacherId: form.teacherId || null,
+        courseId: form.courseId || null,
+        teacherId: form.teacherId[0] || null,
+        studentIds: form.studentIds,
         startDate: new Date(form.startDate).toISOString(),
         timing: form.timing || undefined,
         daysOfWeek: form.daysOfWeek || undefined,
+        status: form.status,
       });
-      success("Batch created");
+      success("Batch created — students receive batch and course access");
       setShowCreate(false);
       setSelected(res.data);
+      setForm({
+        name: "",
+        description: "",
+        courseId: "",
+        teacherId: [],
+        studentIds: [],
+        startDate: "",
+        timing: "",
+        daysOfWeek: "",
+        status: "ACTIVE",
+      });
       void load();
     } catch (err) {
       toastError(formatApiError(err, "Failed to create batch"));
@@ -102,7 +154,7 @@ export default function AdminBatchesPage() {
   return (
     <DashboardShell
       title="Batch Management"
-      description="Organize institute students into batches with teachers and schedules."
+      description="Create batches with teachers, students, courses, and schedules."
       badge="Administrator"
     >
       <div className="flex flex-col gap-8 lg:flex-row">
@@ -110,7 +162,7 @@ export default function AdminBatchesPage() {
         <div className="min-w-0 flex-1 space-y-6">
           <div className="flex flex-wrap gap-3">
             <Input
-              label="Search"
+              label="Search batches"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-xs"
@@ -173,11 +225,45 @@ export default function AdminBatchesPage() {
                   }
                 />
               </div>
+              {(selected.assignedCourses?.length ?? 0) > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium">Batch courses</h3>
+                  <ul className="mt-2 text-sm text-muted-foreground">
+                    {selected.assignedCourses!.map((c) => (
+                      <li key={c.id}>{c.title}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Select
+                  label="Assign course"
+                  options={[{ value: "", label: "Select course…" }, ...courses]}
+                  value={assignCourseId}
+                  onChange={(e) => setAssignCourseId(e.target.value)}
+                />
+                <Button
+                  variant="secondary"
+                  className="self-end"
+                  disabled={!assignCourseId}
+                  onClick={() => {
+                    if (!assignCourseId) return;
+                    void assignCourseToBatch(selected.id, assignCourseId).then(() => {
+                      success("Course assigned to batch");
+                      void fetchBatch(selected.id).then((res) => setSelected(res.data));
+                      setAssignCourseId("");
+                    });
+                  }}
+                >
+                  Assign course
+                </Button>
+              </div>
               <ul className="mt-4 divide-y divide-border text-sm">
                 {selected.students.map((s) => (
                   <li key={s.id} className="flex items-center justify-between py-2">
                     <span>
                       {s.name}
+                      <span className="ml-2 text-xs text-muted-foreground">{s.email}</span>
                       {s.accessStatus ? (
                         <span className="ml-2 text-xs text-muted-foreground">({s.accessStatus})</span>
                       ) : null}
@@ -192,22 +278,25 @@ export default function AdminBatchesPage() {
                   </li>
                 ))}
               </ul>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Select
-                  label="Add student"
-                  options={[{ value: "", label: "Select…" }, ...students]}
-                  value={addStudentId}
-                  onChange={(e) => setAddStudentId(e.target.value)}
+              <div className="mt-4 max-w-md">
+                <SearchableUserSelect
+                  label="Add students"
+                  options={addStudentOptions}
+                  value={addStudentIds}
+                  onChange={setAddStudentIds}
+                  multiple
+                  onSearchChange={setAddStudentSearch}
+                  placeholder="Search students by name or email…"
                 />
                 <Button
                   variant="secondary"
-                  className="self-end"
+                  className="mt-2"
+                  disabled={addStudentIds.length === 0}
                   onClick={() => {
-                    if (!addStudentId) return;
-                    void addBatchStudents(selected.id, [addStudentId]).then((res) => {
+                    void addBatchStudents(selected.id, addStudentIds).then((res) => {
                       setSelected(res.data);
-                      success("Student added");
-                      setAddStudentId("");
+                      success("Students added");
+                      setAddStudentIds([]);
                     });
                   }}
                 >
@@ -221,26 +310,46 @@ export default function AdminBatchesPage() {
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card p-6">
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-card p-6">
             <h3 className="font-serif text-lg font-bold">New batch</h3>
-            <div className="mt-4 space-y-3">
-              <Input label="Name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+            <div className="mt-4 space-y-4">
               <Input
-                label="Description"
-                value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                label="Batch name"
+                value={form.name}
+                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                required
               />
               <Select
+                label="Course"
+                options={[{ value: "", label: "Select course (optional)" }, ...courses]}
+                value={form.courseId}
+                onChange={(e) => setForm((f) => ({ ...f, courseId: e.target.value }))}
+              />
+              <SearchableUserSelect
                 label="Teacher"
-                options={[{ value: "", label: "None" }, ...teachers]}
+                options={teacherOptions}
                 value={form.teacherId}
-                onChange={(e) => setForm((f) => ({ ...f, teacherId: e.target.value }))}
+                onChange={(ids) => setForm((f) => ({ ...f, teacherId: ids.slice(0, 1) }))}
+                onSearchChange={setTeacherSearch}
+                loading={usersLoading}
+                placeholder="Search teachers by name or email…"
+              />
+              <SearchableUserSelect
+                label="Students"
+                options={studentOptions}
+                value={form.studentIds}
+                onChange={(ids) => setForm((f) => ({ ...f, studentIds: ids }))}
+                multiple
+                onSearchChange={setStudentSearch}
+                loading={usersLoading}
+                placeholder="Search students by name or email…"
               />
               <Input
                 label="Start date"
                 type="date"
                 value={form.startDate}
                 onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+                required
               />
               <Input
                 label="Timing"
@@ -254,13 +363,27 @@ export default function AdminBatchesPage() {
                 value={form.daysOfWeek}
                 onChange={(e) => setForm((f) => ({ ...f, daysOfWeek: e.target.value }))}
               />
+              <Select
+                label="Status"
+                options={[
+                  { value: "ACTIVE", label: "Active" },
+                  { value: "COMPLETED", label: "Completed" },
+                  { value: "CANCELLED", label: "Cancelled" },
+                ]}
+                value={form.status}
+                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
+              />
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setShowCreate(false)}>
                 Cancel
               </Button>
-              <Button variant="gold" onClick={() => void handleCreate()}>
-                Create
+              <Button
+                variant="gold"
+                disabled={!form.name || !form.startDate}
+                onClick={() => void handleCreate()}
+              >
+                Create batch
               </Button>
             </div>
           </div>

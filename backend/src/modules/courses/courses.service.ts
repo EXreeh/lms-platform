@@ -245,6 +245,26 @@ export async function listCourses(
     where.deleteStatus = "ACTIVE";
   } else if (role === "ADMIN") {
     if (query.status) where.status = query.status;
+  } else if (role === "STUDENT" && userId) {
+    where.status = "APPROVED";
+    where.deleteStatus = "ACTIVE";
+    try {
+      const access = await prisma.studentCourseAccess.findMany({
+        where: { studentId: userId, revokedAt: null },
+        select: { courseId: true },
+      });
+      const ids = access.map((a) => a.courseId);
+      if (ids.length === 0) return [];
+      where.id = { in: ids };
+    } catch {
+      const enrollments = await prisma.enrollment.findMany({
+        where: { studentId: userId },
+        select: { courseId: true },
+      });
+      const ids = enrollments.map((e) => e.courseId);
+      if (ids.length === 0) return [];
+      where.id = { in: ids };
+    }
   } else {
     where.status = "APPROVED";
     where.deleteStatus = "ACTIVE";
@@ -324,12 +344,18 @@ export async function getCourse(idOrSlug: string, userId?: string, role?: Role) 
   }
 
   if (userId && role === "STUDENT") {
+    const { getStudentCourseAccessFlags } = await import(
+      "../course-access/course-access.service.js"
+    );
+    const flags = await getStudentCourseAccessFlags(userId, course.id, role);
     const enrollment = await prisma.enrollment.findUnique({
       where: { studentId_courseId: { studentId: userId, courseId: course.id } },
     });
     return {
       ...mapped,
-      enrolled: Boolean(enrollment),
+      assigned: flags.assigned,
+      accessLabel: flags.accessLabel,
+      enrolled: flags.canLearn,
       enrollmentProgress: enrollment?.progressPercentage,
       enrollmentCompleted: enrollment?.completed ?? false,
       isOwner: false,
@@ -638,8 +664,7 @@ export async function getCategories() {
 
 export async function enrollInCourse(studentId: string, idOrSlug: string) {
   const { enrollInCourse: enroll } = await import("../learning/learning.service.js");
-  const result = await enroll(studentId, idOrSlug);
-  return { message: result.message, courseId: result.enrollment.courseId };
+  return enroll(studentId, idOrSlug);
 }
 
 export async function reorderModules(

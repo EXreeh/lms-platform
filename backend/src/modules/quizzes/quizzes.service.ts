@@ -52,12 +52,10 @@ function canManageCourse(userId: string, role: Role, teacherId: string): boolean
 }
 
 async function assertStudentEnrolled(studentId: string, courseId: string) {
-  const enrollment = await prisma.enrollment.findUnique({
-    where: { studentId_courseId: { studentId, courseId } },
-  });
-  if (!enrollment) {
-    throw ApiError.forbidden("You must be enrolled in this course to take the quiz");
-  }
+  const { assertStudentCourseAccess } = await import(
+    "../course-access/course-access.service.js"
+  );
+  await assertStudentCourseAccess(studentId, courseId);
 }
 
 function validateQuestionInput(input: CreateQuestionInput | UpdateQuestionInput) {

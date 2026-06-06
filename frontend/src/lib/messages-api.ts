@@ -1,15 +1,26 @@
 import type { MessageItem } from "@/types/institute";
 import { apiRequest } from "./api";
 
-export function fetchComposeTargets() {
+export function fetchComposeTargets(params?: { search?: string; role?: string }) {
+  const qs = new URLSearchParams();
+  if (params?.search) qs.set("search", params.search);
+  if (params?.role) qs.set("role", params.role);
+  const q = qs.toString();
   return apiRequest<{
     success: boolean;
     data: {
-      recipients: { id: string; name: string; role: string; batchName?: string }[];
-      batches: { id: string; name: string }[];
+      recipients: {
+        id: string;
+        name: string;
+        email: string;
+        role: string;
+        batchName?: string;
+      }[];
+      batches: { id: string; name: string; status?: string }[];
       canBroadcastAllStudents: boolean;
+      canBroadcastAllTeachers: boolean;
     };
-  }>("/messages/compose-targets", { auth: true });
+  }>(`/messages/compose-targets${q ? `?${q}` : ""}`, { auth: true });
 }
 
 export function fetchUnreadCount() {
@@ -42,6 +53,7 @@ export function sendMessage(body: {
   recipientIds?: string[];
   batchId?: string;
   broadcastAllStudents?: boolean;
+  broadcastAllTeachers?: boolean;
   subject: string;
   content: string;
   type?: string;

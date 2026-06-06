@@ -167,7 +167,8 @@ If both run on the same parent domain (e.g. `app.example.com` + `api.example.com
 
 ### Authentication
 
-- [ ] Register → OTP → login
+- [ ] `/register` shows institute-only notice (no public signup)
+- [ ] Admin creates student/teacher accounts from User Management
 - [ ] Login with demo accounts (admin, teacher, student)
 - [ ] Logout clears session and shows public navbar
 - [ ] Stale session after DB reset redirects to login
@@ -184,7 +185,7 @@ If both run on the same parent domain (e.g. `app.example.com` + `api.example.com
 
 ### Student flows
 
-- [ ] Enroll in course (duplicate enrollment blocked)
+- [ ] Assigned courses only (no self-enrollment)
 - [ ] Learning page, lesson progress, quiz attempt
 - [ ] Resources and certificates
 

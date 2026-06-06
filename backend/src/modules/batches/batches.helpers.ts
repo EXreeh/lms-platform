@@ -2,6 +2,10 @@ import type { Prisma } from "@lms/database";
 
 const batchInclude = {
   course: { select: { id: true, title: true, slug: true } },
+  courses: {
+    include: { course: { select: { id: true, title: true, slug: true } } },
+    orderBy: { createdAt: "asc" as const },
+  },
   teacher: { select: { id: true, firstName: true, lastName: true, email: true } },
   students: {
     include: {
@@ -39,6 +43,7 @@ export function mapBatch(
     createdAt: batch.createdAt.toISOString(),
     updatedAt: batch.updatedAt.toISOString(),
     course: batch.course,
+    assignedCourses: batch.courses.map((bc) => bc.course),
     teacher: batch.teacher
       ? {
           id: batch.teacher.id,

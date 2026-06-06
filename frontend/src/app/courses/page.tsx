@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/courses/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { fetchCourses, fetchCategories } from "@/lib/courses-api";
+import { useAuth } from "@/context/auth-context";
 import { COURSE_LEVELS } from "@/types/course";
 import type { Course, CourseLevel } from "@/types/course";
 import { brand } from "@/lib/design-tokens";
@@ -18,6 +19,8 @@ import { layout } from "@/lib/layout";
 import { SiteFooter } from "@/components/layout/site-footer";
 
 export default function CoursesPage() {
+  const { user, isAuthenticated } = useAuth();
+  const isStudent = isAuthenticated && user?.role === "STUDENT";
   const [courses, setCourses] = useState<Course[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -30,18 +33,21 @@ export default function CoursesPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetchCourses({
-        search: search || undefined,
-        category: category || undefined,
-        level: level || undefined,
-      });
+      const res = await fetchCourses(
+        {
+          search: search || undefined,
+          category: category || undefined,
+          level: level || undefined,
+        },
+        isStudent,
+      );
       setCourses(res.data.courses);
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Could not load courses. Please refresh the page.");
     } finally {
       setIsLoading(false);
     }
-  }, [search, category, level]);
+  }, [search, category, level, isStudent]);
 
   useEffect(() => {
     void fetchCategories()
@@ -61,10 +67,12 @@ export default function CoursesPage() {
         <PageTransition>
           <div className="mb-10">
             <h1 className="font-serif text-3xl font-bold text-foreground sm:text-4xl">
-              Explore courses
+              {isStudent ? "My assigned courses" : "Explore courses"}
             </h1>
             <p className="mt-2 text-muted-foreground">
-              Discover AI-powered learning paths from expert educators on {brand.name}.
+              {isStudent
+                ? "Courses assigned to you by your institute. Contact admin for new access."
+                : `Discover AI-powered learning paths from expert educators on ${brand.name}.`}
             </p>
           </div>
 

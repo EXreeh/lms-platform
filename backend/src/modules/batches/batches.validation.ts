@@ -5,10 +5,12 @@ export const createBatchSchema = z.object({
   description: z.string().max(2000).optional(),
   courseId: z.string().optional().nullable(),
   teacherId: z.string().optional().nullable(),
+  studentIds: z.array(z.string()).optional(),
   startDate: z.string().datetime({ offset: true }).or(z.string().date()),
   endDate: z.string().datetime({ offset: true }).or(z.string().date()).optional().nullable(),
   timing: z.string().max(120).optional(),
   daysOfWeek: z.string().max(120).optional(),
+  status: z.enum(["ACTIVE", "COMPLETED", "CANCELLED"]).optional(),
 });
 
 export const updateBatchSchema = createBatchSchema.partial().extend({

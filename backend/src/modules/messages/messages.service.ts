@@ -52,6 +52,7 @@ async function resolveRecipientIds(input: {
   recipientIds?: string[];
   batchId?: string;
   broadcastAllStudents?: boolean;
+  broadcastAllTeachers?: boolean;
 }): Promise<string[]> {
   const ids = new Set<string>();
 
@@ -80,9 +81,6 @@ async function resolveRecipientIds(input: {
     for (const s of batch.students) {
       if (s.studentId !== input.senderId) ids.add(s.studentId);
     }
-    if (batch.teacherId && batch.teacherId !== input.senderId) {
-      ids.add(batch.teacherId);
-    }
   }
 
   if (input.broadcastAllStudents) {
@@ -94,6 +92,17 @@ async function resolveRecipientIds(input: {
       select: { id: true },
     });
     for (const s of students) ids.add(s.id);
+  }
+
+  if (input.broadcastAllTeachers) {
+    if (input.senderRole !== "ADMIN") {
+      throw ApiError.forbidden("Only admins can message all teachers");
+    }
+    const teachers = await prisma.user.findMany({
+      where: { role: "TEACHER", suspended: false },
+      select: { id: true },
+    });
+    for (const t of teachers) ids.add(t.id);
   }
 
   return [...ids];
@@ -160,6 +169,7 @@ export async function sendMessage(input: {
   recipientIds?: string[];
   batchId?: string;
   broadcastAllStudents?: boolean;
+  broadcastAllTeachers?: boolean;
   subject: string;
   content: string;
   type?: MessageType;
@@ -171,6 +181,7 @@ export async function sendMessage(input: {
     recipientIds: input.recipientIds,
     batchId: input.batchId,
     broadcastAllStudents: input.broadcastAllStudents,
+    broadcastAllTeachers: input.broadcastAllTeachers,
   });
 
   if (recipientIds.length === 0) {
@@ -267,94 +278,200 @@ export async function markRead(messageId: string, userId: string) {
   return { success: true };
 }
 
-export async function getComposeTargets(userId: string, role: Role) {
+function mapComposeUser(u: {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: Role;
+  batchName?: string;
+}) {
+  return {
+    id: u.id,
+    name: `${u.firstName} ${u.lastName}`.trim(),
+    email: u.email,
+    role: u.role,
+    batchName: u.batchName,
+  };
+}
+
+export async function getComposeTargets(
+  userId: string,
+  role: Role,
+  filters?: { search?: string; role?: Role },
+) {
+  const search = filters?.search?.trim();
+  const userWhere: Prisma.UserWhereInput = { suspended: false };
+  if (filters?.role) userWhere.role = filters.role;
+  if (search) {
+    userWhere.OR = [
+      { email: { contains: search, mode: "insensitive" } },
+      { firstName: { contains: search, mode: "insensitive" } },
+      { lastName: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
   if (role === "ADMIN") {
-    const [students, teachers] = await Promise.all([
+    const [users, batches] = await Promise.all([
       prisma.user.findMany({
-        where: { role: "STUDENT", suspended: false },
-        select: { id: true, firstName: true, lastName: true, role: true },
-        take: 200,
-        orderBy: { lastName: "asc" },
+        where: {
+          ...userWhere,
+          role: filters?.role ?? { in: ["STUDENT", "TEACHER", "ADMIN"] },
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          role: true,
+        },
+        take: 300,
+        orderBy: [{ role: "asc" }, { lastName: "asc" }],
       }),
-      prisma.user.findMany({
-        where: { role: "TEACHER", suspended: false },
-        select: { id: true, firstName: true, lastName: true, role: true },
-        take: 100,
+      prisma.batch.findMany({
+        select: { id: true, name: true, status: true },
+        orderBy: { name: "asc" },
+        take: 200,
       }),
     ]);
-    const batches = await prisma.batch.findMany({
-      where: { status: "ACTIVE" },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    });
+
     return {
-      recipients: [...students, ...teachers].map((u) => ({
-        id: u.id,
-        name: `${u.firstName} ${u.lastName}`.trim(),
-        role: u.role,
+      recipients: users.map((u) => mapComposeUser(u)),
+      batches: batches.map((b) => ({
+        id: b.id,
+        name: b.name,
+        status: b.status,
       })),
-      batches: batches.map((b) => ({ id: b.id, name: b.name })),
       canBroadcastAllStudents: true,
+      canBroadcastAllTeachers: true,
     };
   }
 
   if (role === "TEACHER") {
     const batches = await prisma.batch.findMany({
-      where: { teacherId: userId },
+      where: { teacherId: userId, status: { not: "CANCELLED" } },
       include: {
         students: {
           include: {
-            student: { select: { id: true, firstName: true, lastName: true, role: true } },
+            student: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                role: true,
+                suspended: true,
+              },
+            },
           },
         },
       },
+      orderBy: { name: "asc" },
     });
-    const recipients = batches.flatMap((b) =>
-      b.students.map((s) => ({
-        id: s.student.id,
-        name: `${s.student.firstName} ${s.student.lastName}`.trim(),
-        role: s.student.role,
-        batchName: b.name,
-      })),
-    );
+
+    const admins = await prisma.user.findMany({
+      where: {
+        role: "ADMIN",
+        suspended: false,
+        ...(search
+          ? {
+              OR: [
+                { email: { contains: search, mode: "insensitive" } },
+                { firstName: { contains: search, mode: "insensitive" } },
+                { lastName: { contains: search, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+      },
+      select: { id: true, firstName: true, lastName: true, email: true, role: true },
+    });
+
+    const studentMap = new Map<string, ReturnType<typeof mapComposeUser>>();
+    for (const batch of batches) {
+      for (const member of batch.students) {
+        if (member.student.suspended) continue;
+        const mapped = mapComposeUser({
+          ...member.student,
+          batchName: batch.name,
+        });
+        if (search) {
+          const q = search.toLowerCase();
+          const match =
+            mapped.name.toLowerCase().includes(q) ||
+            mapped.email.toLowerCase().includes(q);
+          if (!match) continue;
+        }
+        studentMap.set(member.student.id, mapped);
+      }
+    }
+
+    const recipients = [
+      ...admins.map((a) => mapComposeUser(a)),
+      ...studentMap.values(),
+    ];
+
     return {
       recipients,
-      batches: batches.map((b) => ({ id: b.id, name: b.name })),
+      batches: batches.map((b) => ({ id: b.id, name: b.name, status: b.status })),
       canBroadcastAllStudents: false,
+      canBroadcastAllTeachers: false,
     };
   }
 
   const admins = await prisma.user.findMany({
-    where: { role: "ADMIN", suspended: false },
-    select: { id: true, firstName: true, lastName: true, role: true },
+    where: {
+      role: "ADMIN",
+      suspended: false,
+      ...(search
+        ? {
+            OR: [
+              { email: { contains: search, mode: "insensitive" } },
+              { firstName: { contains: search, mode: "insensitive" } },
+              { lastName: { contains: search, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
+    select: { id: true, firstName: true, lastName: true, email: true, role: true },
   });
+
   const batchLinks = await prisma.batchStudent.findMany({
-    where: { studentId: userId },
-    include: { batch: { include: { teacher: true } } },
+    where: { studentId: userId, batch: { status: { not: "CANCELLED" } } },
+    include: {
+      batch: {
+        include: {
+          teacher: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              role: true,
+              suspended: true,
+            },
+          },
+        },
+      },
+    },
   });
-  const teachers = batchLinks
-    .map((l) => l.batch.teacher)
-    .filter((t): t is NonNullable<typeof t> => Boolean(t));
+
+  const teacherMap = new Map<string, ReturnType<typeof mapComposeUser>>();
+  for (const link of batchLinks) {
+    const teacher = link.batch.teacher;
+    if (!teacher || teacher.suspended) continue;
+    teacherMap.set(teacher.id, mapComposeUser(teacher));
+  }
 
   const recipients = [
-    ...admins.map((a) => ({
-      id: a.id,
-      name: `${a.firstName} ${a.lastName}`.trim(),
-      role: a.role,
-    })),
-    ...teachers.map((t) => ({
-      id: t.id,
-      name: `${t.firstName} ${t.lastName}`.trim(),
-      role: t.role,
-    })),
+    ...admins.map((a) => mapComposeUser(a)),
+    ...teacherMap.values(),
   ];
 
-  const unique = new Map(recipients.map((r) => [r.id, r]));
-
   return {
-    recipients: [...unique.values()],
+    recipients,
     batches: [],
     canBroadcastAllStudents: false,
+    canBroadcastAllTeachers: false,
   };
 }
 

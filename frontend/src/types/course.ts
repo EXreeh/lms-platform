@@ -59,6 +59,8 @@ export interface Course {
   lessonCount?: number;
   modules?: Module[];
   enrolled?: boolean;
+  assigned?: boolean;
+  accessLabel?: string;
   enrollmentProgress?: number;
   enrollmentCompleted?: boolean;
   adminPreview?: boolean;
