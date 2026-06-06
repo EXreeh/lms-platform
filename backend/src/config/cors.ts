@@ -31,6 +31,7 @@ export function getCorsOptions(): CorsOptions {
 }
 
 export function logCorsConfig(): void {
+  if (env.NODE_ENV === "production" && process.env.AUTH_DEBUG !== "true") return;
   console.log("CORS allowed origins:", [...allowedOriginSet]);
   console.log("CORS credentials:", true);
   console.log("FRONTEND_URL:", env.FRONTEND_URL);

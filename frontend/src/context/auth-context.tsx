@@ -12,6 +12,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import type { User } from "@/types/auth";
 import {
+  AUTH_LOGIN_ME_TIMEOUT_MS,
   AuthMeTimeoutError,
   fetchCurrentUser,
   logoutUser,
@@ -29,8 +30,8 @@ import { getRouteAuthKind, isPublicAuthPath } from "@/lib/auth-routes";
 import {
   hasInitialAuthCheck,
   markInitialAuthCheckDone,
+  resetInitialAuthCheck,
 } from "@/lib/auth-bootstrap";
-
 const LOGOUT_API_TIMEOUT_MS = 2500;
 
 interface AuthContextValue {
@@ -47,6 +48,7 @@ interface AuthContextValue {
     force?: boolean;
     bearerToken?: string;
     silent?: boolean;
+    timeoutMs?: number;
   }) => Promise<User | null>;
 }
 
@@ -105,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     applyUser(null);
     setAuthDegraded(false);
     setIsLoading(false);
+    resetInitialAuthCheck();
     clearClientAuthState();
   }, [abortPendingMe, applyUser]);
 
@@ -114,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       bearerToken?: string;
       epoch?: number;
       silent?: boolean;
+      timeoutMs?: number;
     }): Promise<User | null> => {
       if (isLoggingOutRef.current) {
         return null;
@@ -139,6 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const response = await fetchCurrentUser({
             bearerToken: options?.bearerToken,
             signal: controller.signal,
+            timeoutMs: options?.timeoutMs,
           });
           const nextUser = response.data.user;
 
@@ -291,6 +296,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionEpoch.current += 1;
       const epoch = sessionEpoch.current;
       abortPendingMe();
+      resetInitialAuthCheck();
 
       logAuth("login:establish-session", { epoch });
       applyUser(null);
@@ -302,6 +308,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         force: true,
         bearerToken: token,
         epoch,
+        timeoutMs: AUTH_LOGIN_ME_TIMEOUT_MS,
       });
 
       if (!nextUser || epoch !== sessionEpoch.current) {
@@ -318,7 +325,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const destination = safe ?? getDashboardPathForRole(nextUser.role);
 
       router.replace(destination);
-      logAuth("login:done", { destination, role: nextUser.role });
+      logAuth("login:fresh-user", {
+        userId: nextUser.id,
+        role: nextUser.role,
+        destination,
+      });
     },
     [abortPendingMe, applyUser, refreshUser, router],
   );
@@ -328,6 +339,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoggingOutRef.current = true;
     setIsLoggingOut(true);
     abortPendingMe();
+    resetInitialAuthCheck();
 
     logAuth("logout:start");
     applyUser(null);

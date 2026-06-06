@@ -25,6 +25,9 @@ const envSchema = z.object({
       return trimmed ? trimmed : undefined;
     }),
   FRONTEND_URL: z.string().default("http://localhost:3000"),
+  /** Comma-separated allowed browser origins (credentials; no wildcards). */
+  ALLOWED_ORIGINS: z.string().optional(),
+  /** @deprecated Prefer ALLOWED_ORIGINS */
   CORS_ORIGIN: z.string().optional(),
   OTP_SECRET: z.string().min(16).default("cognitiax-otp-secret-key"),
   OTP_EXPIRES_MINUTES: z.coerce.number().default(5),
@@ -74,13 +77,20 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 
-/** Comma-separated origins; FRONTEND_URL is always included. */
+function parseOriginList(raw: string | undefined): string[] {
+  return (raw ?? "")
+    .split(",")
+    .map((origin) => origin.trim().replace(/\/$/, ""))
+    .filter(Boolean);
+}
+
+/** Exact origins for CORS (credentials). FRONTEND_URL is always included. */
 export const corsOrigins = Array.from(
-  new Set(
-    [...(env.CORS_ORIGIN ?? "").split(","), env.FRONTEND_URL]
-      .map((origin) => origin.trim().replace(/\/$/, ""))
-      .filter(Boolean),
-  ),
+  new Set([
+    ...parseOriginList(env.ALLOWED_ORIGINS),
+    ...parseOriginList(env.CORS_ORIGIN),
+    env.FRONTEND_URL.trim().replace(/\/$/, ""),
+  ].filter(Boolean)),
 );
 
 export const isSmtpConfigured = Boolean(

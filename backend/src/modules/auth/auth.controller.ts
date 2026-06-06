@@ -1,7 +1,8 @@
 import type { Request, Response } from "express";
 import * as authService from "./auth.service.js";
 import { ApiError } from "../../utils/api-error.js";
-import { setAuthCookie, clearAuthCookie, cookieOptionsForLog } from "../../utils/auth-cookie.js";
+import { setAuthCookie, clearAuthCookie } from "../../utils/auth-cookie.js";
+import { logAuthEvent } from "../../utils/auth-log.js";
 import type {
   LoginInput,
   RegisterRequestOtpInput,
@@ -17,7 +18,7 @@ export async function checkEmail(req: Request, res: Response): Promise<void> {
 
 export async function registerRequestOtp(req: Request, _res: Response): Promise<void> {
   const input = req.body as RegisterRequestOtpInput;
-  console.log(`[Auth] Registration blocked (private institute) → ${input.email}`);
+  logAuthEvent("register:blocked", { email: input.email });
   await authService.requestRegistrationOtp(input);
 }
 
@@ -34,10 +35,10 @@ export async function login(req: Request, res: Response): Promise<void> {
   const result = await authService.login(input);
 
   setAuthCookie(res, result.token);
-  console.log(
-    `[Auth] Login success → id=${result.user.id} email=${result.user.email} role=${result.user.role}`,
-  );
-  console.log("[Auth] Login cookie options:", cookieOptionsForLog());
+  logAuthEvent("login:success", {
+    userId: result.user.id,
+    role: result.user.role,
+  });
 
   res.json({
     success: true,
@@ -47,8 +48,10 @@ export async function login(req: Request, res: Response): Promise<void> {
 }
 
 export async function logout(req: Request, res: Response): Promise<void> {
-  console.log(`[Auth] Logout request${req.user ? ` → ${req.user.email}` : ""}`);
-  console.log("[Auth] Logout cookie options:", cookieOptionsForLog());
+  logAuthEvent("logout:success", {
+    userId: req.user?.id ?? null,
+    role: req.user?.role ?? null,
+  });
   clearAuthCookie(res);
 
   res.json({
@@ -58,20 +61,15 @@ export async function logout(req: Request, res: Response): Promise<void> {
 }
 
 export async function me(req: Request, res: Response): Promise<void> {
-  const started = Date.now();
-  console.log("[Auth] GET /me hit");
-
   if (!req.user) {
-    console.warn(
-      `[Auth] GET /me failed — req.user missing (${Date.now() - started}ms)`,
-    );
     throw ApiError.unauthorized();
   }
 
   const user = await authService.getProfile(req.user.id);
-  console.log(
-    `[Auth] GET /me ok — ${Date.now() - started}ms id=${user.id} email=${user.email} role=${user.role}`,
-  );
+  logAuthEvent("me:success", {
+    userId: user.id,
+    role: user.role,
+  });
 
   res.json({
     success: true,
@@ -95,6 +93,8 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
 
   const input = req.body as import("./auth.validation.js").UpdateProfileInput;
   const data = await authService.updateProfile(req.user.id, input);
+  logAuthEvent("profile:success", { userId: req.user.id });
+
   res.json({ success: true, data });
 }
 
@@ -110,7 +110,7 @@ export async function changePassword(req: Request, res: Response): Promise<void>
 
 export async function forgotPasswordRequest(req: Request, res: Response): Promise<void> {
   const { email } = req.body as { email: string };
-  console.log(`[Auth] Password reset OTP requested → ${email}`);
+  logAuthEvent("password-reset:request", { email });
   const result = await authService.requestPasswordResetOtp(email);
 
   res.json({ success: true, ...result });

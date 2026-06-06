@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import rateLimit, { type Options } from "express-rate-limit";
 import { env } from "../config/env.js";
+import { logAuthEvent } from "../utils/auth-log.js";
 
 export const RATE_LIMIT_MESSAGE = "Too many attempts. Please wait a few minutes.";
 
@@ -29,6 +30,7 @@ function isReadOnlyRequest(req: Request): boolean {
 /** Paths with dedicated strict limiters — excluded from the general API cap. */
 const SENSITIVE_AUTH_PATHS = new Set([
   "/auth/login",
+  "/auth/logout",
   "/auth/register/request-otp",
   "/auth/register/resend-otp",
   "/auth/register/verify",
@@ -39,11 +41,24 @@ const SENSITIVE_AUTH_PATHS = new Set([
   "/auth/check-email",
 ]);
 
+/** Session routes — never capped by the general write limiter. */
+const SESSION_AUTH_PATHS = new Set(["/auth/logout", "/auth/profile", "/auth/password/change"]);
+
 function shouldSkipGeneralLimiter(req: Request): boolean {
   if (isReadOnlyRequest(req)) return true;
   if (req.path === "/health") return true;
   if (SENSITIVE_AUTH_PATHS.has(req.path)) return true;
+  if (SESSION_AUTH_PATHS.has(req.path)) return true;
   return false;
+}
+
+function logRateLimitHit(req: Request, limiter: string): void {
+  logAuthEvent("rate-limit", {
+    limiter,
+    method: req.method,
+    path: req.path,
+    ip: req.ip,
+  });
 }
 
 function emailFromBody(req: Request): string {
@@ -83,7 +98,8 @@ export const otpRateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: 5,
   keyGenerator: (req) => `${req.ip}:${emailFromBody(req)}`,
-  handler: (_req, res) => {
+  handler: (req, res) => {
+    logRateLimitHit(req, "otp");
     sendRateLimitResponse(res);
   },
 });
@@ -98,7 +114,8 @@ export const checkEmailRateLimiter = rateLimit({
       typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
     return `${req.ip}:${email}`;
   },
-  handler: (_req, res) => {
+  handler: (req, res) => {
+    logRateLimitHit(req, "check-email");
     sendRateLimitResponse(res);
   },
 });

@@ -40,6 +40,30 @@ export function clearClientSessionStorage(): void {
   sessionStorage.clear();
 }
 
+/** Remove auth-related client caches; preserves theme preference. */
+export function clearAuthClientCaches(): void {
+  if (typeof window === "undefined") return;
+  clearAuthStorage();
+  clearClientSessionStorage();
+  const preserve = new Set(["cognitiax-theme"]);
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (!key || preserve.has(key)) continue;
+    if (
+      key === LEGACY_KEY ||
+      key.startsWith("lms_") ||
+      key.startsWith("cognitiax_auth") ||
+      key.startsWith("dashboard_")
+    ) {
+      keysToRemove.push(key);
+    }
+  }
+  for (const key of keysToRemove) {
+    localStorage.removeItem(key);
+  }
+}
+
 export function getDashboardPathForRole(role: Role): string {
   return DASHBOARD_PATHS[role];
 }

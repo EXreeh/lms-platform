@@ -1,6 +1,6 @@
 import type { User, Role } from "@/types/auth";
 import { logoutUser } from "@/lib/auth-api";
-import { clearAuthStorage, clearClientSessionStorage } from "@/lib/auth-storage";
+import { clearAuthClientCaches } from "@/lib/auth-storage";
 import { logAuth } from "@/lib/auth-debug";
 import { ApiClientError } from "@/lib/api";
 
@@ -29,8 +29,8 @@ export function isAuthSessionError(error: unknown): boolean {
 
 /** Synchronous client cleanup (navbar → public immediately). */
 export function clearClientAuthState(): void {
-  clearAuthStorage();
-  clearClientSessionStorage();
+  clearAuthClientCaches();
+  logAuth("state:cleared");
 }
 
 /** Backend logout + client cleanup (for invalid /me, etc.). */

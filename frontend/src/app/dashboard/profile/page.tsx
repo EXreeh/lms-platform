@@ -68,19 +68,37 @@ export default function ProfilePage() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
 
   useEffect(() => {
+    if (!authUser?.id) {
+      setProfile(null);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+
     void (async () => {
       try {
         const res = await fetchAccountProfile();
+        if (cancelled) return;
         setProfile(res.data);
         setFirstName(res.data.user.firstName);
         setLastName(res.data.user.lastName);
       } catch (err) {
-        toastError(formatApiError(err, "Could not load your profile."));
+        if (!cancelled) {
+          toastError(formatApiError(err, "Could not load your profile."));
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     })();
-  }, [toastError]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authUser?.id, toastError]);
 
   const role = profile?.user.role ?? authUser?.role ?? "STUDENT";
 
@@ -105,8 +123,10 @@ export default function ProfilePage() {
         lastName: lastName.trim(),
       });
       setProfile((prev) => (prev ? { ...prev, user: res.data.user } : prev));
+      setFirstName(res.data.user.firstName);
+      setLastName(res.data.user.lastName);
       setIsEditing(false);
-      await refreshUser();
+      await refreshUser({ force: true });
       toastSuccess("Profile updated successfully.");
     } catch (err) {
       toastError(formatApiError(err, "Could not save profile."));

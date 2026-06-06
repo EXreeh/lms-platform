@@ -7,7 +7,10 @@ import type {
 } from "@/types/auth";
 import { apiRequest } from "./api";
 
-export const AUTH_ME_TIMEOUT_MS = 3000;
+/** Session check timeout — generous for cross-origin production /me calls. */
+export const AUTH_ME_TIMEOUT_MS = 12_000;
+
+export const AUTH_LOGIN_ME_TIMEOUT_MS = 15_000;
 
 export class AuthMeTimeoutError extends Error {
   readonly name = "AuthMeTimeoutError";

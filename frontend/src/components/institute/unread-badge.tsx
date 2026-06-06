@@ -5,11 +5,11 @@ import { useAuth } from "@/context/auth-context";
 import { fetchUnreadCount } from "@/lib/messages-api";
 
 export function useUnreadMessages() {
-  const { isAuthenticated, isLoggingOut, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoggingOut, isLoading } = useAuth();
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (!isAuthenticated || isLoggingOut || isLoading) {
+    if (!isAuthenticated || isLoggingOut || isLoading || !user?.id) {
       setCount(0);
       return;
     }
@@ -21,7 +21,7 @@ export function useUnreadMessages() {
         setCount(0);
       }
     })();
-  }, [isAuthenticated, isLoggingOut, isLoading]);
+  }, [user?.id, isAuthenticated, isLoggingOut, isLoading]);
 
   return count;
 }
