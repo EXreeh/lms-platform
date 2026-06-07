@@ -11,9 +11,18 @@ interface CourseProgressCardProps {
   progress: number;
   completed?: boolean;
   href: string;
+  hidePrice?: boolean;
+  accessLabel?: string;
 }
 
-export function CourseProgressCard({ course, progress, completed, href }: CourseProgressCardProps) {
+export function CourseProgressCard({
+  course,
+  progress,
+  completed,
+  href,
+  hidePrice,
+  accessLabel,
+}: CourseProgressCardProps) {
   return (
     <motion.div whileHover={{ y: -3 }} transition={{ duration: 0.2 }}>
       <Link
@@ -43,7 +52,13 @@ export function CourseProgressCard({ course, progress, completed, href }: Course
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
             <span>{course.lessonCount ?? 0} lessons</span>
-            <span>{formatPrice(course.price)}</span>
+            {hidePrice ? (
+              accessLabel ? (
+                <span className="font-medium text-green-700 dark:text-green-400">{accessLabel}</span>
+              ) : null
+            ) : (
+              <span>{formatPrice(course.price)}</span>
+            )}
           </div>
         </div>
       </Link>

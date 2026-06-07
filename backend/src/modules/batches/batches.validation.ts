@@ -10,11 +10,11 @@ export const createBatchSchema = z.object({
   endDate: z.string().datetime({ offset: true }).or(z.string().date()).optional().nullable(),
   timing: z.string().max(120).optional(),
   daysOfWeek: z.string().max(120).optional(),
-  status: z.enum(["ACTIVE", "COMPLETED", "CANCELLED"]).optional(),
+  status: z.enum(["ACTIVE", "COMPLETED", "CANCELLED", "DELETED"]).optional(),
 });
 
 export const updateBatchSchema = createBatchSchema.partial().extend({
-  status: z.enum(["ACTIVE", "COMPLETED", "CANCELLED"]).optional(),
+  status: z.enum(["ACTIVE", "COMPLETED", "CANCELLED", "DELETED"]).optional(),
 });
 
 export const batchStudentsSchema = z.object({
@@ -22,7 +22,11 @@ export const batchStudentsSchema = z.object({
 });
 
 export const batchListQuerySchema = z.object({
-  status: z.enum(["ACTIVE", "COMPLETED", "CANCELLED"]).optional(),
+  status: z.enum(["ACTIVE", "COMPLETED", "CANCELLED", "DELETED"]).optional(),
   search: z.string().optional(),
   teacherId: z.string().optional(),
+  includeDeleted: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => v === "true"),
 });

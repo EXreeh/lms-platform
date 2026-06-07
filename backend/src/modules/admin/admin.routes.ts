@@ -4,6 +4,7 @@ import { authenticate } from "../../middleware/authenticate.js";
 import { authorize } from "../../middleware/authorize.js";
 import { validateBody } from "../../middleware/validate.js";
 import {
+  createAdminSchema,
   createStudentSchema,
   createTeacherSchema,
   changeRoleSchema,
@@ -29,6 +30,11 @@ adminRoutes.post(
   "/users/teachers",
   validateBody(createTeacherSchema),
   asyncHandler(adminController.createTeacher),
+);
+adminRoutes.post(
+  "/users/admins",
+  validateBody(createAdminSchema),
+  asyncHandler(adminController.createAdmin),
 );
 adminRoutes.post("/users", validateBody(createTeacherSchema), asyncHandler(adminController.createTeacher));
 adminRoutes.get("/users/:userId", asyncHandler(adminController.getUser));

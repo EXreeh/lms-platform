@@ -4,27 +4,14 @@ import { useEffect, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { SalaryStatusBadge } from "@/components/institute/salary-status-badge";
+import { EmptyState } from "@/components/courses/empty-state";
+import { DashboardStatsSkeleton } from "@/components/learning/learning-skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { fetchMyTeacherSalary } from "@/lib/teacher-salary-api";
-import type { SalaryStatus, TeacherSalaryDashboard } from "@/types/institute";
+import { formatInr, MONTH_OPTIONS } from "@/lib/salary-utils";
+import type { TeacherSalaryDashboard } from "@/types/institute";
 import { formatApiError } from "@/lib/format-api-error";
-
-const MONTHS = Array.from({ length: 12 }, (_, i) =>
-  new Date(2000, i, 1).toLocaleString("en", { month: "long" }),
-);
-
-function statusBadge(status: SalaryStatus) {
-  const styles =
-    status === "PAID"
-      ? "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300"
-      : status === "HOLD"
-        ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-        : "bg-muted text-muted-foreground";
-  const label = status === "PAID" ? "Paid" : status === "HOLD" ? "On hold" : "Pending";
-  return (
-    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${styles}`}>{label}</span>
-  );
-}
 
 export default function TeacherSalaryPage() {
   const [data, setData] = useState<TeacherSalaryDashboard | null>(null);
@@ -46,7 +33,7 @@ export default function TeacherSalaryPage() {
 
   const current = data?.currentMonth;
   const now = new Date();
-  const currentPeriod = `${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+  const currentPeriod = `${MONTH_OPTIONS[now.getMonth()]?.label} ${now.getFullYear()}`;
 
   return (
     <DashboardShell
@@ -58,8 +45,11 @@ export default function TeacherSalaryPage() {
         <DashboardSidebar role="TEACHER" />
         <div className="min-w-0 flex-1">
           {loading ? (
-            <div className="flex justify-center py-16">
-              <Spinner label="Loading salary" />
+            <div className="space-y-8">
+              <DashboardStatsSkeleton />
+              <div className="flex justify-center py-8">
+                <Spinner label="Loading salary" />
+              </div>
             </div>
           ) : error ? (
             <p className="text-red-600">{error}</p>
@@ -74,21 +64,22 @@ export default function TeacherSalaryPage() {
                     <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                       <StatCard
                         label="Net salary"
-                        value={`₹${current.netSalary}`}
+                        value={formatInr(current.netSalary)}
                         icon="💰"
                         accent="gold"
                       />
-                      <StatCard label="Base" value={`₹${current.baseSalary}`} icon="📋" />
-                      <StatCard label="Bonus" value={`₹${current.bonus}`} icon="✨" accent="green" />
+                      <StatCard label="Base" value={formatInr(current.baseSalary)} icon="📋" />
                       <StatCard
-                        label="Deductions"
-                        value={`₹${current.deductions}`}
-                        icon="−"
+                        label="Bonus"
+                        value={formatInr(current.bonus)}
+                        icon="✨"
+                        accent="green"
                       />
+                      <StatCard label="Deductions" value={formatInr(current.deductions)} icon="−" />
                     </div>
                     <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-border bg-card p-4">
                       <span className="text-sm text-muted-foreground">Payment status:</span>
-                      {statusBadge(current.status)}
+                      <SalaryStatusBadge status={current.status} />
                       {current.paidAt && (
                         <span className="text-sm text-muted-foreground">
                           Paid on {new Date(current.paidAt).toLocaleDateString()}
@@ -96,17 +87,18 @@ export default function TeacherSalaryPage() {
                       )}
                     </div>
                     {current.note && (
-                      <p className="mt-3 text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">Note: </span>
+                      <p className="mt-3 rounded-xl border border-border bg-muted/30 p-4 text-sm">
+                        <span className="font-medium text-foreground">Note from admin: </span>
                         {current.note}
                       </p>
                     )}
                   </>
                 ) : (
-                  <p className="mt-4 rounded-2xl border border-border bg-card p-6 text-muted-foreground">
-                    No salary record has been created for this month yet. Your institute admin
-                    will add it when ready.
-                  </p>
+                  <EmptyState
+                    title="No salary for this month"
+                    description="Your institute admin will add your salary record when ready."
+                    icon="💰"
+                  />
                 )}
               </div>
 
@@ -116,25 +108,50 @@ export default function TeacherSalaryPage() {
                   Read-only view of your past salary records.
                 </p>
                 {data?.history.length ? (
-                  <ul className="mt-4 divide-y divide-border text-sm">
-                    {data.history.map((row) => (
-                      <li key={row.id} className="flex flex-wrap items-center gap-3 py-3">
-                        <span className="min-w-[8rem] font-medium">
-                          {MONTHS[row.month - 1]} {row.year}
-                        </span>
-                        <span>₹{row.netSalary}</span>
-                        {statusBadge(row.status)}
-                        {row.paidAt && (
-                          <span className="text-xs text-muted-foreground">
-                            Paid {new Date(row.paidAt).toLocaleDateString()}
-                          </span>
-                        )}
-                        {row.note && (
-                          <span className="w-full text-xs text-muted-foreground">{row.note}</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                  <>
+                    <ul className="mt-4 divide-y divide-border text-sm md:hidden">
+                      {data.history.map((row) => (
+                        <li key={row.id} className="py-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium">
+                              {MONTH_OPTIONS[row.month - 1]?.label} {row.year}
+                            </span>
+                            <SalaryStatusBadge status={row.status} />
+                          </div>
+                          <p className="mt-1 font-semibold">{formatInr(row.netSalary)}</p>
+                          {row.note && (
+                            <p className="mt-1 text-xs text-muted-foreground">{row.note}</p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="-mx-1 mt-4 hidden overflow-x-auto md:block">
+                      <table className="w-full min-w-[560px] text-left text-sm">
+                        <thead className="text-muted-foreground">
+                          <tr>
+                            <th className="p-3 font-medium">Period</th>
+                            <th className="p-3 font-medium">Net</th>
+                            <th className="p-3 font-medium">Status</th>
+                            <th className="p-3 font-medium">Note</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.history.map((row) => (
+                            <tr key={row.id} className="border-t border-border/60">
+                              <td className="p-3 font-medium">
+                                {MONTH_OPTIONS[row.month - 1]?.label} {row.year}
+                              </td>
+                              <td className="p-3">{formatInr(row.netSalary)}</td>
+                              <td className="p-3">
+                                <SalaryStatusBadge status={row.status} />
+                              </td>
+                              <td className="p-3 text-muted-foreground">{row.note ?? "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 ) : (
                   <p className="mt-4 text-sm text-muted-foreground">No salary history yet.</p>
                 )}

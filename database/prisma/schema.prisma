@@ -115,6 +115,9 @@ model User {
   courseAccess            StudentCourseAccess[] @relation("StudentAccess")
   courseAccessAssigned    StudentCourseAccess[] @relation("AccessAssignedBy")
   teacherSalaries         TeacherSalary[]
+  teacherAttendance       TeacherAttendance[]
+  teacherLeaveRequests    TeacherLeaveRequest[] @relation("LeaveTeacher")
+  leaveRequestsReviewed   TeacherLeaveRequest[] @relation("LeaveReviewer")
 
   @@index([role, suspended])
   @@map("users")
@@ -424,6 +427,20 @@ enum BatchStatus {
   ACTIVE
   COMPLETED
   CANCELLED
+  DELETED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+  HALF_DAY
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum MessageType {
@@ -598,6 +615,43 @@ model TeacherSalary {
   @@unique([teacherId, month, year])
   @@index([status, year, month])
   @@map("teacher_salaries")
+}
+
+model TeacherAttendance {
+  id        String           @id @default(cuid())
+  teacherId String           @map("teacher_id")
+  date      DateTime         @db.Date
+  status    AttendanceStatus
+  markedAt  DateTime         @map("marked_at")
+  note      String?          @db.Text
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  teacher User @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, date])
+  @@index([date, status])
+  @@map("teacher_attendance")
+}
+
+model TeacherLeaveRequest {
+  id           String      @id @default(cuid())
+  teacherId    String      @map("teacher_id")
+  fromDate     DateTime    @map("from_date") @db.Date
+  toDate       DateTime    @map("to_date") @db.Date
+  reason       String      @db.Text
+  status       LeaveStatus @default(PENDING)
+  reviewedById String?     @map("reviewed_by_id")
+  reviewedAt   DateTime?   @map("reviewed_at")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  teacher    User  @relation("LeaveTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("LeaveReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([teacherId, status])
+  @@index([status, fromDate])
+  @@map("teacher_leave_requests")
 }
 
 model BatchStudent {

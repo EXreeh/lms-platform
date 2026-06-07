@@ -8,6 +8,7 @@ import { courseNotDeletedFilter } from "../courses/courses.helpers.js";
 import { activityMessage, logActivity } from "./activity.service.js";
 import type {
   ChangeRoleInput,
+  CreateAdminInput,
   CreateStudentInput,
   CreateTeacherInput,
   ListActivityQuery,
@@ -75,6 +76,16 @@ async function getUserOrThrow(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw ApiError.notFound("User not found");
   return user;
+}
+
+async function assertLastAdminGuard(target: { id: string; role: Role }, action: string) {
+  if (target.role !== "ADMIN") return;
+  const adminCount = await prisma.user.count({
+    where: { role: "ADMIN", suspended: false },
+  });
+  if (adminCount <= 1) {
+    throw ApiError.forbidden(`Cannot ${action} the last active administrator`);
+  }
 }
 
 async function assertCanModifyUser(actorId: string, target: { id: string; role: Role }) {
@@ -181,7 +192,7 @@ export async function getUserDetails(userId: string) {
 async function createInstituteUser(
   actorId: string,
   input: { firstName: string; lastName: string; email: string; password: string },
-  role: "STUDENT" | "TEACHER",
+  role: "STUDENT" | "TEACHER" | "ADMIN",
 ) {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) {
@@ -298,16 +309,31 @@ export async function createTeacher(actorId: string, input: CreateTeacherInput) 
   return { user: mapAdminUser(user), credentialsDelivered: delivery };
 }
 
+export async function createAdmin(actorId: string, input: CreateAdminInput) {
+  const user = await createInstituteUser(actorId, input, "ADMIN");
+
+  const delivery = await notifyAccountCredentials({
+    actorId,
+    userId: user.id,
+    firstName: user.firstName,
+    email: user.email,
+    password: input.password,
+    role: "ADMIN",
+  });
+
+  return { user: mapAdminUser(user), credentialsDelivered: delivery };
+}
+
 export async function changeUserRole(actorId: string, userId: string, input: ChangeRoleInput) {
   const target = await getUserOrThrow(userId);
-  await assertCanModifyUser(actorId, target);
+  assertNotSelf(actorId, target.id, "change the role of");
 
   if (target.role === input.role) {
     throw ApiError.badRequest(`User is already a ${input.role.toLowerCase()}`);
   }
 
-  if (target.role === "ADMIN") {
-    throw ApiError.forbidden("Cannot change admin role through this endpoint");
+  if (target.role === "ADMIN" && input.role !== "ADMIN") {
+    await assertLastAdminGuard(target, "demote");
   }
 
   const user = await prisma.user.update({

@@ -204,10 +204,16 @@ export async function deleteCourse(userId: string, role: Role, idOrSlug: string)
   }
 
   if (role === "ADMIN") {
-    await prisma.course.update({
-      where: { id: existing.id },
-      data: { deleteStatus: "DELETED", status: "ARCHIVED" },
-    });
+    await prisma.$transaction([
+      prisma.course.update({
+        where: { id: existing.id },
+        data: { deleteStatus: "DELETED", status: "ARCHIVED" },
+      }),
+      prisma.studentCourseAccess.updateMany({
+        where: { courseId: existing.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
     return { message: "Course deleted", pendingApproval: false };
   }
 
@@ -301,6 +307,17 @@ export async function listCourses(
 }
 
 export async function getCourse(idOrSlug: string, userId?: string, role?: Role) {
+  const deleted = await prisma.course.findFirst({
+    where: {
+      OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      deleteStatus: "DELETED",
+    },
+    select: { id: true },
+  });
+  if (deleted) {
+    throw ApiError.notFound("This course is no longer available.");
+  }
+
   const course = await prisma.course.findFirst({
     where: {
       OR: [{ id: idOrSlug }, { slug: idOrSlug }],

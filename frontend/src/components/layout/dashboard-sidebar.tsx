@@ -45,6 +45,12 @@ const teacherNav: NavItem[] = [
     match: (p) => p.startsWith("/dashboard/teacher/salary"),
   },
   {
+    href: "/dashboard/teacher/attendance",
+    label: "Attendance",
+    icon: "📋",
+    match: (p) => p.startsWith("/dashboard/teacher/attendance"),
+  },
+  {
     href: "/dashboard/teacher/live-classes",
     label: "Live Classes",
     icon: "▶",
@@ -169,6 +175,12 @@ const adminNav: NavItem[] = [
     label: "Teacher Salaries",
     icon: "💰",
     match: (p) => p.startsWith("/dashboard/admin/teacher-salaries"),
+  },
+  {
+    href: "/dashboard/admin/teacher-attendance",
+    label: "Teacher Attendance",
+    icon: "📋",
+    match: (p) => p.startsWith("/dashboard/admin/teacher-attendance"),
   },
   {
     href: "/dashboard/admin/live-classes",

@@ -1,16 +1,20 @@
 import type { Batch } from "@/types/institute";
 import { apiRequest } from "./api";
 
-function queryString(params: Record<string, string | undefined>): string {
+function queryString(params: Record<string, string | boolean | undefined>): string {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
-    if (value) qs.set(key, value);
+    if (value !== undefined && value !== "") qs.set(key, String(value));
   }
   const s = qs.toString();
   return s ? `?${s}` : "";
 }
 
-export function fetchBatches(params?: { status?: string; search?: string }) {
+export function fetchBatches(params?: {
+  status?: string;
+  search?: string;
+  includeDeleted?: boolean;
+}) {
   return apiRequest<{ success: boolean; data: Batch[] }>(
     `/batches${queryString(params ?? {})}`,
     { auth: true },
@@ -76,6 +80,13 @@ export function removeBatchStudent(batchId: string, studentId: string) {
     `/batches/${batchId}/students/${studentId}`,
     { method: "DELETE", auth: true },
   );
+}
+
+export function deleteBatch(batchId: string) {
+  return apiRequest<{ success: boolean; message: string }>(`/batches/${batchId}`, {
+    method: "DELETE",
+    auth: true,
+  });
 }
 
 export function fetchTeacherBatches() {

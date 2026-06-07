@@ -23,6 +23,31 @@ export function salaryStatusLabel(status: SalaryStatus): string {
   }
 }
 
+type MappedSalary = {
+  month: number;
+  year: number;
+  netSalary: number;
+  status: SalaryStatus;
+};
+
+export function computeSalarySummary(rows: MappedSalary[], month: number, year: number) {
+  const periodRows = rows.filter((r) => r.month === month && r.year === year);
+  const sumByStatus = (status: SalaryStatus) =>
+    periodRows
+      .filter((r) => r.status === status)
+      .reduce((sum, r) => sum + r.netSalary, 0);
+
+  return {
+    month,
+    year,
+    totalThisMonth: periodRows.reduce((sum, r) => sum + r.netSalary, 0),
+    paidSalary: sumByStatus("PAID"),
+    pendingSalary: sumByStatus("PENDING"),
+    holdSalary: sumByStatus("HOLD"),
+    recordCount: periodRows.length,
+  };
+}
+
 export function mapTeacherSalary(
   row: Prisma.TeacherSalaryGetPayload<{ include: typeof salaryInclude }>,
 ) {

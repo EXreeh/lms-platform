@@ -158,7 +158,7 @@ export default function CoursesPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
                 >
-                  <CourseCard course={course} />
+                  <CourseCard course={course} hidePrice={isStudent} />
                 </motion.div>
               ))}
             </motion.div>

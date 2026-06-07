@@ -17,6 +17,7 @@ import { messagesRoutes } from "../modules/messages/messages.routes.js";
 import { liveClassesRoutes } from "../modules/live-classes/live-classes.routes.js";
 import { courseAccessRoutes } from "../modules/course-access/course-access.routes.js";
 import { teacherSalaryRoutes } from "../modules/teacher-salary/teacher-salary.routes.js";
+import { teacherAttendanceRoutes } from "../modules/teacher-attendance/teacher-attendance.routes.js";
 
 export const apiRouter = Router();
 
@@ -65,3 +66,4 @@ apiRouter.use("/messages", messagesRoutes);
 apiRouter.use("/live-classes", liveClassesRoutes);
 apiRouter.use("/course-access", courseAccessRoutes);
 apiRouter.use("/teacher-salaries", teacherSalaryRoutes);
+apiRouter.use("/teacher-attendance", teacherAttendanceRoutes);

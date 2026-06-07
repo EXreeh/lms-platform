@@ -5,6 +5,7 @@ export const salaryListQuerySchema = z.object({
   month: z.coerce.number().int().min(1).max(12).optional(),
   year: z.coerce.number().int().min(2000).max(2100).optional(),
   status: z.enum(["PENDING", "PAID", "HOLD"]).optional(),
+  search: z.string().max(200).optional(),
 });
 
 export const createSalarySchema = z.object({

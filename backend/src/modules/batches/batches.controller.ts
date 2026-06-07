@@ -68,6 +68,12 @@ export async function removeStudent(req: Request, res: Response): Promise<void> 
   res.json({ success: true, data });
 }
 
+export async function removeBatch(req: Request, res: Response): Promise<void> {
+  requireUser(req);
+  const result = await batchesService.deleteBatch(req.params.batchId);
+  res.json({ success: true, ...result });
+}
+
 export async function teacherList(req: Request, res: Response): Promise<void> {
   const user = requireUser(req);
   const data = await batchesService.getTeacherBatches(user.id);

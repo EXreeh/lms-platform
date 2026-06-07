@@ -20,8 +20,10 @@ import {
   resetUserPassword,
   createStudentAccount,
   createTeacherAccount,
+  createAdminAccount,
   fetchAdminCourses,
 } from "@/lib/admin-api";
+import { useAuth } from "@/context/auth-context";
 import { fetchBatches } from "@/lib/batches-api";
 import type { AdminUser, AdminUserDetail } from "@/types/admin";
 import type { Role } from "@/types/auth";
@@ -31,11 +33,13 @@ import { useToast } from "@/context/toast-context";
 type ConfirmAction =
   | { type: "delete"; user: AdminUser }
   | { type: "suspend"; user: AdminUser; suspend: boolean }
-  | { type: "role"; user: AdminUser; role: "STUDENT" | "TEACHER" }
+  | { type: "role"; user: AdminUser; role: Role }
+  | { type: "promoteAdmin"; user: AdminUser }
   | { type: "reset"; user: AdminUser };
 
 export default function AdminUsersPage() {
   const { success, error: toastError } = useToast();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 0 });
   const [search, setSearch] = useState("");
@@ -48,7 +52,7 @@ export default function AdminUsersPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmAction | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [createMode, setCreateMode] = useState<"student" | "teacher" | null>(null);
+  const [createMode, setCreateMode] = useState<"student" | "teacher" | "admin" | null>(null);
   const [createForm, setCreateForm] = useState({
     firstName: "",
     lastName: "",
@@ -138,6 +142,9 @@ export default function AdminUsersPage() {
       } else if (confirm.type === "role") {
         await changeUserRole(confirm.user.id, confirm.role);
         success(`Role updated to ${confirm.role.toLowerCase()}`);
+      } else if (confirm.type === "promoteAdmin") {
+        await changeUserRole(confirm.user.id, "ADMIN");
+        success("Admin access granted");
       } else if (confirm.type === "reset") {
         if (resetPassword.length < 8) {
           toastError("Password must be at least 8 characters");
@@ -189,7 +196,20 @@ export default function AdminUsersPage() {
         batchId: createForm.batchId || null,
       };
 
-      if (createMode === "student") {
+      if (createMode === "admin") {
+        const res = await createAdminAccount({
+          firstName: base.firstName,
+          lastName: base.lastName,
+          email: base.email,
+          password: base.password,
+        });
+        const delivered = res.data.credentialsDelivered;
+        success(
+          delivered.emailSent
+            ? "Admin created — credentials sent via message and email"
+            : "Admin created — credentials sent via internal message",
+        );
+      } else if (createMode === "student") {
         const res = await createStudentAccount({
           ...base,
           courseId: createForm.courseId || null,
@@ -272,7 +292,15 @@ export default function AdminUsersPage() {
               confirmLabel: "Update role",
               variant: "warning" as const,
             }
-          : {
+          : confirm.type === "promoteAdmin"
+            ? {
+                title: "Grant admin access",
+                description:
+                  "Are you sure you want to give admin access? This user will get full system control.",
+                confirmLabel: "Grant admin access",
+                variant: "danger" as const,
+              }
+            : {
               title: "Reset password",
               description: `Set a new password for ${confirm.user.name}.`,
               confirmLabel: "Reset password",
@@ -333,6 +361,9 @@ export default function AdminUsersPage() {
             </Button>
             <Button variant="secondary" onClick={() => setCreateMode("teacher")}>
               Create teacher
+            </Button>
+            <Button variant="secondary" onClick={() => setCreateMode("admin")}>
+              Create admin
             </Button>
           </div>
 
@@ -446,43 +477,98 @@ export default function AdminUsersPage() {
                     </div>
                   </div>
 
-                  {selectedUser.role !== "ADMIN" && (
+                  {selectedUser.id !== currentUser?.id && (
                     <div className="mt-6 flex flex-wrap gap-2">
                       {selectedUser.role === "STUDENT" && (
-                        <Button
-                          size="sm"
-                          variant="gold"
-                          onClick={() =>
-                            setConfirm({ type: "role", user: selectedUser, role: "TEACHER" })
-                          }
-                        >
-                          Promote to teacher
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="gold"
+                            onClick={() =>
+                              setConfirm({ type: "role", user: selectedUser, role: "TEACHER" })
+                            }
+                          >
+                            Promote to teacher
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() =>
+                              setConfirm({ type: "promoteAdmin", user: selectedUser })
+                            }
+                          >
+                            Promote to admin
+                          </Button>
+                        </>
                       )}
                       {selectedUser.role === "TEACHER" && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() =>
-                            setConfirm({ type: "role", user: selectedUser, role: "STUDENT" })
-                          }
-                        >
-                          Demote to student
-                        </Button>
+                        <>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              setConfirm({ type: "role", user: selectedUser, role: "STUDENT" })
+                            }
+                          >
+                            Demote to student
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() =>
+                              setConfirm({ type: "promoteAdmin", user: selectedUser })
+                            }
+                          >
+                            Promote to admin
+                          </Button>
+                        </>
                       )}
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() =>
-                          setConfirm({
-                            type: "suspend",
-                            user: selectedUser,
-                            suspend: !selectedUser.suspended,
-                          })
-                        }
-                      >
-                        {selectedUser.suspended ? "Reactivate" : "Suspend"}
-                      </Button>
+                      {selectedUser.role === "ADMIN" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              setConfirm({ type: "role", user: selectedUser, role: "TEACHER" })
+                            }
+                          >
+                            Demote to teacher
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              setConfirm({ type: "role", user: selectedUser, role: "STUDENT" })
+                            }
+                          >
+                            Demote to student
+                          </Button>
+                        </>
+                      )}
+                      {selectedUser.role !== "ADMIN" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              setConfirm({
+                                type: "suspend",
+                                user: selectedUser,
+                                suspend: !selectedUser.suspended,
+                              })
+                            }
+                          >
+                            {selectedUser.suspended ? "Reactivate" : "Suspend"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            onClick={() => setConfirm({ type: "delete", user: selectedUser })}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
                       <Button
                         size="sm"
                         variant="secondary"
@@ -490,14 +576,12 @@ export default function AdminUsersPage() {
                       >
                         Reset password
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => setConfirm({ type: "delete", user: selectedUser })}
-                      >
-                        Delete
-                      </Button>
                     </div>
+                  )}
+                  {selectedUser.id === currentUser?.id && (
+                    <p className="mt-6 text-sm text-muted-foreground">
+                      You cannot change your own role or delete your account from this panel.
+                    </p>
                   )}
 
                   {confirm?.type === "reset" && confirm.user.id === selectedUser.id && (
@@ -562,7 +646,13 @@ export default function AdminUsersPage() {
             className="fixed left-1/2 top-1/2 z-50 max-h-[90vh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 space-y-4 overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-xl"
           >
             <h2 className="font-serif text-lg font-bold">
-              Create {createMode === "student" ? "student" : "teacher"} account
+              Create{" "}
+              {createMode === "student"
+                ? "student"
+                : createMode === "teacher"
+                  ? "teacher"
+                  : "admin"}{" "}
+              account
             </h2>
             <p className="text-xs text-muted-foreground">
               Login credentials will be sent as an internal message

@@ -16,6 +16,7 @@ interface CourseSectionProps {
   emptyTitle?: string;
   emptyDescription?: string;
   createHref?: string;
+  hidePrice?: boolean;
 }
 
 export function CourseSection({
@@ -27,6 +28,7 @@ export function CourseSection({
   emptyTitle = "No courses",
   emptyDescription = "Nothing here yet.",
   createHref,
+  hidePrice,
 }: CourseSectionProps) {
   return (
     <section>
@@ -57,6 +59,7 @@ export function CourseSection({
                   editHref?.(course) ?? browseHref?.(course) ?? `/courses/${course.slug}`
                 }
                 showStatus={showStatus}
+                hidePrice={hidePrice}
               />
             </motion.div>
           ))}

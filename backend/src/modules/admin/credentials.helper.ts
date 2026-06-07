@@ -10,10 +10,15 @@ export async function notifyAccountCredentials(params: {
   firstName: string;
   email: string;
   password: string;
-  role: Extract<Role, "STUDENT" | "TEACHER">;
+  role: Extract<Role, "STUDENT" | "TEACHER" | "ADMIN">;
 }) {
   const loginUrl = `${env.FRONTEND_URL.replace(/\/$/, "")}/login`;
-  const roleLabel = params.role === "STUDENT" ? "student" : "teacher";
+  const roleLabel =
+    params.role === "STUDENT"
+      ? "student"
+      : params.role === "TEACHER"
+        ? "teacher"
+        : "administrator";
 
   const content = [
     "Welcome to the CognitiaX AI institute portal.",

@@ -236,6 +236,7 @@ export default function StudentDashboardPage() {
                         progress={progress}
                         completed={completed}
                         href={`/courses/${course.slug}/learn`}
+                        hidePrice
                       />
                     ))}
                   </div>
@@ -246,6 +247,7 @@ export default function StudentDashboardPage() {
                 title="Recommended for you"
                 courses={data.recommendedCourses}
                 browseHref={(c) => `/courses/${c.slug}`}
+                hidePrice
                 emptyTitle="No recommendations"
                 emptyDescription="Browse the catalog to find your next course."
               />

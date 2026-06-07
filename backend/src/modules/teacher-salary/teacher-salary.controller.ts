@@ -15,8 +15,8 @@ function requireUser(req: Request) {
 export async function listAdmin(req: Request, res: Response): Promise<void> {
   requireUser(req);
   const query = salaryListQuerySchema.parse(req.query);
-  const data = await salaryService.listSalaries(query);
-  res.json({ success: true, data });
+  const { data, summary } = await salaryService.listSalariesWithSummary(query);
+  res.json({ success: true, data, summary });
 }
 
 export async function getOne(req: Request, res: Response): Promise<void> {

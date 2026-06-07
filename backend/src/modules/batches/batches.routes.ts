@@ -51,3 +51,8 @@ batchesRoutes.delete(
   authorize("ADMIN"),
   asyncHandler(batchesController.removeStudent),
 );
+batchesRoutes.delete(
+  "/:batchId",
+  authorize("ADMIN"),
+  asyncHandler(batchesController.removeBatch),
+);

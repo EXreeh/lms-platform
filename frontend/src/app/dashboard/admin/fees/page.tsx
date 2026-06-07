@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
+  SearchableUserSelect,
+  type UserSelectOption,
+} from "@/components/ui/searchable-user-select";
+import {
   addFeePayment,
   createFeePlan,
   fetchFeeAnalytics,
@@ -15,11 +19,27 @@ import {
   fetchFeePlans,
   sendFeeReminder,
 } from "@/lib/fees-api";
-import { fetchAdminUsers } from "@/lib/admin-api";
+import { fetchAdminUsers, fetchAdminCourses } from "@/lib/admin-api";
+import { fetchBatches } from "@/lib/batches-api";
 import type { FeeAnalytics, FeePlan } from "@/types/institute";
 import { useToast } from "@/context/toast-context";
 import { formatApiError } from "@/lib/format-api-error";
 import { StatCard } from "@/components/dashboard/stat-card";
+
+async function loadStudents(search?: string): Promise<UserSelectOption[]> {
+  const res = await fetchAdminUsers({
+    role: "STUDENT",
+    suspended: false,
+    search: search || undefined,
+    limit: 100,
+  });
+  return res.data.users.map((u) => ({
+    id: u.id,
+    name: `${u.firstName} ${u.lastName}`.trim(),
+    email: u.email,
+    role: u.role,
+  }));
+}
 
 export default function AdminFeesPage() {
   const { success, error: toastError } = useToast();
@@ -30,9 +50,15 @@ export default function AdminFeesPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<FeePlan | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [students, setStudents] = useState<{ value: string; label: string }[]>([]);
+  const [studentOptions, setStudentOptions] = useState<UserSelectOption[]>([]);
+  const [studentSearch, setStudentSearch] = useState("");
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [courses, setCourses] = useState<{ value: string; label: string }[]>([]);
+  const [batches, setBatches] = useState<{ value: string; label: string }[]>([]);
   const [createForm, setCreateForm] = useState({
     studentId: "",
+    courseId: "",
+    batchId: "",
     totalAmount: "",
     dueDate: "",
   });
@@ -65,20 +91,27 @@ export default function AdminFeesPage() {
   }, [load]);
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetchAdminUsers({ role: "STUDENT", limit: 200 });
-        setStudents(
-          res.data.users.map((u) => ({
-            value: u.id,
-            label: `${u.firstName} ${u.lastName} (${u.email})`,
-          })),
-        );
-      } catch {
-        /* ignore */
-      }
-    })();
+    void Promise.all([
+      fetchAdminCourses({ limit: 100 }),
+      fetchBatches({ status: "ACTIVE" }),
+    ]).then(([courseRes, batchRes]) => {
+      setCourses(
+        courseRes.data.courses.map((c) => ({ value: c.id, label: c.title })),
+      );
+      setBatches(batchRes.data.map((b) => ({ value: b.id, label: b.name })));
+    });
   }, []);
+
+  useEffect(() => {
+    if (!showCreate) return;
+    const timer = setTimeout(() => {
+      setUsersLoading(true);
+      void loadStudents(studentSearch)
+        .then(setStudentOptions)
+        .finally(() => setUsersLoading(false));
+    }, studentSearch ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [showCreate, studentSearch]);
 
   async function openPlan(id: string) {
     try {
@@ -90,14 +123,27 @@ export default function AdminFeesPage() {
   }
 
   async function handleCreate() {
+    if (!createForm.studentId) {
+      toastError("Please select a student.");
+      return;
+    }
     try {
       await createFeePlan({
         studentId: createForm.studentId,
+        courseId: createForm.courseId || null,
+        batchId: createForm.batchId || null,
         totalAmount: Number(createForm.totalAmount),
         dueDate: new Date(createForm.dueDate).toISOString(),
       });
       success("Fee plan created");
       setShowCreate(false);
+      setCreateForm({
+        studentId: "",
+        courseId: "",
+        batchId: "",
+        totalAmount: "",
+        dueDate: "",
+      });
       void load();
     } catch (err) {
       toastError(formatApiError(err, "Failed to create fee plan"));
@@ -276,11 +322,28 @@ export default function AdminFeesPage() {
           <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl">
             <h3 className="font-serif text-lg font-bold">New fee plan</h3>
             <div className="mt-4 space-y-3">
-              <Select
+              <SearchableUserSelect
                 label="Student"
-                options={[{ value: "", label: "Select…" }, ...students]}
-                value={createForm.studentId}
-                onChange={(e) => setCreateForm((f) => ({ ...f, studentId: e.target.value }))}
+                options={studentOptions}
+                value={createForm.studentId ? [createForm.studentId] : []}
+                onChange={(ids) =>
+                  setCreateForm((f) => ({ ...f, studentId: ids[0] ?? "" }))
+                }
+                placeholder="Search by name or email…"
+                onSearchChange={setStudentSearch}
+                loading={usersLoading}
+              />
+              <Select
+                label="Course (optional)"
+                options={[{ value: "", label: "None" }, ...courses]}
+                value={createForm.courseId}
+                onChange={(e) => setCreateForm((f) => ({ ...f, courseId: e.target.value }))}
+              />
+              <Select
+                label="Batch (optional)"
+                options={[{ value: "", label: "None" }, ...batches]}
+                value={createForm.batchId}
+                onChange={(e) => setCreateForm((f) => ({ ...f, batchId: e.target.value }))}
               />
               <Input
                 label="Total amount (₹)"

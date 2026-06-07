@@ -39,9 +39,14 @@ export async function listBatches(filters: {
   status?: BatchStatus;
   search?: string;
   teacherId?: string;
+  includeDeleted?: boolean;
 }) {
   const where: Prisma.BatchWhereInput = {};
-  if (filters.status) where.status = filters.status;
+  if (filters.status) {
+    where.status = filters.status;
+  } else if (!filters.includeDeleted) {
+    where.status = { not: "DELETED" };
+  }
   if (filters.teacherId) where.teacherId = filters.teacherId;
   if (filters.search?.trim()) {
     const q = filters.search.trim();
@@ -218,9 +223,35 @@ export async function removeStudentFromBatch(batchId: string, studentId: string)
   return getBatchById(batchId, { includeAccess: true });
 }
 
+export async function deleteBatch(batchId: string) {
+  const batch = await prisma.batch.findUnique({ where: { id: batchId } });
+  if (!batch) throw ApiError.notFound("Batch not found");
+  if (batch.status === "DELETED") {
+    throw ApiError.badRequest("Batch is already deleted");
+  }
+
+  await prisma.batch.update({
+    where: { id: batchId },
+    data: { status: "DELETED" },
+  });
+
+  return { message: "Batch deleted" };
+}
+
 export async function getTeacherBatches(teacherId: string) {
   try {
-    return await listBatches({ teacherId });
+    const batches = await prisma.batch.findMany({
+      where: { teacherId, status: { not: "DELETED" } },
+      include: batchInclude,
+      orderBy: [{ status: "asc" }, { startDate: "desc" }],
+    });
+
+    const result = [];
+    for (const batch of batches) {
+      const access = await studentAccessMap(batch.students.map((s) => s.studentId));
+      result.push(mapBatch(batch, { studentAccess: access }));
+    }
+    return result;
   } catch (error) {
     logPrismaRouteError("/api/dashboard/teacher", error, "getTeacherBatches");
     return [];
@@ -245,7 +276,7 @@ async function loadStudentBatch(studentId: string) {
 
   if (!membership) {
     const any = await prisma.batchStudent.findFirst({
-      where: { studentId },
+      where: { studentId, batch: { status: { not: "DELETED" } } },
       include: { batch: { include: batchInclude } },
       orderBy: { joinedAt: "desc" },
     });

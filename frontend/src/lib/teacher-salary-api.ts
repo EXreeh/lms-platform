@@ -1,4 +1,9 @@
-import type { SalaryStatus, TeacherSalary, TeacherSalaryDashboard } from "@/types/institute";
+import type {
+  SalaryStatus,
+  TeacherSalary,
+  TeacherSalaryDashboard,
+  TeacherSalarySummary,
+} from "@/types/institute";
 import { apiRequest } from "./api";
 
 function queryString(params: Record<string, string | number | undefined>): string {
@@ -15,11 +20,13 @@ export function fetchTeacherSalaries(params?: {
   month?: number;
   year?: number;
   status?: SalaryStatus;
+  search?: string;
 }) {
-  return apiRequest<{ success: boolean; data: TeacherSalary[] }>(
-    `/teacher-salaries${queryString(params ?? {})}`,
-    { auth: true },
-  );
+  return apiRequest<{
+    success: boolean;
+    data: TeacherSalary[];
+    summary: TeacherSalarySummary;
+  }>(`/teacher-salaries${queryString(params ?? {})}`, { auth: true });
 }
 
 export function fetchMyTeacherSalary() {

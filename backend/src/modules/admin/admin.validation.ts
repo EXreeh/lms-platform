@@ -52,8 +52,10 @@ export const createTeacherSchema = createAccountBaseSchema.extend({
   salary: optionalSalarySchema,
 });
 
+export const createAdminSchema = createAccountBaseSchema;
+
 export const changeRoleSchema = z.object({
-  role: z.enum(["STUDENT", "TEACHER"]),
+  role: roleEnum,
 });
 
 export const suspendUserSchema = z.object({
@@ -110,6 +112,7 @@ export const listActivityQuerySchema = z.object({
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
 export type CreateStudentInput = z.infer<typeof createStudentSchema>;
 export type CreateTeacherInput = z.infer<typeof createTeacherSchema>;
+export type CreateAdminInput = z.infer<typeof createAdminSchema>;
 export type ChangeRoleInput = z.infer<typeof changeRoleSchema>;
 export type SuspendUserInput = z.infer<typeof suspendUserSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

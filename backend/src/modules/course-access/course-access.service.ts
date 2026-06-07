@@ -158,6 +158,16 @@ export async function assignCourseToStudent(
 
   const course = await prisma.course.findUnique({ where: { id: input.courseId } });
   if (!course) throw ApiError.notFound("Course not found");
+  if (course.deleteStatus !== "ACTIVE" || course.status === "ARCHIVED") {
+    throw ApiError.badRequest("Course is not available for assignment", "COURSE_UNAVAILABLE");
+  }
+
+  const existingAccess = await prisma.studentCourseAccess.findUnique({
+    where: { studentId_courseId: { studentId: input.studentId, courseId: input.courseId } },
+  });
+  if (existingAccess && !existingAccess.revokedAt) {
+    throw ApiError.conflict("Student already has access to this course", "ACCESS_EXISTS");
+  }
 
   const access = await upsertAccess({
     studentId: input.studentId,
@@ -265,6 +275,7 @@ export async function listAllAccess(filters?: { studentId?: string; courseId?: s
   const rows = await prisma.studentCourseAccess.findMany({
     where: {
       revokedAt: null,
+      course: { deleteStatus: { not: "DELETED" }, status: { not: "ARCHIVED" } },
       ...(filters?.studentId ? { studentId: filters.studentId } : {}),
       ...(filters?.courseId ? { courseId: filters.courseId } : {}),
     },
@@ -295,7 +306,11 @@ export async function listAllAccess(filters?: { studentId?: string; courseId?: s
 export async function getAssignedCoursesForStudent(studentId: string) {
   try {
     const accessRows = await prisma.studentCourseAccess.findMany({
-      where: { studentId, revokedAt: null },
+      where: {
+        studentId,
+        revokedAt: null,
+        course: { deleteStatus: "ACTIVE", status: "APPROVED" },
+      },
       include: {
         course: { include: courseInclude },
       },

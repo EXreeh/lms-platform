@@ -1,6 +1,6 @@
 export type FeeStatus = "PENDING" | "PARTIAL" | "PAID" | "OVERDUE";
 export type PaymentMode = "CASH" | "UPI" | "BANK_TRANSFER" | "CARD" | "OTHER";
-export type BatchStatus = "ACTIVE" | "COMPLETED" | "CANCELLED";
+export type BatchStatus = "ACTIVE" | "COMPLETED" | "CANCELLED" | "DELETED";
 export type AccessType = "ADMIN_ASSIGNED" | "BATCH_ASSIGNED" | "FULL_FEE_PAID" | "TRIAL";
 export type SalaryStatus = "PENDING" | "PAID" | "HOLD";
 export type MessageType =
@@ -128,6 +128,16 @@ export interface TeacherSalary {
 export interface TeacherSalaryDashboard {
   currentMonth: TeacherSalary | null;
   history: TeacherSalary[];
+}
+
+export interface TeacherSalarySummary {
+  month: number;
+  year: number;
+  totalThisMonth: number;
+  paidSalary: number;
+  pendingSalary: number;
+  holdSalary: number;
+  recordCount: number;
 }
 
 export interface LiveClass {

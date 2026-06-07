@@ -10,6 +10,8 @@ interface CourseCardProps {
   course: Course;
   href?: string;
   showStatus?: boolean;
+  hidePrice?: boolean;
+  accessLabel?: string;
 }
 
 const levelColors: Record<string, string> = {
@@ -18,7 +20,7 @@ const levelColors: Record<string, string> = {
   ADVANCED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
 
-export function CourseCard({ course, href, showStatus }: CourseCardProps) {
+export function CourseCard({ course, href, showStatus, hidePrice, accessLabel }: CourseCardProps) {
   const link = href ?? `/courses/${course.slug}`;
 
   return (
@@ -78,7 +80,17 @@ export function CourseCard({ course, href, showStatus }: CourseCardProps) {
             <p className="mt-2 text-sm text-muted-foreground">{course.teacher.name}</p>
           )}
           <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-            <span className="font-bold text-foreground">{formatPrice(course.price)}</span>
+            {hidePrice ? (
+              accessLabel ? (
+                <span className="text-xs font-medium text-green-700 dark:text-green-400">
+                  {accessLabel}
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">Institute course</span>
+              )
+            ) : (
+              <span className="font-bold text-foreground">{formatPrice(course.price)}</span>
+            )}
             <span className="text-xs text-muted-foreground">
               {course.lessonCount ?? 0} lessons
             </span>

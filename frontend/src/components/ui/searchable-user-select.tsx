@@ -24,6 +24,8 @@ interface SearchableUserSelectProps {
   disabled?: boolean;
   onSearchChange?: (query: string) => void;
   loading?: boolean;
+  /** Show “Select all visible” when multiple selection is enabled */
+  showSelectAll?: boolean;
 }
 
 const ROLE_OPTIONS: { value: Role | ""; label: string }[] = [
@@ -46,6 +48,7 @@ export function SearchableUserSelect({
   disabled = false,
   onSearchChange,
   loading = false,
+  showSelectAll = false,
 }: SearchableUserSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -87,6 +90,13 @@ export function SearchableUserSelect({
       onChange([id]);
       setOpen(false);
     }
+  }
+
+  function selectAllVisible() {
+    if (!multiple) return;
+    const visibleIds = filtered.map((o) => o.id);
+    const merged = Array.from(new Set([...value, ...visibleIds]));
+    onChange(merged);
   }
 
   return (
@@ -149,7 +159,7 @@ export function SearchableUserSelect({
       ) : null}
       {open && (
         <div className="absolute z-40 mt-1 max-h-64 w-full overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-          <div className="border-b border-border p-2">
+          <div className="space-y-2 border-b border-border p-2">
             <input
               type="search"
               value={query}
@@ -158,6 +168,15 @@ export function SearchableUserSelect({
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               autoFocus
             />
+            {multiple && showSelectAll && filtered.length > 0 ? (
+              <button
+                type="button"
+                className="w-full rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/80"
+                onClick={selectAllVisible}
+              >
+                Select all visible ({filtered.length})
+              </button>
+            ) : null}
           </div>
           <ul className="max-h-48 overflow-y-auto py-1 text-sm">
             {loading ? (

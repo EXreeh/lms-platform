@@ -67,6 +67,25 @@ export function createStudentAccount(
   });
 }
 
+export function createAdminAccount(body: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+}) {
+  return apiRequest<{
+    success: boolean;
+    data: {
+      user: AdminUser;
+      credentialsDelivered: { messageSent: boolean; emailSent: boolean };
+    };
+  }>("/admin/users/admins", {
+    method: "POST",
+    body,
+    auth: true,
+  });
+}
+
 export function createTeacherAccount(
   body: {
     firstName: string;
@@ -88,7 +107,7 @@ export function createTeacherAccount(
   });
 }
 
-export function changeUserRole(userId: string, role: "STUDENT" | "TEACHER") {
+export function changeUserRole(userId: string, role: "STUDENT" | "TEACHER" | "ADMIN") {
   return apiRequest<{ success: boolean; data: { user: AdminUser } }>(
     `/admin/users/${userId}/role`,
     { method: "PATCH", body: { role }, auth: true },

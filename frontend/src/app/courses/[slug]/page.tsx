@@ -65,10 +65,23 @@ export default function CourseDetailPage() {
           </div>
         ) : error || !course ? (
           <div className="py-20 text-center">
-            <h1 className="font-serif text-2xl font-bold">Course not found</h1>
-            <p className="mt-2 text-muted-foreground">{error}</p>
-            <Link href="/courses" className="mt-6 inline-block">
-              <Button variant="secondary">Browse courses</Button>
+            <h1 className="font-serif text-2xl font-bold">
+              {error === "This course is no longer available."
+                ? "Course unavailable"
+                : "Course not found"}
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              {error === "This course is no longer available."
+                ? "This course is no longer available."
+                : error}
+            </p>
+            <Link
+              href={isStudent ? "/dashboard/student/courses" : "/courses"}
+              className="mt-6 inline-block"
+            >
+              <Button variant="secondary">
+                {isStudent ? "Back to my courses" : "Browse courses"}
+              </Button>
             </Link>
           </div>
         ) : (

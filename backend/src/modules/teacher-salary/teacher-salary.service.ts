@@ -4,6 +4,7 @@ import { ApiError } from "../../utils/api-error.js";
 import { logPrismaRouteError } from "../../utils/prisma-safe.js";
 import {
   computeNetSalary,
+  computeSalarySummary,
   mapTeacherSalary,
   salaryInclude,
 } from "./teacher-salary.helpers.js";
@@ -13,12 +14,24 @@ export async function listSalaries(filters: {
   month?: number;
   year?: number;
   status?: SalaryStatus;
+  search?: string;
 }) {
   const where: Prisma.TeacherSalaryWhereInput = {};
   if (filters.teacherId) where.teacherId = filters.teacherId;
   if (filters.month) where.month = filters.month;
   if (filters.year) where.year = filters.year;
   if (filters.status) where.status = filters.status;
+
+  const search = filters.search?.trim();
+  if (search) {
+    where.teacher = {
+      OR: [
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+      ],
+    };
+  }
 
   const rows = await prisma.teacherSalary.findMany({
     where,
@@ -27,6 +40,21 @@ export async function listSalaries(filters: {
   });
 
   return rows.map(mapTeacherSalary);
+}
+
+export async function listSalariesWithSummary(filters: {
+  teacherId?: string;
+  month?: number;
+  year?: number;
+  status?: SalaryStatus;
+  search?: string;
+}) {
+  const data = await listSalaries(filters);
+  const now = new Date();
+  const summaryMonth = filters.month ?? now.getMonth() + 1;
+  const summaryYear = filters.year ?? now.getFullYear();
+  const summary = computeSalarySummary(data, summaryMonth, summaryYear);
+  return { data, summary };
 }
 
 export async function getSalaryById(id: string) {

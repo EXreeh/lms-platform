@@ -57,7 +57,11 @@ export default function StudentMyCoursesPage() {
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {courses.map((item) => (
                 <div key={item.course.id} className="space-y-2">
-                  <CourseCard course={item.course} />
+                  <CourseCard
+                    course={item.course}
+                    hidePrice
+                    accessLabel={item.accessLabel}
+                  />
                   <div className="flex items-center justify-between px-1 text-xs">
                     <span
                       className={
