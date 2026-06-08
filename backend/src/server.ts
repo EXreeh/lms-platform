@@ -2,7 +2,7 @@ import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { prisma } from "./config/database.js";
 import { verifyEmailTransport } from "./services/email/email.service.js";
-import { ensureUploadDirectories } from "./services/storage/index.js";
+import { ensureUploadDirectories, verifyStorageProvider } from "./services/storage/index.js";
 import { logCorsConfig } from "./config/cors.js";
 
 const app = createApp();
@@ -17,6 +17,12 @@ async function start() {
 
     if (env.STORAGE_PROVIDER === "local") {
       await ensureUploadDirectories();
+    } else if (env.STORAGE_PROVIDER === "r2" || env.STORAGE_PROVIDER === "s3") {
+      await verifyStorageProvider();
+      console.log("[storage] remote bucket verified", {
+        provider: env.STORAGE_PROVIDER,
+        bucket: env.STORAGE_PROVIDER === "r2" ? env.R2_BUCKET : env.AWS_S3_BUCKET,
+      });
     }
 
     const smtpVerified = await verifyEmailTransport();

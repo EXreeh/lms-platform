@@ -27,7 +27,11 @@ export function parseVideoEmbedUrl(url: string | null | undefined): {
     };
   }
 
-  if (/\.(mp4|webm|ogg|mov|mkv)(\?|$)/i.test(url) || url.startsWith("/uploads/videos/")) {
+  if (
+    /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) ||
+    url.startsWith("/uploads/videos/") ||
+    /\/videos\/[\w.\-]+\.(mp4|webm|mov)(\?|$)/i.test(url)
+  ) {
     return { type: "html5", embedUrl: url, videoId: null };
   }
 

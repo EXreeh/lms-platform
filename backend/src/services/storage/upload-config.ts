@@ -10,6 +10,8 @@ export function getUploadLimitBytes(category: UploadCategory): number {
     case "video":
       return MAX_VIDEO_UPLOAD_MB * 1024 * 1024;
     case "resource":
+    case "assignment":
+    case "certificate":
       return MAX_RESOURCE_UPLOAD_MB * 1024 * 1024;
     case "thumbnail":
       return MAX_THUMBNAIL_UPLOAD_MB * 1024 * 1024;

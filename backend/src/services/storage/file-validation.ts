@@ -40,12 +40,11 @@ const CATEGORY_RULES: Record<
   { extensions: Set<string>; mimeTypes: Set<string> }
 > = {
   video: {
-    extensions: new Set([".mp4", ".mov", ".webm", ".mkv"]),
+    extensions: new Set([".mp4", ".mov", ".webm"]),
     mimeTypes: new Set([
       "video/mp4",
       "video/quicktime",
       "video/webm",
-      "video/x-matroska",
       "video/x-msvideo",
       "video/x-mp4",
       "application/mp4",
@@ -83,6 +82,41 @@ const CATEGORY_RULES: Record<
       "image/webp",
       "image/gif",
       "text/plain",
+    ]),
+  },
+  assignment: {
+    extensions: new Set([
+      ".pdf",
+      ".doc",
+      ".docx",
+      ".ppt",
+      ".pptx",
+      ".zip",
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".webp",
+    ]),
+    mimeTypes: new Set([
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "application/zip",
+      "application/x-zip-compressed",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ]),
+  },
+  certificate: {
+    extensions: new Set([".pdf", ".jpg", ".jpeg", ".png", ".webp"]),
+    mimeTypes: new Set([
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
     ]),
   },
 };

@@ -1,6 +1,7 @@
 import multer from "multer";
 import { mkdirSync } from "node:fs";
 import type { Request, Response, NextFunction } from "express";
+import { env } from "../../config/env.js";
 import type { UploadCategory } from "../../services/storage/types.js";
 import {
   getUploadLimitBytes,
@@ -24,19 +25,23 @@ function ensureDestinationDir(category: UploadCategory): string {
 }
 
 function createUploader(category: UploadCategory) {
-  const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => {
-      try {
-        const dir = ensureDestinationDir(category);
-        cb(null, dir);
-      } catch (err) {
-        cb(err as Error, "");
-      }
-    },
-    filename: (_req, file, cb) => {
-      cb(null, sanitizeStoredFilename(file.originalname));
-    },
-  });
+  const useMemory = env.STORAGE_PROVIDER === "r2" || env.STORAGE_PROVIDER === "s3";
+
+  const storage = useMemory
+    ? multer.memoryStorage()
+    : multer.diskStorage({
+        destination: (_req, _file, cb) => {
+          try {
+            const dir = ensureDestinationDir(category);
+            cb(null, dir);
+          } catch (err) {
+            cb(err as Error, "");
+          }
+        },
+        filename: (_req, file, cb) => {
+          cb(null, sanitizeStoredFilename(file.originalname));
+        },
+      });
 
   const upload = multer({
     storage,
@@ -56,7 +61,7 @@ function createUploader(category: UploadCategory) {
         return;
       }
       if (!result.ok && category === "video") {
-        const allowed = [".mp4", ".mov", ".webm", ".mkv"];
+        const allowed = [".mp4", ".mov", ".webm"];
         if (!allowed.includes(ext)) {
           cb(new Error(result.message));
           return;
@@ -78,6 +83,9 @@ export function validateUploadedFileMiddleware(category: UploadCategory) {
     if (!req.file) {
       next(ApiError.badRequest("No file uploaded. Please select a file.", "NO_FILE"));
       return;
+    }
+    if (!req.file.filename) {
+      req.file.filename = sanitizeStoredFilename(req.file.originalname);
     }
     const result = validateUploadedFile(req.file, category);
     if (!result.ok) {

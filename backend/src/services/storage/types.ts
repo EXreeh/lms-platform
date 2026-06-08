@@ -1,4 +1,9 @@
-export type UploadCategory = "video" | "resource" | "thumbnail";
+export type UploadCategory =
+  | "video"
+  | "resource"
+  | "thumbnail"
+  | "assignment"
+  | "certificate";
 
 export interface StoredFile {
   url: string;

@@ -65,7 +65,28 @@ const envSchema = z.object({
   R2_ACCESS_KEY_ID: z.string().optional(),
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET: z.string().optional(),
+  R2_ENDPOINT: z.string().optional(),
   R2_PUBLIC_URL: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.STORAGE_PROVIDER === "r2") {
+    const required: (keyof typeof data)[] = [
+      "R2_ACCOUNT_ID",
+      "R2_ACCESS_KEY_ID",
+      "R2_SECRET_ACCESS_KEY",
+      "R2_BUCKET",
+      "R2_PUBLIC_URL",
+    ];
+    for (const key of required) {
+      const value = data[key];
+      if (typeof value !== "string" || !value.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${key} is required when STORAGE_PROVIDER=r2`,
+          path: [key],
+        });
+      }
+    }
+  }
 });
 
 const parsed = envSchema.safeParse(process.env);

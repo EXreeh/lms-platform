@@ -8,6 +8,8 @@ const CATEGORY_DIRS: Record<UploadCategory, string> = {
   video: "videos",
   resource: "resources",
   thumbnail: "thumbnails",
+  assignment: "assignments",
+  certificate: "certificates",
 };
 
 /** Resolve backend package root (stable regardless of process.cwd()). */

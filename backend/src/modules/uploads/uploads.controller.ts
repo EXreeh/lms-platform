@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
+import { env } from "../../config/env.js";
 import { getStorageProvider } from "../../services/storage/index.js";
 import type { UploadCategory } from "../../services/storage/types.js";
+import { logUploadFailure } from "../../services/storage/storage-logger.js";
 import { ApiError } from "../../utils/api-error.js";
 
 function requireTeacherOrAdmin(req: Request) {
@@ -19,27 +21,18 @@ async function handleUpload(req: Request, res: Response, category: UploadCategor
   try {
     const stored = await storage.save(req.file, category);
 
-    console.log("[uploads] saved", {
-      category,
-      destination: req.file.destination,
-      filename: req.file.filename,
-      path: req.file.path,
-      publicUrl: stored.url,
-      size: stored.size,
-      mimeType: stored.mimeType,
-    });
-
     res.status(201).json({
       success: true,
       message: "File uploaded successfully",
       data: stored,
     });
   } catch (err) {
-    console.error("[uploads] storage failure", {
+    logUploadFailure({
+      provider: env.STORAGE_PROVIDER,
+      bucket: env.STORAGE_PROVIDER === "r2" ? env.R2_BUCKET : undefined,
       category,
-      destination: req.file.destination,
-      path: req.file.path,
-      error: err instanceof Error ? err.message : err,
+      error: err instanceof Error ? err.message : String(err),
+      code: err instanceof ApiError ? err.code : undefined,
     });
 
     if (err instanceof ApiError) throw err;
@@ -66,7 +59,7 @@ export async function deleteUploadedFile(req: Request, res: Response): Promise<v
   }
 
   const category = req.params.category as UploadCategory;
-  if (!["video", "resource", "thumbnail"].includes(category)) {
+  if (!["video", "resource", "thumbnail", "assignment", "certificate"].includes(category)) {
     throw ApiError.badRequest("Invalid upload category");
   }
 
