@@ -17,6 +17,8 @@ export interface Lesson {
   videoFileName?: string | null;
   videoMimeType?: string | null;
   videoSize?: number | null;
+  videoStorageProvider?: string | null;
+  videoStorageKey?: string | null;
   duration: number;
   order: number;
   moduleId: string;

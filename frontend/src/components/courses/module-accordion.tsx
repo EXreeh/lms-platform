@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Module } from "@/types/course";
 import { LessonList } from "./lesson-list";
 
 interface ModuleAccordionProps {
   modules: Module[];
+  /** Expand this module (e.g. after adding a lesson) */
+  openModuleId?: string | null;
   editable?: boolean;
   onDeleteModule?: (moduleId: string) => void;
   onDeleteLesson?: (lessonId: string) => void;
@@ -19,6 +21,7 @@ interface ModuleAccordionProps {
 
 export function ModuleAccordion({
   modules,
+  openModuleId,
   editable,
   onDeleteModule,
   onDeleteLesson,
@@ -26,6 +29,10 @@ export function ModuleAccordion({
   onUpdateLesson,
 }: ModuleAccordionProps) {
   const [openId, setOpenId] = useState<string | null>(modules[0]?.id ?? null);
+
+  useEffect(() => {
+    if (openModuleId) setOpenId(openModuleId);
+  }, [openModuleId]);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [moduleEditTitle, setModuleEditTitle] = useState("");
 

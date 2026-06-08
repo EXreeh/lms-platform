@@ -96,13 +96,36 @@ export async function addModule(req: Request, res: Response): Promise<void> {
 
 export async function addLesson(req: Request, res: Response): Promise<void> {
   if (!req.user) throw ApiError.unauthorized();
-  const course = await coursesService.createLesson(
-    req.user.id,
-    req.user.role,
-    req.params.moduleId,
-    req.body as CreateLessonInput,
-  );
-  res.status(201).json({ success: true, data: { course } });
+  const input = req.body as CreateLessonInput;
+  console.log("[lessons] create request", {
+    moduleId: req.params.moduleId,
+    title: input.title,
+    hasVideoUrl: Boolean(input.videoUrl),
+    videoFileName: input.videoFileName,
+    videoMimeType: input.videoMimeType,
+    videoSize: input.videoSize,
+    videoStorageProvider: input.videoStorageProvider,
+    videoStorageKey: input.videoStorageKey,
+  });
+  try {
+    const course = await coursesService.createLesson(
+      req.user.id,
+      req.user.role,
+      req.params.moduleId,
+      input,
+    );
+    console.log("[lessons] create success", {
+      moduleId: req.params.moduleId,
+      courseId: course.id,
+    });
+    res.status(201).json({ success: true, data: { course } });
+  } catch (err) {
+    console.error("[lessons] create failure", {
+      moduleId: req.params.moduleId,
+      error: err instanceof Error ? err.message : err,
+    });
+    throw err;
+  }
 }
 
 export async function removeModule(req: Request, res: Response): Promise<void> {

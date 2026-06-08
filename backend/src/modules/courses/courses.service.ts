@@ -541,9 +541,11 @@ export async function createLesson(
     title: string;
     description?: string;
     videoUrl?: string;
-    videoFileName?: string;
-    videoMimeType?: string;
-    videoSize?: number;
+    videoFileName?: string | null;
+    videoMimeType?: string | null;
+    videoSize?: number | null;
+    videoStorageProvider?: string | null;
+    videoStorageKey?: string | null;
     duration?: number;
     order?: number;
   },
@@ -560,7 +562,7 @@ export async function createLesson(
   const maxOrder = module.lessons.reduce((max, l) => Math.max(max, l.order), -1);
   const order = input.order ?? maxOrder + 1;
 
-  await prisma.lesson.create({
+  const lesson = await prisma.lesson.create({
     data: {
       title: input.title,
       description: input.description ?? null,
@@ -568,10 +570,21 @@ export async function createLesson(
       videoFileName: input.videoFileName ?? null,
       videoMimeType: input.videoMimeType ?? null,
       videoSize: input.videoSize ?? null,
+      videoStorageProvider: input.videoStorageProvider ?? null,
+      videoStorageKey: input.videoStorageKey ?? null,
       duration: input.duration ?? 0,
       order,
       moduleId: module.id,
     },
+  });
+
+  console.log("[lessons] created", {
+    lessonId: lesson.id,
+    moduleId: module.id,
+    videoUrl: lesson.videoUrl,
+    videoStorageProvider: lesson.videoStorageProvider,
+    videoStorageKey: lesson.videoStorageKey,
+    videoFileName: lesson.videoFileName,
   });
 
   return mapCourse(
@@ -773,6 +786,8 @@ export async function updateLesson(
     videoFileName?: string | null;
     videoMimeType?: string | null;
     videoSize?: number | null;
+    videoStorageProvider?: string | null;
+    videoStorageKey?: string | null;
     duration?: number;
     order?: number;
   },
@@ -795,6 +810,10 @@ export async function updateLesson(
       ...(input.videoFileName !== undefined && { videoFileName: input.videoFileName }),
       ...(input.videoMimeType !== undefined && { videoMimeType: input.videoMimeType }),
       ...(input.videoSize !== undefined && { videoSize: input.videoSize }),
+      ...(input.videoStorageProvider !== undefined && {
+        videoStorageProvider: input.videoStorageProvider,
+      }),
+      ...(input.videoStorageKey !== undefined && { videoStorageKey: input.videoStorageKey }),
       ...(input.duration !== undefined && { duration: input.duration }),
       ...(input.order !== undefined && { order: input.order }),
     },

@@ -1,9 +1,10 @@
 import { z } from "zod";
 
-/** Accepts external URLs or locally uploaded paths served from /uploads/ */
+/** Accepts external URLs, cloud storage URLs, or local /uploads/ paths */
 export const urlOrUploadPath = z.union([
   z.string().url(),
   z.string().regex(/^\/uploads\/(videos|resources|thumbnails)\/[\w.\-]+$/i),
+  z.string().regex(/^https?:\/\/[^\s]+\/(videos|resources|thumbnails)\/[\w.\-]+$/i),
   z.literal(""),
 ]);
 
@@ -51,12 +52,14 @@ export const updateModuleSchema = z.object({
 });
 
 export const createLessonSchema = z.object({
-  title: z.string().min(2).max(200),
+  title: z.string().min(2, "Lesson title must be at least 2 characters").max(200),
   description: z.string().max(5000).optional(),
   videoUrl: urlOrUploadPath.optional(),
-  videoFileName: z.string().max(255).optional(),
-  videoMimeType: z.string().max(120).optional(),
-  videoSize: z.coerce.number().int().min(0).optional(),
+  videoFileName: z.string().max(255).nullish(),
+  videoMimeType: z.string().max(120).nullish(),
+  videoSize: z.coerce.number().int().min(0).nullish(),
+  videoStorageProvider: z.string().max(32).nullish(),
+  videoStorageKey: z.string().max(512).nullish(),
   duration: z.coerce.number().int().min(0).default(0),
   order: z.coerce.number().int().min(0).optional(),
 });

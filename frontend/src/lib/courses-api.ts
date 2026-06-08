@@ -98,6 +98,8 @@ export function updateLesson(
     videoFileName?: string | null;
     videoMimeType?: string | null;
     videoSize?: number | null;
+    videoStorageProvider?: string | null;
+    videoStorageKey?: string | null;
     duration?: number;
     order?: number;
   },
@@ -130,9 +132,11 @@ export function createLesson(
     title: string;
     description?: string;
     videoUrl?: string;
-    videoFileName?: string;
-    videoMimeType?: string;
-    videoSize?: number;
+    videoFileName?: string | null;
+    videoMimeType?: string | null;
+    videoSize?: number | null;
+    videoStorageProvider?: string | null;
+    videoStorageKey?: string | null;
     duration?: number;
     order?: number;
   },

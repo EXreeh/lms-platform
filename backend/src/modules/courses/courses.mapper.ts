@@ -19,6 +19,8 @@ export function mapLesson(lesson: Lesson) {
     videoFileName: lesson.videoFileName ?? null,
     videoMimeType: lesson.videoMimeType ?? null,
     videoSize: lesson.videoSize ?? null,
+    videoStorageProvider: lesson.videoStorageProvider ?? null,
+    videoStorageKey: lesson.videoStorageKey ?? null,
     duration: lesson.duration,
     order: lesson.order,
     moduleId: lesson.moduleId,

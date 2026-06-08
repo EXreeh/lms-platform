@@ -21,6 +21,8 @@ export interface UploadedFileInfo {
   fileName: string;
   mimeType?: string;
   size?: number;
+  storageProvider?: string;
+  storageKey?: string;
 }
 
 interface FileUploadZoneProps {
@@ -31,7 +33,7 @@ interface FileUploadZoneProps {
   maxSizeLabel: string;
   disabled?: boolean;
   uploaded?: UploadedFileInfo | null;
-  onUploaded: (result: UploadResult) => void;
+  onUploaded: (result: UploadResult, sourceFile?: File) => void;
   onClear?: () => void;
   /** Optional URL fallback below upload area */
   showUrlFallback?: boolean;
@@ -43,6 +45,8 @@ interface FileUploadZoneProps {
   previewType?: "image" | "video" | "none";
   /** Optional override; defaults to env limit for kind */
   maxBytes?: number;
+  /** Optional badge below filename (e.g. "Uploaded to cloud (R2)") */
+  cloudBadge?: string;
 }
 
 function resolveMaxBytes(kind: UploadKind, maxBytes?: number): number {
@@ -70,6 +74,7 @@ export function FileUploadZone({
   onUrlModeChange,
   previewType = "none",
   maxBytes,
+  cloudBadge,
 }: FileUploadZoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -107,7 +112,7 @@ export function FileUploadZone({
 
       try {
         const result = await uploadFile(kind, file, setProgress);
-        onUploaded(result);
+        onUploaded(result, file);
         setProgress(100);
       } catch (err) {
         setError(formatUploadError(err, kind, file.size));
@@ -216,6 +221,11 @@ export function FileUploadZone({
                       {uploaded.mimeType ? ` · ${uploaded.mimeType}` : ""}
                     </p>
                   )}
+                  {cloudBadge ? (
+                    <p className="mt-1 text-xs font-medium text-green-700 dark:text-green-400">
+                      {cloudBadge}
+                    </p>
+                  ) : null}
                 </div>
                 {onClear && (
                   <Button type="button" variant="ghost" size="sm" onClick={onClear} disabled={disabled}>

@@ -174,10 +174,12 @@ model Lesson {
   id           String       @id @default(cuid())
   title        String
   description  String?      @db.Text
-  videoUrl     String?      @map("video_url")
-  videoFileName String?     @map("video_file_name")
-  videoMimeType String?     @map("video_mime_type")
-  videoSize    Int?         @map("video_size")
+  videoUrl              String?  @map("video_url")
+  videoFileName         String?  @map("video_file_name")
+  videoMimeType         String?  @map("video_mime_type")
+  videoSize             Int?     @map("video_size")
+  videoStorageProvider  String?  @map("video_storage_provider")
+  videoStorageKey       String?  @map("video_storage_key")
   duration     Int          @default(0)
   order        Int          @default(0)
   deleteStatus EntityStatus @default(ACTIVE) @map("delete_status")

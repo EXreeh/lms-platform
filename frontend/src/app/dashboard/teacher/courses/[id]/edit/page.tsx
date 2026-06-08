@@ -33,6 +33,8 @@ import type { Course, CourseLevel, CourseStatus } from "@/types/course";
 import { ApiClientError } from "@/lib/api";
 import { formatApiError } from "@/lib/format-api-error";
 import { activeCurriculumModules, countActiveLessons } from "@/lib/course-curriculum";
+import { logLessonDebug } from "@/lib/lesson-debug";
+import { hasUploadedVideo } from "@/lib/video-upload-utils";
 import { useToast } from "@/context/toast-context";
 
 export default function EditCoursePage() {
@@ -58,7 +60,11 @@ export default function EditCoursePage() {
     videoFileName: null,
     videoMimeType: null,
     videoSize: null,
+    videoStorageProvider: null,
+    videoStorageKey: null,
   });
+  const [addingLesson, setAddingLesson] = useState(false);
+  const [expandedModuleId, setExpandedModuleId] = useState<string | null>(null);
   const [lessonDuration, setLessonDuration] = useState("0");
   const [selectedModuleId, setSelectedModuleId] = useState("");
 
@@ -199,25 +205,68 @@ export default function EditCoursePage() {
 
   async function handleAddLesson(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedModuleId || !lessonTitle.trim()) return;
+    setError(null);
+
+    if (!lessonTitle.trim()) {
+      const msg = "Lesson title is required.";
+      setError(msg);
+      toastError(msg);
+      return;
+    }
+    if (!selectedModuleId) {
+      const msg = "Please select a module for this lesson.";
+      setError(msg);
+      toastError(msg);
+      return;
+    }
+
+    const payload = {
+      title: lessonTitle.trim(),
+      description: lessonDescription.trim() || undefined,
+      videoUrl: lessonVideo.videoUrl.trim() || undefined,
+      videoFileName: lessonVideo.videoFileName ?? undefined,
+      videoMimeType: lessonVideo.videoMimeType ?? undefined,
+      videoSize: lessonVideo.videoSize ?? undefined,
+      videoStorageProvider: lessonVideo.videoStorageProvider ?? undefined,
+      videoStorageKey: lessonVideo.videoStorageKey ?? undefined,
+      duration: parseInt(lessonDuration, 10) || 0,
+    };
+
+    logLessonDebug("create payload", {
+      moduleId: selectedModuleId,
+      ...payload,
+      hasUploadedVideo: hasUploadedVideo(lessonVideo),
+    });
+
+    setAddingLesson(true);
     try {
-      const res = await createLesson(selectedModuleId, {
-        title: lessonTitle.trim(),
-        description: lessonDescription.trim() || undefined,
-        videoUrl: lessonVideo.videoUrl || undefined,
-        videoFileName: lessonVideo.videoFileName ?? undefined,
-        videoMimeType: lessonVideo.videoMimeType ?? undefined,
-        videoSize: lessonVideo.videoSize ?? undefined,
-        duration: parseInt(lessonDuration, 10) || 0,
+      const res = await createLesson(selectedModuleId, payload);
+      logLessonDebug("create response", {
+        courseId: res.data.course.id,
+        moduleCount: res.data.course.modules?.length,
       });
       setCourse(res.data.course);
+      setExpandedModuleId(selectedModuleId);
       setLessonTitle("");
       setLessonDescription("");
-      setLessonVideo({ videoUrl: "", videoFileName: null, videoMimeType: null, videoSize: null });
+      setLessonVideo({
+        videoUrl: "",
+        videoFileName: null,
+        videoMimeType: null,
+        videoSize: null,
+        videoStorageProvider: null,
+        videoStorageKey: null,
+      });
       setLessonDuration("0");
-      setSuccess("Lesson added");
+      setSuccess("Lesson added successfully");
+      toastSuccess("Lesson added successfully");
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : "Failed to add lesson");
+      const msg = formatApiError(err, "Failed to add lesson");
+      setError(msg);
+      toastError(msg);
+      logLessonDebug("create error", { message: msg });
+    } finally {
+      setAddingLesson(false);
     }
   }
 
@@ -386,6 +435,7 @@ export default function EditCoursePage() {
             )}
             <ModuleAccordion
               modules={activeCurriculumModules(course.modules)}
+              openModuleId={expandedModuleId}
               editable
               onUpdateModule={async (id, title) => {
                 const res = await updateModule(id, { title });
@@ -453,7 +503,12 @@ export default function EditCoursePage() {
                       ))}
                   </div>
                 )}
-                <Input label="Lesson title" value={lessonTitle} onChange={(e) => setLessonTitle(e.target.value)} />
+                <Input
+                  label="Lesson title"
+                  value={lessonTitle}
+                  onChange={(e) => setLessonTitle(e.target.value)}
+                  required
+                />
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Description</label>
                   <textarea
@@ -464,7 +519,11 @@ export default function EditCoursePage() {
                     className="w-full rounded-xl border border-border px-3.5 py-2.5 text-sm"
                   />
                 </div>
-                <LessonVideoField value={lessonVideo} onChange={setLessonVideo} />
+                <LessonVideoField
+                  value={lessonVideo}
+                  onChange={setLessonVideo}
+                  onDurationDetected={(seconds) => setLessonDuration(String(seconds))}
+                />
                 <Input
                   label="Duration (seconds)"
                   type="number"
@@ -472,8 +531,8 @@ export default function EditCoursePage() {
                   value={lessonDuration}
                   onChange={(e) => setLessonDuration(e.target.value)}
                 />
-                <Button type="submit" variant="secondary" size="sm">
-                  Add lesson
+                <Button type="submit" variant="secondary" size="sm" disabled={addingLesson}>
+                  {addingLesson ? "Adding lesson…" : "Add lesson"}
                 </Button>
               </form>
             )}
