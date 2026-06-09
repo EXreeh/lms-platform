@@ -5,10 +5,14 @@ import { motion } from "framer-motion";
 import { ProtectedVideo } from "@/components/media/protected-video";
 import { parseVideoEmbedUrl } from "@/lib/video-utils";
 import { logVideoDebug } from "@/lib/video-debug";
-import { resolvePublicMediaUrl } from "@/lib/media-url-utils";
+import { resolveVideoPlaybackUrl } from "@/lib/video-upload-utils";
 
 interface VideoPlayerProps {
   videoUrl: string | null | undefined;
+  videoMimeType?: string | null;
+  videoFileName?: string | null;
+  videoStorageProvider?: string | null;
+  videoStorageKey?: string | null;
   title: string;
   initialWatchedDuration?: number;
   duration?: number;
@@ -18,20 +22,45 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({
   videoUrl,
+  videoMimeType,
+  videoFileName,
+  videoStorageProvider,
+  videoStorageKey,
   title,
   initialWatchedDuration = 0,
   duration = 0,
   onWatchUpdate,
   onComplete,
 }: VideoPlayerProps) {
-  const publicVideoUrl = resolvePublicMediaUrl(videoUrl) ?? videoUrl ?? undefined;
-  const { type, embedUrl } = parseVideoEmbedUrl(publicVideoUrl);
+  const playbackUrl =
+    resolveVideoPlaybackUrl({
+      videoUrl,
+      videoStorageKey,
+      videoStorageProvider,
+    }) ?? videoUrl ?? undefined;
+
+  const { type, embedUrl } = parseVideoEmbedUrl(playbackUrl);
 
   useEffect(() => {
     if (embedUrl && type === "html5") {
-      logVideoDebug("player src", { videoUrl, embedUrl, type });
+      console.info("[CognitiaX learn] lesson video", {
+        videoUrl,
+        playbackUrl,
+        embedUrl,
+        videoMimeType,
+        videoStorageKey,
+        videoStorageProvider,
+      });
+      logVideoDebug("player src", {
+        videoUrl,
+        playbackUrl,
+        embedUrl,
+        videoMimeType,
+        type,
+      });
     }
-  }, [embedUrl, type, videoUrl]);
+  }, [embedUrl, type, videoUrl, playbackUrl, videoMimeType, videoStorageKey, videoStorageProvider]);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const [watched, setWatched] = useState(initialWatchedDuration);
   const lastReported = useRef(initialWatchedDuration);
@@ -87,6 +116,9 @@ export function VideoPlayer({
         <ProtectedVideo
           ref={videoRef}
           src={embedUrl}
+          mimeType={videoMimeType}
+          fileName={videoFileName ?? undefined}
+          storageProvider={videoStorageProvider ?? undefined}
           title={title}
           className="aspect-video w-full max-h-[70vh] object-contain"
           showProtectionNote

@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { env } from "../../config/env.js";
-import { getStorageProvider } from "../../services/storage/index.js";
+import { getActiveStorageProviderName, getStorageProvider } from "../../services/storage/index.js";
+import { toPublicUploadResponse } from "../../services/storage/upload-response.js";
 import type { UploadCategory } from "../../services/storage/types.js";
 import { logUploadFailure } from "../../services/storage/storage-logger.js";
 import { ApiError } from "../../utils/api-error.js";
@@ -20,11 +21,22 @@ async function handleUpload(req: Request, res: Response, category: UploadCategor
 
   try {
     const stored = await storage.save(req.file, category);
+    const payload = toPublicUploadResponse(stored);
+
+    console.log("[storage] upload response", {
+      configuredProvider: getActiveStorageProviderName(),
+      category,
+      objectKey: payload.storageKey,
+      publicUrl: payload.publicUrl,
+      mimeType: payload.mimeType,
+      fileSize: payload.fileSize,
+      storageProvider: payload.storageProvider,
+    });
 
     res.status(201).json({
       success: true,
       message: "File uploaded successfully",
-      data: stored,
+      data: payload,
     });
   } catch (err) {
     logUploadFailure({

@@ -20,20 +20,37 @@ export {
 
 let storageInstance: StorageProvider | null = null;
 
+export function getActiveStorageProviderName(): "local" | "s3" | "r2" {
+  return env.STORAGE_PROVIDER;
+}
+
+export function isCloudStorageProvider(): boolean {
+  return env.STORAGE_PROVIDER === "r2" || env.STORAGE_PROVIDER === "s3";
+}
+
 export function getStorageProvider(): StorageProvider {
   if (storageInstance) return storageInstance;
 
   const provider = env.STORAGE_PROVIDER;
 
-  if (provider === "s3") {
-    storageInstance = new S3StorageProvider();
-    logStorageInit("s3");
-  } else if (provider === "r2") {
-    storageInstance = new R2StorageProvider();
-    logStorageInit("r2", env.R2_BUCKET);
-  } else {
-    storageInstance = new LocalStorageProvider(getUploadsBasePath(), env.STORAGE_PUBLIC_URL);
-    logStorageInit("local");
+  switch (provider) {
+    case "r2":
+      storageInstance = new R2StorageProvider();
+      logStorageInit("r2", {
+        bucket: env.R2_BUCKET,
+        publicUrl: env.R2_PUBLIC_URL,
+      });
+      break;
+    case "s3":
+      storageInstance = new S3StorageProvider();
+      logStorageInit("s3", { bucket: env.AWS_S3_BUCKET });
+      break;
+    case "local":
+      storageInstance = new LocalStorageProvider(getUploadsBasePath(), env.STORAGE_PUBLIC_URL);
+      logStorageInit("local", { publicUrl: env.STORAGE_PUBLIC_URL });
+      break;
+    default:
+      throw new Error(`Unsupported STORAGE_PROVIDER: ${String(provider)}`);
   }
 
   return storageInstance;
@@ -45,4 +62,9 @@ export async function verifyStorageProvider(): Promise<void> {
   if ("verifyBucket" in provider && typeof provider.verifyBucket === "function") {
     await provider.verifyBucket();
   }
+}
+
+/** Initialize storage provider at startup (logs selected provider). */
+export function initializeStorageProvider(): StorageProvider {
+  return getStorageProvider();
 }

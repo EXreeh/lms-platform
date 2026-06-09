@@ -51,6 +51,7 @@ export class LocalStorageProvider implements StorageProvider {
       fileName: sanitizeDisplayName(file.originalname),
       mimeType: file.mimetype,
       size: file.size,
+      fileSize: file.size,
       storageKey,
       storageProvider: "local",
     };

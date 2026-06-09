@@ -52,7 +52,13 @@ const envSchema = z.object({
     .default("false"),
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
-  STORAGE_PROVIDER: z.enum(["local", "s3", "r2"]).default("local"),
+  STORAGE_PROVIDER: z.preprocess(
+    (val) => {
+      if (typeof val !== "string" || !val.trim()) return undefined;
+      return val.trim().toLowerCase();
+    },
+    z.enum(["local", "s3", "r2"]).default("local"),
+  ),
   UPLOADS_DIR: z.string().default("uploads"),
   STORAGE_PUBLIC_URL: z.string().default("/uploads"),
   MAX_VIDEO_UPLOAD_MB: z.coerce.number().default(500),
@@ -97,6 +103,14 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+console.log("[env] storage configuration", {
+  STORAGE_PROVIDER_raw: process.env.STORAGE_PROVIDER ?? "(unset)",
+  STORAGE_PROVIDER: env.STORAGE_PROVIDER,
+  R2_PUBLIC_URL: env.R2_PUBLIC_URL ?? "(unset)",
+  R2_BUCKET: env.R2_BUCKET ?? "(unset)",
+  STORAGE_PUBLIC_URL: env.STORAGE_PUBLIC_URL,
+});
 
 function parseOriginList(raw: string | undefined): string[] {
   return (raw ?? "")

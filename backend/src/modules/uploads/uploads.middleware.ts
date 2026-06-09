@@ -25,7 +25,8 @@ function ensureDestinationDir(category: UploadCategory): string {
 }
 
 function createUploader(category: UploadCategory) {
-  const useMemory = env.STORAGE_PROVIDER === "r2" || env.STORAGE_PROVIDER === "s3";
+  const provider = env.STORAGE_PROVIDER;
+  const useMemory = provider === "r2" || provider === "s3";
 
   const storage = useMemory
     ? multer.memoryStorage()

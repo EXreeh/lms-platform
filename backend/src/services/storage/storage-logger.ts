@@ -1,9 +1,14 @@
 import type { UploadCategory } from "./types.js";
 
-export function logStorageInit(provider: string, bucket?: string) {
+export function logStorageInit(
+  provider: string,
+  details?: { bucket?: string; publicUrl?: string },
+) {
   console.log("[storage] provider selected", {
     provider,
-    ...(bucket ? { bucket } : {}),
+    source: "STORAGE_PROVIDER env",
+    ...(details?.bucket ? { bucket: details.bucket } : {}),
+    ...(details?.publicUrl ? { publicUrl: details.publicUrl } : {}),
   });
 }
 

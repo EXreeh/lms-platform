@@ -1,24 +1,79 @@
 "use client";
 
-import { forwardRef, useEffect, useState } from "react";
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type { VideoHTMLAttributes } from "react";
-import { logVideoDebug, videoErrorLabel } from "@/lib/video-debug";
-import { isPrivateR2Url, isUploadedMediaUrl, resolvePublicMediaUrl } from "@/lib/media-url-utils";
+import { isVideoDebugEnabled, logVideoDebug, logVideoError, videoErrorLabel } from "@/lib/video-debug";
+import { isAbsoluteVideoUrl, isPrivateR2Url, resolvePublicMediaUrl } from "@/lib/media-url-utils";
 
 interface ProtectedVideoProps extends Omit<VideoHTMLAttributes<HTMLVideoElement>, "src"> {
   src: string;
+  mimeType?: string | null;
   fileName?: string;
   storageProvider?: string;
   showProtectionNote?: boolean;
   showPlaceholder?: boolean;
 }
 
-function VideoErrorFallback({
+function inferVideoMimeType(src: string, mimeType?: string | null): string {
+  if (mimeType?.startsWith("video/")) return mimeType;
+  if (/\.webm(\?|$)/i.test(src)) return "video/webm";
+  if (/\.mov(\?|$)/i.test(src)) return "video/quicktime";
+  return "video/mp4";
+}
+
+function VideoPlaceholderCard({
   className,
   fileName,
+  storageProvider,
+  playbackSrc,
+  onStart,
 }: {
   className?: string;
   fileName?: string;
+  storageProvider?: string;
+  playbackSrc: string;
+  onStart: () => void;
+}) {
+  const isCloud =
+    storageProvider === "r2" ||
+    storageProvider === "s3" ||
+    /\/videos\//i.test(playbackSrc);
+
+  return (
+    <button
+      type="button"
+      className={`flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border border-border bg-muted px-4 text-center ${className ?? ""}`}
+      onClick={onStart}
+      aria-label="Play uploaded video"
+    >
+      <p className="text-4xl" aria-hidden>
+        🎬
+      </p>
+      {fileName ? (
+        <p className="max-w-full truncate text-sm font-semibold text-foreground">{fileName}</p>
+      ) : null}
+      <p className="text-xs text-muted-foreground">Uploaded video</p>
+      {isCloud ? (
+        <span className="rounded-full bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          Cloud video ({storageProvider?.toUpperCase() ?? "R2"})
+        </span>
+      ) : null}
+      <span className="mt-1 text-xs text-primary">Tap to play</span>
+      {isVideoDebugEnabled() ? (
+        <p className="mt-2 max-w-full break-all text-[10px] text-muted-foreground">{playbackSrc}</p>
+      ) : null}
+    </button>
+  );
+}
+
+function VideoErrorFallback({
+  className,
+  fileName,
+  playbackSrc,
+}: {
+  className?: string;
+  fileName?: string;
+  playbackSrc: string;
 }) {
   return (
     <div
@@ -33,6 +88,9 @@ function VideoErrorFallback({
       {fileName ? (
         <p className="max-w-full truncate text-xs text-muted-foreground">{fileName}</p>
       ) : null}
+      {isVideoDebugEnabled() ? (
+        <p className="max-w-full break-all text-[10px] text-muted-foreground">{playbackSrc}</p>
+      ) : null}
     </div>
   );
 }
@@ -41,6 +99,7 @@ export const ProtectedVideo = forwardRef<HTMLVideoElement, ProtectedVideoProps>(
   function ProtectedVideo(
     {
       src,
+      mimeType,
       fileName,
       storageProvider,
       showProtectionNote = false,
@@ -54,20 +113,45 @@ export const ProtectedVideo = forwardRef<HTMLVideoElement, ProtectedVideoProps>(
     },
     ref,
   ) {
+    const [loadAttempted, setLoadAttempted] = useState(false);
     const [hasError, setHasError] = useState(false);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [hasLoaded, setHasLoaded] = useState(false);
-    const [posterDismissed, setPosterDismissed] = useState(false);
+    const internalRef = useRef<HTMLVideoElement>(null);
 
-    const playbackSrc = resolvePublicMediaUrl(src) ?? src;
+    const setVideoRef = useCallback(
+      (element: HTMLVideoElement | null) => {
+        internalRef.current = element;
+        if (typeof ref === "function") {
+          ref(element);
+        } else if (ref) {
+          ref.current = element;
+        }
+      },
+      [ref],
+    );
+
+    const playbackSrc = isAbsoluteVideoUrl(src) ? src : resolvePublicMediaUrl(src) ?? src;
+    const resolvedMime = inferVideoMimeType(playbackSrc, mimeType);
 
     useEffect(() => {
+      setLoadAttempted(false);
       setHasError(false);
-      setIsPlaying(false);
-      setHasLoaded(false);
-      setPosterDismissed(false);
-      logVideoDebug("video src", { src, playbackSrc, fileName, storageProvider });
-    }, [src, playbackSrc, fileName, storageProvider]);
+      logVideoDebug("video src", {
+        src,
+        playbackSrc,
+        mimeType: resolvedMime,
+        fileName,
+        storageProvider,
+      });
+    }, [src, playbackSrc, resolvedMime, fileName, storageProvider]);
+
+    useEffect(() => {
+      if (!loadAttempted || hasError) return;
+      const el = internalRef.current;
+      if (!el) return;
+      void el.play().catch(() => {
+        // Autoplay may be blocked; user can press play on controls.
+      });
+    }, [loadAttempted, hasError, playbackSrc]);
 
     if (!src?.trim()) {
       return (
@@ -79,86 +163,83 @@ export const ProtectedVideo = forwardRef<HTMLVideoElement, ProtectedVideoProps>(
       );
     }
 
-    if (hasError || isPrivateR2Url(playbackSrc)) {
-      return <VideoErrorFallback className={className} fileName={fileName} />;
+    if (isPrivateR2Url(playbackSrc)) {
+      logVideoDebug("blocked private R2 src", { playbackSrc });
+      return (
+        <VideoErrorFallback
+          className={className}
+          fileName={fileName}
+          playbackSrc={playbackSrc}
+        />
+      );
     }
 
-    const isCloudUrl =
-      storageProvider === "r2" ||
-      storageProvider === "s3" ||
-      /\/videos\//i.test(playbackSrc);
+    const handleStartPlayback = () => {
+      setLoadAttempted(true);
+    };
 
-    const showPosterOverlay =
-      showPlaceholder &&
-      !posterDismissed &&
-      !isPlaying &&
-      !hasLoaded &&
-      Boolean(fileName || storageProvider || isUploadedMediaUrl(playbackSrc));
+    if (!loadAttempted && showPlaceholder) {
+      return (
+        <VideoPlaceholderCard
+          className={className}
+          fileName={fileName}
+          storageProvider={storageProvider}
+          playbackSrc={playbackSrc}
+          onStart={handleStartPlayback}
+        />
+      );
+    }
+
+    if (loadAttempted && hasError) {
+      return (
+        <VideoErrorFallback
+          className={className}
+          fileName={fileName}
+          playbackSrc={playbackSrc}
+        />
+      );
+    }
 
     return (
       <div className="w-full space-y-2">
-        <div className="relative">
-          {showPosterOverlay ? (
-            <button
-              type="button"
-              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-xl bg-muted/95 px-4 text-center"
-              onClick={() => setPosterDismissed(true)}
-              aria-label="Show video player"
-            >
-              <p className="text-4xl" aria-hidden>
-                🎬
-              </p>
-              {fileName ? (
-                <p className="max-w-full truncate text-sm font-semibold text-foreground">
-                  {fileName}
-                </p>
-              ) : null}
-              <p className="text-xs text-muted-foreground">Uploaded video</p>
-              {isCloudUrl ? (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                  Cloud ({storageProvider?.toUpperCase() ?? "R2"})
-                </span>
-              ) : null}
-              <span className="mt-1 text-xs text-primary">Tap to play</span>
-            </button>
-          ) : null}
-          <video
-            {...props}
-            ref={ref}
-            src={playbackSrc}
-            className={className}
-            controls
-            controlsList="nodownload"
-            disablePictureInPicture
-            playsInline
-            preload="metadata"
-            onContextMenu={(event) => {
-              event.preventDefault();
-              onContextMenu?.(event);
-            }}
-            onPlay={(event) => {
-              setIsPlaying(true);
-              setPosterDismissed(true);
-              onPlay?.(event);
-            }}
-            onLoadedData={(event) => {
-              setHasLoaded(true);
-              onLoadedData?.(event);
-            }}
-            onError={(event) => {
-              const media = event.currentTarget;
-              const code = media.error?.code ?? 0;
-              logVideoDebug("video error", {
-                src: playbackSrc,
-                code,
-                label: videoErrorLabel(code),
-                message: media.error?.message,
-              });
-              setHasError(true);
-              onError?.(event);
-            }}
-          />
-        </div>
+        <video
+          {...props}
+          ref={setVideoRef}
+          className={className}
+          controls
+          controlsList="nodownload"
+          disablePictureInPicture
+          playsInline
+          preload="auto"
+          onContextMenu={(event) => {
+            event.preventDefault();
+            onContextMenu?.(event);
+          }}
+          onPlay={(event) => {
+            onPlay?.(event);
+          }}
+          onLoadedData={(event) => {
+            onLoadedData?.(event);
+          }}
+          onError={(event) => {
+            const media = event.currentTarget;
+            const code = media.error?.code ?? 0;
+            logVideoError("video error", {
+              src: playbackSrc,
+              mimeType: resolvedMime,
+              code,
+              label: videoErrorLabel(code),
+              message: media.error?.message,
+            });
+            setHasError(true);
+            onError?.(event);
+          }}
+        >
+          <source src={playbackSrc} type={resolvedMime} />
+        </video>
+        {isVideoDebugEnabled() ? (
+          <p className="break-all px-1 text-[10px] text-muted-foreground">{playbackSrc}</p>
+        ) : null}
         {showProtectionNote ? (
           <p className="px-1 text-xs text-muted-foreground">
             Video content is protected and available for streaming only.

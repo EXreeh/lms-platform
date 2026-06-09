@@ -9,6 +9,8 @@ import { ApiError } from "../../utils/api-error.js";
 import { sanitizeDisplayName, sanitizeStoredFilename } from "./sanitize-filename.js";
 import type { StorageProvider, StoredFile, UploadCategory } from "./types.js";
 import { getCategoryFolderName } from "./upload-paths.js";
+import { resolveVideoContentType } from "./content-type.js";
+import { buildPublicMediaUrl, normalizePublicBaseUrl } from "./public-url.js";
 import { logDelete, logUploadFailure, logUploadSuccess } from "./storage-logger.js";
 
 export interface ObjectStorageConfig {
@@ -87,11 +89,17 @@ export class ObjectStorageProvider implements StorageProvider {
   }
 
   getPublicUrl(storageKey: string, category: UploadCategory): string {
-    const base = this.config.publicBaseUrl.replace(/\/$/, "");
     const key = storageKey.includes("/")
       ? storageKey
       : objectKey(category, storageKey);
-    return `${base}/${key}`;
+    const url = buildPublicMediaUrl(key, normalizePublicBaseUrl(this.config.publicBaseUrl));
+    if (!url) {
+      throw ApiError.internal(
+        "R2_PUBLIC_URL is not configured. Cannot build public media URL.",
+        "STORAGE_CONFIG_ERROR",
+      );
+    }
+    return url;
   }
 
   async save(file: Express.Multer.File, category: UploadCategory): Promise<StoredFile> {
@@ -105,6 +113,10 @@ export class ObjectStorageProvider implements StorageProvider {
     const fileName = file.filename ?? sanitizeStoredFilename(file.originalname);
     const objectKeyPath = objectKey(category, fileName);
     const publicUrl = this.getPublicUrl(objectKeyPath, category);
+    const contentType =
+      category === "video"
+        ? resolveVideoContentType(file.mimetype, fileName)
+        : file.mimetype || "application/octet-stream";
 
     try {
       await this.client.send(
@@ -112,7 +124,7 @@ export class ObjectStorageProvider implements StorageProvider {
           Bucket: this.config.bucket,
           Key: objectKeyPath,
           Body: file.buffer,
-          ContentType: file.mimetype || "application/octet-stream",
+          ContentType: contentType,
           ContentLength: file.size,
         }),
       );
@@ -121,8 +133,9 @@ export class ObjectStorageProvider implements StorageProvider {
         url: publicUrl,
         publicUrl,
         fileName: sanitizeDisplayName(file.originalname),
-        mimeType: file.mimetype,
+        mimeType: contentType,
         size: file.size,
+        fileSize: file.size,
         storageKey: objectKeyPath,
         storageProvider: this.config.provider,
       };
@@ -134,7 +147,7 @@ export class ObjectStorageProvider implements StorageProvider {
         objectKey: objectKeyPath,
         publicUrl,
         size: file.size,
-        mimeType: file.mimetype,
+        mimeType: contentType,
       });
 
       return stored;

@@ -2,7 +2,12 @@ import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { prisma } from "./config/database.js";
 import { verifyEmailTransport } from "./services/email/email.service.js";
-import { ensureUploadDirectories, verifyStorageProvider } from "./services/storage/index.js";
+import {
+  ensureUploadDirectories,
+  getActiveStorageProviderName,
+  initializeStorageProvider,
+  verifyStorageProvider,
+} from "./services/storage/index.js";
 import { logCorsConfig } from "./config/cors.js";
 
 const app = createApp();
@@ -14,6 +19,14 @@ async function start() {
     logCorsConfig();
     console.log(`JWT cookie name: ${env.JWT_COOKIE_NAME}`);
     console.log(`JWT_SECRET configured: ${Boolean(env.JWT_SECRET && env.JWT_SECRET.length >= 32)}`);
+
+    initializeStorageProvider();
+    console.log("[storage] active provider", {
+      provider: getActiveStorageProviderName(),
+      r2PublicUrl: env.R2_PUBLIC_URL ?? null,
+      r2Bucket: env.R2_BUCKET ?? null,
+      storagePublicUrl: env.STORAGE_PUBLIC_URL,
+    });
 
     if (env.STORAGE_PROVIDER === "local") {
       await ensureUploadDirectories();

@@ -165,6 +165,7 @@ export function LessonList({ lessons, editable, onDeleteLesson, onUpdateLesson }
                               resolveVideoPlaybackUrl(lessonToVideoValue(lesson)) ??
                               lesson.videoUrl
                             }
+                            mimeType={lesson.videoMimeType}
                             fileName={lesson.videoFileName ?? undefined}
                             storageProvider={lesson.videoStorageProvider ?? undefined}
                             className="max-h-24 w-full max-w-xs rounded-lg bg-black object-contain"

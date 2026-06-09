@@ -18,6 +18,7 @@ import {
 
 export interface UploadedFileInfo {
   url: string;
+  publicUrl?: string;
   fileName: string;
   mimeType?: string;
   size?: number;
@@ -206,7 +207,8 @@ export function FileUploadZone({
               )}
               {previewType === "video" && (
                 <ProtectedVideo
-                  src={uploaded.url}
+                  src={uploaded.publicUrl ?? uploaded.url}
+                  mimeType={uploaded.mimeType}
                   fileName={uploaded.fileName}
                   storageProvider={uploaded.storageProvider}
                   className="mx-auto max-h-48 w-full max-w-lg rounded-xl bg-black object-contain"
@@ -223,6 +225,11 @@ export function FileUploadZone({
                       {uploaded.mimeType ? ` · ${uploaded.mimeType}` : ""}
                     </p>
                   )}
+                  {previewType === "video" && (uploaded.publicUrl ?? uploaded.url) ? (
+                    <p className="mt-1 break-all text-[11px] text-green-700/90 dark:text-green-400/90">
+                      {uploaded.publicUrl ?? uploaded.url}
+                    </p>
+                  ) : null}
                   {cloudBadge ? (
                     <p className="mt-1 text-xs font-medium text-green-700 dark:text-green-400">
                       {cloudBadge}

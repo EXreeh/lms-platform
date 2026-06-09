@@ -1,10 +1,17 @@
 import type { LessonVideoValue } from "@/components/courses/lesson-video-field";
-import { isPrivateR2Url, resolvePublicMediaUrl } from "@/lib/media-url-utils";
+import {
+  buildPublicMediaUrl,
+  isAbsoluteVideoUrl,
+  isPrivateR2Url,
+  normalizeObjectKey,
+  resolvePublicMediaUrl,
+} from "@/lib/media-url-utils";
 
 /** True when the URL points to an uploaded file (local disk or cloud storage). */
 export function isUploadedVideoUrl(url: string): boolean {
   if (!url.trim()) return false;
   if (url.startsWith("/uploads/videos/")) return true;
+  if (/^videos\//i.test(url)) return true;
   if (/^https?:\/\//i.test(url) && /\/videos\//i.test(url)) return true;
   if (/^https?:\/\//i.test(url) && /\.(mp4|webm|mov)(\?|$)/i.test(url)) return true;
   return false;
@@ -22,16 +29,13 @@ export function hasUploadedVideo(
     "videoUrl" | "videoStorageKey" | "videoStorageProvider"
   >,
 ): boolean {
-  if (!value.videoUrl?.trim()) return false;
   if (value.videoStorageKey || value.videoStorageProvider) return true;
-  return isUploadedVideoUrl(value.videoUrl);
+  return Boolean(value.videoUrl?.trim()) && isUploadedVideoUrl(value.videoUrl);
 }
 
 export function isCloudStoredVideo(value: LessonVideoValue): boolean {
   return value.videoStorageProvider === "r2" || value.videoStorageProvider === "s3";
 }
-
-const R2_PUBLIC_BASE = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "");
 
 /** Resolve a playable public URL for uploaded R2 videos. */
 export function resolveVideoPlaybackUrl(value: {
@@ -39,21 +43,24 @@ export function resolveVideoPlaybackUrl(value: {
   videoStorageKey?: string | null;
   videoStorageProvider?: string | null;
 }): string | null {
+  if (value.videoStorageProvider === "r2" && value.videoStorageKey) {
+    const key = normalizeObjectKey(
+      value.videoStorageKey.includes("/")
+        ? value.videoStorageKey
+        : `videos/${value.videoStorageKey}`,
+    );
+    return buildPublicMediaUrl(key);
+  }
+
   const rawUrl = value.videoUrl?.trim();
+  if (!rawUrl) return null;
 
-  if (value.videoStorageProvider === "r2" && R2_PUBLIC_BASE && value.videoStorageKey) {
-    const key = value.videoStorageKey.includes("/")
-      ? value.videoStorageKey
-      : `videos/${value.videoStorageKey}`;
-    return `${R2_PUBLIC_BASE}/${key}`;
-  }
+  if (isAbsoluteVideoUrl(rawUrl)) return rawUrl;
 
-  if (rawUrl) {
-    const resolved = resolvePublicMediaUrl(rawUrl);
-    if (resolved) return resolved;
-    if (isPrivateR2Url(rawUrl)) return null;
-    return rawUrl;
-  }
+  const resolved = resolvePublicMediaUrl(rawUrl);
+  if (resolved) return resolved;
 
-  return null;
+  if (isPrivateR2Url(rawUrl)) return null;
+
+  return rawUrl.startsWith("http") ? rawUrl : null;
 }

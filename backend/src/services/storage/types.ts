@@ -12,6 +12,7 @@ export interface StoredFile {
   fileName: string;
   mimeType: string;
   size: number;
+  fileSize: number;
   /** Full object key, e.g. videos/uuid.mp4 for R2. */
   storageKey: string;
   storageProvider: string;

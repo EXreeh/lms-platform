@@ -254,6 +254,10 @@ export default function CourseLearnPage() {
                 >
                   <VideoPlayer
                     videoUrl={activeLesson.videoUrl}
+                    videoMimeType={activeLesson.videoMimeType}
+                    videoFileName={activeLesson.videoFileName}
+                    videoStorageProvider={activeLesson.videoStorageProvider}
+                    videoStorageKey={activeLesson.videoStorageKey}
                     title={activeLesson.title}
                     duration={activeLesson.duration}
                     initialWatchedDuration={activeLesson.progress?.watchedDuration ?? 0}

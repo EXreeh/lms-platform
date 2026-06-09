@@ -600,12 +600,14 @@ export async function createLesson(
   console.log("[lessons] created", {
     lessonId: lesson.id,
     moduleId: module.id,
-    objectKey: lesson.videoStorageKey,
+    storageKey: lesson.videoStorageKey,
     publicUrl: videoFields.videoUrl,
     videoUrl: lesson.videoUrl,
+    videoMimeType: lesson.videoMimeType,
     videoStorageProvider: lesson.videoStorageProvider,
     videoStorageKey: lesson.videoStorageKey,
     videoFileName: lesson.videoFileName,
+    videoSize: lesson.videoSize,
   });
 
   return mapCourse(

@@ -33,6 +33,7 @@ function toUploadedInfo(value: LessonVideoValue): UploadedFileInfo | null {
   const playbackUrl = resolveVideoPlaybackUrl(value) ?? value.videoUrl;
   return {
     url: playbackUrl,
+    publicUrl: playbackUrl,
     fileName: value.videoFileName ?? "video",
     size: value.videoSize ?? undefined,
     mimeType: value.videoMimeType ?? undefined,
@@ -80,25 +81,30 @@ export function LessonVideoField({
       urlFallbackPlaceholder="https://youtube.com/watch?v=... or direct video URL"
       previewType="video"
       onUploaded={(result, sourceFile) => {
-        const playbackUrl = result.publicUrl ?? result.url;
-        logLessonDebug("video upload response", {
-          url: result.url,
-          publicUrl: playbackUrl,
-          fileName: result.fileName,
-          mimeType: result.mimeType,
-          size: result.size,
-          storageKey: result.storageKey,
-          storageProvider: result.storageProvider,
-        });
-        onChange({
-          videoUrl: playbackUrl,
+        const publicUrl = result.publicUrl ?? result.url;
+        const nextValue: LessonVideoValue = {
+          videoUrl: publicUrl,
           videoFileName: result.fileName,
           videoMimeType: result.mimeType,
-          videoSize: result.size,
-          videoStorageProvider: result.storageProvider,
+          videoSize: result.fileSize ?? result.size,
+          videoStorageProvider: result.storageProvider || "r2",
           videoStorageKey: result.storageKey,
+        };
+
+        console.info("[CognitiaX lesson] video upload response", {
+          url: result.url,
+          publicUrl,
+          storageKey: result.storageKey,
+          fileName: result.fileName,
+          mimeType: result.mimeType,
+          fileSize: result.fileSize ?? result.size,
+          storageProvider: result.storageProvider,
         });
+
+        logLessonDebug("video upload response", { ...nextValue });
+        onChange(nextValue);
         setUrlMode(false);
+
         if (sourceFile) {
           void getVideoDurationFromFile(sourceFile).then((seconds) => {
             if (seconds > 0) onDurationDetected?.(seconds);

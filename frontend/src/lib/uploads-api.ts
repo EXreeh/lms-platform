@@ -18,6 +18,7 @@ export interface UploadResult {
   fileName: string;
   mimeType: string;
   size: number;
+  fileSize?: number;
   storageKey: string;
   storageProvider: string;
 }
@@ -34,6 +35,67 @@ function tooLargeCodeForKind(kind: UploadKind): string {
   if (kind === "video") return "VIDEO_FILE_TOO_LARGE";
   if (kind === "resource") return "RESOURCE_FILE_TOO_LARGE";
   return "THUMBNAIL_FILE_TOO_LARGE";
+}
+
+const R2_PUBLIC_BASE =
+  process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "") ||
+  "https://media.cognitiaxai.com";
+
+function isLocalUploadPath(url: string): boolean {
+  return url.startsWith("/uploads/") || url.startsWith("uploads/");
+}
+
+function categoryFolderForKind(kind: UploadKind): string {
+  if (kind === "video") return "videos";
+  if (kind === "resource") return "resources";
+  return "thumbnails";
+}
+
+function normalizeUploadResult(data: UploadResult, kind: UploadKind): UploadResult {
+  let storageKey = data.storageKey?.replace(/^\//, "") ?? "";
+  if (storageKey && !storageKey.includes("/")) {
+    if (data.storageProvider === "r2" || data.storageProvider === "s3") {
+      storageKey = `${categoryFolderForKind(kind)}/${storageKey}`;
+    }
+  }
+
+  let publicUrl = (data.publicUrl ?? data.url ?? "").trim();
+
+  if (isLocalUploadPath(publicUrl) && /^(videos|resources|thumbnails)\//.test(storageKey)) {
+    publicUrl = `${R2_PUBLIC_BASE}/${storageKey}`;
+  } else if (
+    !publicUrl &&
+    (storageKey.startsWith("videos/") ||
+      storageKey.startsWith("resources/") ||
+      storageKey.startsWith("thumbnails/"))
+  ) {
+    publicUrl = `${R2_PUBLIC_BASE}/${storageKey}`;
+  }
+
+  if (isLocalUploadPath(publicUrl)) {
+    console.error("[CognitiaX upload] received local path — backend may be using STORAGE_PROVIDER=local", {
+      url: data.url,
+      publicUrl: data.publicUrl,
+      storageKey: data.storageKey,
+      storageProvider: data.storageProvider,
+    });
+  }
+
+  const fileSize = data.fileSize ?? data.size;
+  const storageProvider =
+    data.storageProvider === "local" && publicUrl.startsWith("http")
+      ? "r2"
+      : data.storageProvider || (publicUrl.startsWith("http") ? "r2" : "local");
+
+  return {
+    ...data,
+    url: publicUrl,
+    publicUrl,
+    storageKey,
+    fileSize,
+    size: fileSize,
+    storageProvider,
+  };
 }
 
 function parseUploadResponseBody(raw: string): {
@@ -100,7 +162,11 @@ export function uploadFile(
       const data = parseUploadResponseBody(raw);
 
       if (xhr.status >= 200 && xhr.status < 300 && data.data) {
-        resolve(data.data);
+        const normalized = normalizeUploadResult(data.data, kind);
+        if (kind === "video") {
+          console.info("[CognitiaX upload] video response", normalized);
+        }
+        resolve(normalized);
         return;
       }
 

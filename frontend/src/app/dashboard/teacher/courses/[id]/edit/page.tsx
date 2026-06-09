@@ -227,11 +227,20 @@ export default function EditCoursePage() {
       videoFileName: lessonVideo.videoFileName ?? undefined,
       videoMimeType: lessonVideo.videoMimeType ?? undefined,
       videoSize: lessonVideo.videoSize ?? undefined,
-      videoStorageProvider: lessonVideo.videoStorageProvider ?? undefined,
+      videoStorageProvider:
+        lessonVideo.videoStorageProvider ??
+        (lessonVideo.videoStorageKey || lessonVideo.videoUrl.includes("/videos/")
+          ? "r2"
+          : undefined),
       videoStorageKey: lessonVideo.videoStorageKey ?? undefined,
       duration: parseInt(lessonDuration, 10) || 0,
     };
 
+    console.info("[CognitiaX lesson] create payload", {
+      moduleId: selectedModuleId,
+      ...payload,
+      hasUploadedVideo: hasUploadedVideo(lessonVideo),
+    });
     logLessonDebug("create payload", {
       moduleId: selectedModuleId,
       ...payload,
@@ -241,9 +250,15 @@ export default function EditCoursePage() {
     setAddingLesson(true);
     try {
       const res = await createLesson(selectedModuleId, payload);
+      const savedModule = res.data.course.modules?.find((m) => m.id === selectedModuleId);
+      const savedLesson = savedModule?.lessons?.[savedModule.lessons.length - 1];
       logLessonDebug("create response", {
         courseId: res.data.course.id,
         moduleCount: res.data.course.modules?.length,
+        savedVideoUrl: savedLesson?.videoUrl,
+        savedVideoMimeType: savedLesson?.videoMimeType,
+        savedVideoStorageKey: savedLesson?.videoStorageKey,
+        savedVideoStorageProvider: savedLesson?.videoStorageProvider,
       });
       setCourse(res.data.course);
       setExpandedModuleId(selectedModuleId);
