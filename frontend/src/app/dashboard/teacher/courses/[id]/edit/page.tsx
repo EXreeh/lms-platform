@@ -34,7 +34,7 @@ import { ApiClientError } from "@/lib/api";
 import { formatApiError } from "@/lib/format-api-error";
 import { activeCurriculumModules, countActiveLessons } from "@/lib/course-curriculum";
 import { logLessonDebug } from "@/lib/lesson-debug";
-import { hasUploadedVideo } from "@/lib/video-upload-utils";
+import { hasUploadedVideo, resolveVideoPlaybackUrl } from "@/lib/video-upload-utils";
 import { useToast } from "@/context/toast-context";
 
 export default function EditCoursePage() {
@@ -220,16 +220,19 @@ export default function EditCoursePage() {
       return;
     }
 
+    const resolvedVideoUrl =
+      resolveVideoPlaybackUrl(lessonVideo) ?? (lessonVideo.videoUrl.trim() || undefined);
+
     const payload = {
       title: lessonTitle.trim(),
       description: lessonDescription.trim() || undefined,
-      videoUrl: lessonVideo.videoUrl.trim() || undefined,
+      videoUrl: resolvedVideoUrl,
       videoFileName: lessonVideo.videoFileName ?? undefined,
       videoMimeType: lessonVideo.videoMimeType ?? undefined,
       videoSize: lessonVideo.videoSize ?? undefined,
       videoStorageProvider:
         lessonVideo.videoStorageProvider ??
-        (lessonVideo.videoStorageKey || lessonVideo.videoUrl.includes("/videos/")
+        (lessonVideo.videoStorageKey || resolvedVideoUrl?.includes("media.cognitiaxai.com")
           ? "r2"
           : undefined),
       videoStorageKey: lessonVideo.videoStorageKey ?? undefined,

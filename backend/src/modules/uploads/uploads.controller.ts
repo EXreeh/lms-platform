@@ -17,6 +17,13 @@ async function handleUpload(req: Request, res: Response, category: UploadCategor
   requireTeacherOrAdmin(req);
   if (!req.file) throw ApiError.badRequest("No file uploaded", "NO_FILE");
 
+  const configuredProvider = getActiveStorageProviderName();
+  console.log("[storage] selected provider for upload", {
+    configuredProvider,
+    category,
+    r2PublicUrl: env.R2_PUBLIC_URL ?? null,
+  });
+
   const storage = getStorageProvider();
 
   try {
@@ -24,7 +31,7 @@ async function handleUpload(req: Request, res: Response, category: UploadCategor
     const payload = toPublicUploadResponse(stored);
 
     console.log("[storage] upload response", {
-      configuredProvider: getActiveStorageProviderName(),
+      configuredProvider,
       category,
       objectKey: payload.storageKey,
       publicUrl: payload.publicUrl,

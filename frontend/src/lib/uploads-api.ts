@@ -87,12 +87,18 @@ function normalizeUploadResult(data: UploadResult, kind: UploadKind): UploadResu
   }
 
   if (isLegacyAppUploadUrl(publicUrl)) {
-    console.error("[CognitiaX upload] legacy /uploads URL — backend may be using STORAGE_PROVIDER=local", {
-      url: data.url,
-      publicUrl: data.publicUrl,
-      storageKey: data.storageKey,
-      storageProvider: data.storageProvider,
-    });
+    console.error(
+      "[CognitiaX upload] legacy /uploads URL after normalization — check backend STORAGE_PROVIDER=r2",
+      {
+        url: data.url,
+        publicUrl: data.publicUrl,
+        storageKey: data.storageKey,
+        storageProvider: data.storageProvider,
+      },
+    );
+    if (storageKey.startsWith("videos/")) {
+      publicUrl = `${R2_PUBLIC_BASE}/${storageKey}`;
+    }
   }
 
   const fileSize = data.fileSize ?? data.size;

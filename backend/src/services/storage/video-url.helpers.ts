@@ -84,7 +84,7 @@ export function resolveLessonVideoUrl(lesson: {
     env.STORAGE_PROVIDER === "r2" ||
     Boolean(lesson.videoStorageKey);
 
-  if (useR2 && lesson.videoStorageKey) {
+  if (lesson.videoStorageKey) {
     const key = normalizeObjectStorageKey(lesson.videoStorageKey, "video");
     const publicUrl = buildPublicObjectUrl(key);
     if (publicUrl) return publicUrl;
@@ -96,8 +96,11 @@ export function resolveLessonVideoUrl(lesson: {
       isLegacyAppUploadUrl(lesson.videoUrl) ||
       isPrivateR2Endpoint(lesson.videoUrl)
     ) {
-      return fixR2AssetUrl(lesson.videoUrl);
+      const fixed = fixR2AssetUrl(lesson.videoUrl);
+      if (isLegacyAppUploadUrl(fixed)) return null;
+      return fixed;
     }
+    if (isLegacyAppUploadUrl(lesson.videoUrl)) return null;
     return lesson.videoUrl;
   }
 
@@ -149,8 +152,10 @@ export function resolveVideoFieldsForSave(input: {
     }
   }
 
-  if (env.STORAGE_PROVIDER === "r2" && (storageKey || isLegacyAppUploadUrl(videoUrl ?? ""))) {
-    videoStorageProvider = "r2";
+  if (env.STORAGE_PROVIDER === "r2") {
+    if (storageKey || isLegacyAppUploadUrl(videoUrl ?? "")) {
+      videoStorageProvider = "r2";
+    }
   }
 
   if (storageKey && videoStorageProvider === "r2") {

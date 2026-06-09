@@ -32,14 +32,13 @@ export function VideoPlayer({
   onWatchUpdate,
   onComplete,
 }: VideoPlayerProps) {
-  const playbackUrl =
-    resolveVideoPlaybackUrl({
-      videoUrl,
-      videoStorageKey,
-      videoStorageProvider,
-    }) ?? videoUrl ?? undefined;
+  const playbackUrl = resolveVideoPlaybackUrl({
+    videoUrl,
+    videoStorageKey,
+    videoStorageProvider,
+  });
 
-  const { type, embedUrl } = parseVideoEmbedUrl(playbackUrl);
+  const { type, embedUrl } = parseVideoEmbedUrl(videoUrl);
 
   useEffect(() => {
     if (embedUrl && type === "html5") {
@@ -115,7 +114,9 @@ export function VideoPlayer({
       >
         <ProtectedVideo
           ref={videoRef}
-          src={embedUrl}
+          src={videoUrl ?? ""}
+          videoStorageKey={videoStorageKey}
+          videoStorageProvider={videoStorageProvider}
           mimeType={videoMimeType}
           fileName={videoFileName ?? undefined}
           storageProvider={videoStorageProvider ?? undefined}

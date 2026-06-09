@@ -73,10 +73,13 @@ export function LessonList({ lessons, editable, onDeleteLesson, onUpdateLesson }
 
   async function saveEdit(lessonId: string) {
     if (!onUpdateLesson || !editTitle.trim()) return;
+    const resolvedVideoUrl =
+      resolveVideoPlaybackUrl(editVideo) ?? (editVideo.videoUrl.trim() || undefined);
+
     await onUpdateLesson(lessonId, {
       title: editTitle.trim(),
       description: editDescription.trim() || undefined,
-      videoUrl: editVideo.videoUrl.trim() || undefined,
+      videoUrl: resolvedVideoUrl,
       videoFileName: editVideo.videoFileName,
       videoMimeType: editVideo.videoMimeType,
       videoSize: editVideo.videoSize,
@@ -161,10 +164,9 @@ export function LessonList({ lessons, editable, onDeleteLesson, onUpdateLesson }
                         </div>
                         {uploaded && lesson.videoUrl && (
                           <ProtectedVideo
-                            src={
-                              resolveVideoPlaybackUrl(lessonToVideoValue(lesson)) ??
-                              lesson.videoUrl
-                            }
+                            src={lesson.videoUrl}
+                            videoStorageKey={lesson.videoStorageKey}
+                            videoStorageProvider={lesson.videoStorageProvider}
                             mimeType={lesson.videoMimeType}
                             fileName={lesson.videoFileName ?? undefined}
                             storageProvider={lesson.videoStorageProvider ?? undefined}

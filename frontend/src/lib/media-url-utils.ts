@@ -31,7 +31,9 @@ export function isLegacyAppUploadUrl(url: string): boolean {
   if (!trimmed) return false;
   return (
     trimmed.startsWith("/uploads/") ||
-    /\/uploads\/(videos|resources|thumbnails)\//i.test(trimmed)
+    trimmed.startsWith("uploads/") ||
+    /\/uploads\/(videos|resources|thumbnails)\//i.test(trimmed) ||
+    /^https?:\/\/(www\.)?cognitiaxai\.com\/uploads\//i.test(trimmed)
   );
 }
 
@@ -41,8 +43,12 @@ export function extractObjectKeyFromLegacyUrl(url: string): string | null {
   return normalizeObjectKey(`${match[1]}/${match[2]}`);
 }
 
+/** True when URL is already on the R2 media domain (not app /uploads proxy). */
 export function isAbsoluteVideoUrl(url: string): boolean {
-  return /^https?:\/\/[^/]+\/videos\/[^?#]+/i.test(url.trim());
+  const trimmed = url.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return false;
+  if (isLegacyAppUploadUrl(trimmed)) return false;
+  return trimmed.startsWith(`${R2_PUBLIC_BASE}/videos/`);
 }
 
 export function isUploadedMediaUrl(url: string): boolean {
@@ -57,7 +63,7 @@ export function resolvePublicMediaUrl(url: string | null | undefined): string | 
 
   const trimmed = url.trim();
 
-  if (isAbsoluteVideoUrl(trimmed) && trimmed.includes("media.cognitiaxai.com")) {
+  if (isAbsoluteVideoUrl(trimmed)) {
     return trimmed;
   }
 
@@ -66,6 +72,7 @@ export function resolvePublicMediaUrl(url: string | null | undefined): string | 
     if (objectKey?.startsWith("videos/")) {
       return buildPublicMediaUrl(objectKey);
     }
+    return null;
   }
 
   if (/^videos\//i.test(trimmed)) {
@@ -84,15 +91,7 @@ export function resolvePublicMediaUrl(url: string | null | undefined): string | 
     return null;
   }
 
-  if (isAbsoluteVideoUrl(trimmed)) {
-    return trimmed;
-  }
-
   if (trimmed.startsWith(R2_PUBLIC_BASE)) return trimmed;
-
-  if (/^https?:\/\//i.test(trimmed) && /\/videos\//i.test(trimmed)) {
-    return trimmed;
-  }
 
   return null;
 }

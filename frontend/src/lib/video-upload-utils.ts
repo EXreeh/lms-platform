@@ -39,7 +39,7 @@ export function isCloudStoredVideo(value: LessonVideoValue): boolean {
   return value.videoStorageProvider === "r2" || value.videoStorageProvider === "s3";
 }
 
-/** Resolve a playable public URL for uploaded R2 videos. */
+/** Resolve a playable public URL for uploaded R2 videos. Never returns /uploads paths. */
 export function resolveVideoPlaybackUrl(value: {
   videoUrl?: string | null;
   videoStorageKey?: string | null;
@@ -51,15 +51,16 @@ export function resolveVideoPlaybackUrl(value: {
         ? value.videoStorageKey
         : `videos/${value.videoStorageKey}`,
     );
-    if (value.videoStorageProvider === "r2" || value.videoStorageProvider === "s3") {
-      return buildPublicMediaUrl(key);
+    if (key.startsWith("videos/")) {
+      const built = buildPublicMediaUrl(key);
+      if (built) return built;
     }
   }
 
   const rawUrl = value.videoUrl?.trim();
   if (!rawUrl) return null;
 
-  if (isAbsoluteVideoUrl(rawUrl) && rawUrl.includes("media.cognitiaxai.com")) {
+  if (isAbsoluteVideoUrl(rawUrl)) {
     return rawUrl;
   }
 
@@ -68,12 +69,17 @@ export function resolveVideoPlaybackUrl(value: {
     if (objectKey?.startsWith("videos/")) {
       return buildPublicMediaUrl(objectKey);
     }
+    return null;
   }
 
   const resolved = resolvePublicMediaUrl(rawUrl);
-  if (resolved) return resolved;
+  if (resolved && !isLegacyAppUploadUrl(resolved)) {
+    return resolved;
+  }
 
   if (isPrivateR2Url(rawUrl)) return null;
+
+  if (isUploadedVideoUrl(rawUrl)) return null;
 
   return rawUrl.startsWith("http") ? rawUrl : null;
 }

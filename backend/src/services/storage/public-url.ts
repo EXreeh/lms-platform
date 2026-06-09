@@ -47,7 +47,9 @@ export function isLegacyAppUploadUrl(url: string): boolean {
   if (!trimmed) return false;
   return (
     trimmed.startsWith("/uploads/") ||
-    /\/uploads\/(videos|resources|thumbnails)\//i.test(trimmed)
+    trimmed.startsWith("uploads/") ||
+    /\/uploads\/(videos|resources|thumbnails)\//i.test(trimmed) ||
+    /^https?:\/\/(www\.)?cognitiaxai\.com\/uploads\//i.test(trimmed)
   );
 }
 

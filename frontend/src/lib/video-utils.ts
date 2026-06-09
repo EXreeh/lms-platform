@@ -1,3 +1,9 @@
+import {
+  isLegacyAppUploadUrl,
+  resolvePublicMediaUrl,
+} from "@/lib/media-url-utils";
+import { resolveVideoPlaybackUrl } from "@/lib/video-upload-utils";
+
 export function parseVideoEmbedUrl(url: string | null | undefined): {
   type: "youtube" | "vimeo" | "html5" | "none";
   embedUrl: string | null;
@@ -5,7 +11,12 @@ export function parseVideoEmbedUrl(url: string | null | undefined): {
 } {
   if (!url) return { type: "none", embedUrl: null, videoId: null };
 
-  const youtubeMatch = url.match(
+  const normalized =
+    resolveVideoPlaybackUrl({ videoUrl: url }) ??
+    (isLegacyAppUploadUrl(url) ? resolvePublicMediaUrl(url) : null) ??
+    url;
+
+  const youtubeMatch = normalized.match(
     /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
   );
   if (youtubeMatch) {
@@ -17,7 +28,7 @@ export function parseVideoEmbedUrl(url: string | null | undefined): {
     };
   }
 
-  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  const vimeoMatch = normalized.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) {
     const videoId = vimeoMatch[1];
     return {
@@ -28,14 +39,17 @@ export function parseVideoEmbedUrl(url: string | null | undefined): {
   }
 
   if (
-    /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url) ||
-    url.startsWith("/uploads/videos/") ||
-    /\/videos\/[\w.\-]+\.(mp4|webm|mov)(\?|$)/i.test(url)
+    /\.(mp4|webm|ogg|mov)(\?|$)/i.test(normalized) ||
+    isLegacyAppUploadUrl(normalized) ||
+    /\/videos\/[\w.\-]+\.(mp4|webm|mov)(\?|$)/i.test(normalized)
   ) {
-    return { type: "html5", embedUrl: url, videoId: null };
+    const playback =
+      resolveVideoPlaybackUrl({ videoUrl: normalized }) ??
+      resolvePublicMediaUrl(normalized);
+    return { type: "html5", embedUrl: playback ?? normalized, videoId: null };
   }
 
-  return { type: "html5", embedUrl: url, videoId: null };
+  return { type: "html5", embedUrl: normalized, videoId: null };
 }
 
 export function formatWatchTime(seconds: number): string {

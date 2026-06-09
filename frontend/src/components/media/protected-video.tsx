@@ -3,10 +3,14 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import type { VideoHTMLAttributes } from "react";
 import { isVideoDebugEnabled, logVideoDebug, logVideoError, videoErrorLabel } from "@/lib/video-debug";
-import { isAbsoluteVideoUrl, isPrivateR2Url, resolvePublicMediaUrl } from "@/lib/media-url-utils";
+import { isLegacyAppUploadUrl, isPrivateR2Url } from "@/lib/media-url-utils";
+import { resolveVideoPlaybackUrl } from "@/lib/video-upload-utils";
 
 interface ProtectedVideoProps extends Omit<VideoHTMLAttributes<HTMLVideoElement>, "src"> {
+  /** Lesson or upload videoUrl — resolved to R2 public URL before playback. */
   src: string;
+  videoStorageKey?: string | null;
+  videoStorageProvider?: string | null;
   mimeType?: string | null;
   fileName?: string;
   storageProvider?: string;
@@ -99,6 +103,8 @@ export const ProtectedVideo = forwardRef<HTMLVideoElement, ProtectedVideoProps>(
   function ProtectedVideo(
     {
       src,
+      videoStorageKey,
+      videoStorageProvider,
       mimeType,
       fileName,
       storageProvider,
@@ -129,20 +135,31 @@ export const ProtectedVideo = forwardRef<HTMLVideoElement, ProtectedVideoProps>(
       [ref],
     );
 
-    const playbackSrc = isAbsoluteVideoUrl(src) ? src : resolvePublicMediaUrl(src) ?? src;
-    const resolvedMime = inferVideoMimeType(playbackSrc, mimeType);
+    const playbackSrc =
+      resolveVideoPlaybackUrl({
+        videoUrl: src,
+        videoStorageKey,
+        videoStorageProvider: videoStorageProvider ?? storageProvider,
+      }) ?? null;
+    const resolvedMime = inferVideoMimeType(playbackSrc ?? src, mimeType);
 
     useEffect(() => {
       setLoadAttempted(false);
       setHasError(false);
+      console.info("[CognitiaX video] playback", {
+        lessonVideoUrl: src,
+        playbackSrc,
+        videoStorageKey,
+        videoStorageProvider: videoStorageProvider ?? storageProvider,
+      });
       logVideoDebug("video src", {
         src,
         playbackSrc,
         mimeType: resolvedMime,
         fileName,
-        storageProvider,
+        storageProvider: videoStorageProvider ?? storageProvider,
       });
-    }, [src, playbackSrc, resolvedMime, fileName, storageProvider]);
+    }, [src, playbackSrc, resolvedMime, fileName, storageProvider, videoStorageKey, videoStorageProvider]);
 
     useEffect(() => {
       if (!loadAttempted || hasError) return;
@@ -160,6 +177,17 @@ export const ProtectedVideo = forwardRef<HTMLVideoElement, ProtectedVideoProps>(
         >
           <p className="text-sm text-muted-foreground">No video source</p>
         </div>
+      );
+    }
+
+    if (!playbackSrc || isLegacyAppUploadUrl(playbackSrc)) {
+      logVideoDebug("unresolved legacy video src", { src, playbackSrc });
+      return (
+        <VideoErrorFallback
+          className={className}
+          fileName={fileName}
+          playbackSrc={src}
+        />
       );
     }
 
