@@ -1,4 +1,5 @@
 import type { Resource, User } from "@lms/database";
+import { resolveResourceUrl } from "../../services/storage/video-url.helpers.js";
 
 type ResourceWithUploader = Resource & {
   uploadedBy?: Pick<User, "id" | "firstName" | "lastName" | "email">;
@@ -10,7 +11,7 @@ export function mapResource(resource: ResourceWithUploader) {
     title: resource.title,
     description: resource.description,
     type: resource.type,
-    url: resource.url,
+    url: resolveResourceUrl(resource),
     fileName: resource.fileName,
     mimeType: resource.mimeType ?? null,
     fileSize: resource.fileSize ?? null,

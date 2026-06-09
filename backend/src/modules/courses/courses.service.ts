@@ -89,7 +89,11 @@ export async function createCourse(userId: string, role: Role, input: CreateCour
       title: input.title,
       slug,
       description: input.description,
-      thumbnail: input.thumbnail || null,
+      thumbnail: input.thumbnail
+        ? (await import("../../services/storage/video-url.helpers.js")).resolveCourseThumbnailUrl(
+            input.thumbnail,
+          )
+        : null,
       thumbnailFileName: input.thumbnailFileName ?? null,
       price: input.price,
       category: input.category,
@@ -137,7 +141,13 @@ export async function updateCourse(
     data: {
       ...(input.title !== undefined && { title: input.title }),
       ...(input.description !== undefined && { description: input.description }),
-      ...(input.thumbnail !== undefined && { thumbnail: input.thumbnail || null }),
+      ...(input.thumbnail !== undefined && {
+        thumbnail: input.thumbnail
+          ? (await import("../../services/storage/video-url.helpers.js")).resolveCourseThumbnailUrl(
+              input.thumbnail,
+            )
+          : null,
+      }),
       ...(input.thumbnailFileName !== undefined && {
         thumbnailFileName: input.thumbnailFileName || null,
       }),
@@ -562,16 +572,25 @@ export async function createLesson(
   const maxOrder = module.lessons.reduce((max, l) => Math.max(max, l.order), -1);
   const order = input.order ?? maxOrder + 1;
 
+  const { resolveVideoFieldsForSave } = await import(
+    "../../services/storage/video-url.helpers.js"
+  );
+  const videoFields = resolveVideoFieldsForSave({
+    videoUrl: input.videoUrl,
+    videoStorageProvider: input.videoStorageProvider,
+    videoStorageKey: input.videoStorageKey,
+  });
+
   const lesson = await prisma.lesson.create({
     data: {
       title: input.title,
       description: input.description ?? null,
-      videoUrl: input.videoUrl || null,
+      videoUrl: videoFields.videoUrl,
       videoFileName: input.videoFileName ?? null,
       videoMimeType: input.videoMimeType ?? null,
       videoSize: input.videoSize ?? null,
       videoStorageProvider: input.videoStorageProvider ?? null,
-      videoStorageKey: input.videoStorageKey ?? null,
+      videoStorageKey: videoFields.videoStorageKey,
       duration: input.duration ?? 0,
       order,
       moduleId: module.id,
@@ -581,6 +600,8 @@ export async function createLesson(
   console.log("[lessons] created", {
     lessonId: lesson.id,
     moduleId: module.id,
+    objectKey: lesson.videoStorageKey,
+    publicUrl: videoFields.videoUrl,
     videoUrl: lesson.videoUrl,
     videoStorageProvider: lesson.videoStorageProvider,
     videoStorageKey: lesson.videoStorageKey,
@@ -801,19 +822,42 @@ export async function updateLesson(
   if (!canManageCourse(userId, role, lesson.module.course.teacherId)) throw ApiError.forbidden();
   assertEditable(lesson.module.course, role);
 
+  const hasVideoUpdate =
+    input.videoUrl !== undefined ||
+    input.videoStorageKey !== undefined ||
+    input.videoStorageProvider !== undefined;
+
+  let resolvedVideo: { videoUrl: string | null; videoStorageKey: string | null } | undefined;
+  if (hasVideoUpdate) {
+    const { resolveVideoFieldsForSave } = await import(
+      "../../services/storage/video-url.helpers.js"
+    );
+    resolvedVideo = resolveVideoFieldsForSave({
+      videoUrl: input.videoUrl !== undefined ? input.videoUrl : lesson.videoUrl,
+      videoStorageProvider:
+        input.videoStorageProvider !== undefined
+          ? input.videoStorageProvider
+          : lesson.videoStorageProvider,
+      videoStorageKey:
+        input.videoStorageKey !== undefined ? input.videoStorageKey : lesson.videoStorageKey,
+    });
+  }
+
   await prisma.lesson.update({
     where: { id: lessonId },
     data: {
       ...(input.title !== undefined && { title: input.title }),
       ...(input.description !== undefined && { description: input.description }),
-      ...(input.videoUrl !== undefined && { videoUrl: input.videoUrl || null }),
+      ...(resolvedVideo && {
+        videoUrl: resolvedVideo.videoUrl,
+        videoStorageKey: resolvedVideo.videoStorageKey,
+      }),
       ...(input.videoFileName !== undefined && { videoFileName: input.videoFileName }),
       ...(input.videoMimeType !== undefined && { videoMimeType: input.videoMimeType }),
       ...(input.videoSize !== undefined && { videoSize: input.videoSize }),
       ...(input.videoStorageProvider !== undefined && {
         videoStorageProvider: input.videoStorageProvider,
       }),
-      ...(input.videoStorageKey !== undefined && { videoStorageKey: input.videoStorageKey }),
       ...(input.duration !== undefined && { duration: input.duration }),
       ...(input.order !== undefined && { order: input.order }),
     },

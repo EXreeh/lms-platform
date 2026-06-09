@@ -88,7 +88,10 @@ export class ObjectStorageProvider implements StorageProvider {
 
   getPublicUrl(storageKey: string, category: UploadCategory): string {
     const base = this.config.publicBaseUrl.replace(/\/$/, "");
-    return `${base}/${getCategoryFolderName(category)}/${storageKey}`;
+    const key = storageKey.includes("/")
+      ? storageKey
+      : objectKey(category, storageKey);
+    return `${base}/${key}`;
   }
 
   async save(file: Express.Multer.File, category: UploadCategory): Promise<StoredFile> {
@@ -99,14 +102,15 @@ export class ObjectStorageProvider implements StorageProvider {
       );
     }
 
-    const storageKey = file.filename ?? sanitizeStoredFilename(file.originalname);
-    const key = objectKey(category, storageKey);
+    const fileName = file.filename ?? sanitizeStoredFilename(file.originalname);
+    const objectKeyPath = objectKey(category, fileName);
+    const publicUrl = this.getPublicUrl(objectKeyPath, category);
 
     try {
       await this.client.send(
         new PutObjectCommand({
           Bucket: this.config.bucket,
-          Key: key,
+          Key: objectKeyPath,
           Body: file.buffer,
           ContentType: file.mimetype || "application/octet-stream",
           ContentLength: file.size,
@@ -114,11 +118,12 @@ export class ObjectStorageProvider implements StorageProvider {
       );
 
       const stored: StoredFile = {
-        url: this.getPublicUrl(storageKey, category),
+        url: publicUrl,
+        publicUrl,
         fileName: sanitizeDisplayName(file.originalname),
         mimeType: file.mimetype,
         size: file.size,
-        storageKey,
+        storageKey: objectKeyPath,
         storageProvider: this.config.provider,
       };
 
@@ -126,7 +131,8 @@ export class ObjectStorageProvider implements StorageProvider {
         provider: this.config.provider,
         bucket: this.config.bucket,
         category,
-        storageKey,
+        objectKey: objectKeyPath,
+        publicUrl,
         size: file.size,
         mimeType: file.mimetype,
       });
@@ -145,7 +151,9 @@ export class ObjectStorageProvider implements StorageProvider {
   }
 
   async delete(storageKey: string, category: UploadCategory): Promise<void> {
-    const key = objectKey(category, storageKey);
+    const key = storageKey.includes("/")
+      ? storageKey
+      : objectKey(category, storageKey);
     try {
       await this.client.send(
         new DeleteObjectCommand({
@@ -157,7 +165,7 @@ export class ObjectStorageProvider implements StorageProvider {
         provider: this.config.provider,
         bucket: this.config.bucket,
         category,
-        storageKey,
+        objectKey: key,
         success: true,
       });
     } catch (err) {
@@ -165,7 +173,7 @@ export class ObjectStorageProvider implements StorageProvider {
         provider: this.config.provider,
         bucket: this.config.bucket,
         category,
-        storageKey,
+        objectKey: key,
         success: false,
       });
       mapS3Error(err, this.config.provider, this.config.bucket);

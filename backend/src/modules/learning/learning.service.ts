@@ -9,6 +9,7 @@ import {
   mapEnrollment,
   mapLessonProgress,
 } from "./learning.mapper.js";
+import { resolveLessonVideoUrl } from "../../services/storage/video-url.helpers.js";
 
 const teacherSelect = {
   id: true,
@@ -157,7 +158,7 @@ export async function getCourseProgress(studentId: string, idOrSlug: string) {
       id: lesson.id,
       title: lesson.title,
       description: lesson.description,
-      videoUrl: lesson.videoUrl,
+      videoUrl: resolveLessonVideoUrl(lesson),
       duration: lesson.duration,
       order: lesson.order,
       moduleId: lesson.moduleId,
@@ -310,7 +311,7 @@ export async function getContinueLearning(studentId: string) {
         id: targetLesson.id,
         title: targetLesson.title,
         moduleTitle: targetLesson.moduleTitle,
-        videoUrl: targetLesson.videoUrl,
+        videoUrl: resolveLessonVideoUrl(targetLesson),
       },
       progressPercentage: enrollment.progressPercentage,
       courseSlug: enrollment.course.slug,
@@ -405,7 +406,7 @@ export async function getCoursePreview(idOrSlug: string) {
       id: lesson.id,
       title: lesson.title,
       description: lesson.description,
-      videoUrl: lesson.videoUrl,
+      videoUrl: resolveLessonVideoUrl(lesson),
       duration: lesson.duration,
       order: lesson.order,
       moduleId: lesson.moduleId,

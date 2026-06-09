@@ -230,7 +230,7 @@ export function ResourceForm({
         }}
         urlFallbackPlaceholder="https://drive.google.com/... or any resource link"
         onUploaded={(result) => {
-          setUrl(result.url);
+          setUrl(result.publicUrl ?? result.url);
           setFileName(result.fileName);
           setMimeType(result.mimeType);
           setFileSize(result.size);

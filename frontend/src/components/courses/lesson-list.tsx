@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { LessonVideoField, type LessonVideoValue } from "@/components/courses/lesson-video-field";
 import { ProtectedVideo } from "@/components/media/protected-video";
 import { formatFileSize } from "@/lib/format-file-size";
-import { hasUploadedVideo, isCloudStoredVideo } from "@/lib/video-upload-utils";
+import {
+  hasUploadedVideo,
+  isCloudStoredVideo,
+  resolveVideoPlaybackUrl,
+} from "@/lib/video-upload-utils";
 
 interface LessonListProps {
   lessons: Lesson[];
@@ -157,7 +161,12 @@ export function LessonList({ lessons, editable, onDeleteLesson, onUpdateLesson }
                         </div>
                         {uploaded && lesson.videoUrl && (
                           <ProtectedVideo
-                            src={lesson.videoUrl}
+                            src={
+                              resolveVideoPlaybackUrl(lessonToVideoValue(lesson)) ??
+                              lesson.videoUrl
+                            }
+                            fileName={lesson.videoFileName ?? undefined}
+                            storageProvider={lesson.videoStorageProvider ?? undefined}
                             className="max-h-24 w-full max-w-xs rounded-lg bg-black object-contain"
                           />
                         )}

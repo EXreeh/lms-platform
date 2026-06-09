@@ -11,7 +11,8 @@ export function logUploadSuccess(params: {
   provider: string;
   bucket?: string;
   category: UploadCategory;
-  storageKey: string;
+  objectKey: string;
+  publicUrl: string;
   size: number;
   mimeType: string;
 }) {
@@ -19,7 +20,8 @@ export function logUploadSuccess(params: {
     provider: params.provider,
     ...(params.bucket ? { bucket: params.bucket } : {}),
     category: params.category,
-    objectKey: `${params.category}/${params.storageKey}`,
+    objectKey: params.objectKey,
+    publicUrl: params.publicUrl,
     size: params.size,
     mimeType: params.mimeType,
   });
@@ -45,7 +47,7 @@ export function logDelete(params: {
   provider: string;
   bucket?: string;
   category: UploadCategory;
-  storageKey: string;
+  objectKey: string;
   success: boolean;
 }) {
   const line = params.success ? console.log : console.error;
@@ -53,7 +55,7 @@ export function logDelete(params: {
     provider: params.provider,
     ...(params.bucket ? { bucket: params.bucket } : {}),
     category: params.category,
-    objectKey: `${params.category}/${params.storageKey}`,
+    objectKey: params.objectKey,
     success: params.success,
   });
 }

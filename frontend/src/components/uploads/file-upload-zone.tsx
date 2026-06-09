@@ -207,6 +207,8 @@ export function FileUploadZone({
               {previewType === "video" && (
                 <ProtectedVideo
                   src={uploaded.url}
+                  fileName={uploaded.fileName}
+                  storageProvider={uploaded.storageProvider}
                   className="mx-auto max-h-48 w-full max-w-lg rounded-xl bg-black object-contain"
                 />
               )}

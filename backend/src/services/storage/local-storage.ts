@@ -47,6 +47,7 @@ export class LocalStorageProvider implements StorageProvider {
 
     return {
       url,
+      publicUrl: url,
       fileName: sanitizeDisplayName(file.originalname),
       mimeType: file.mimetype,
       size: file.size,

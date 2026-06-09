@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ProtectedVideo } from "@/components/media/protected-video";
 import { parseVideoEmbedUrl } from "@/lib/video-utils";
+import { logVideoDebug } from "@/lib/video-debug";
+import { resolvePublicMediaUrl } from "@/lib/media-url-utils";
 
 interface VideoPlayerProps {
   videoUrl: string | null | undefined;
@@ -22,7 +24,14 @@ export function VideoPlayer({
   onWatchUpdate,
   onComplete,
 }: VideoPlayerProps) {
-  const { type, embedUrl } = parseVideoEmbedUrl(videoUrl);
+  const publicVideoUrl = resolvePublicMediaUrl(videoUrl) ?? videoUrl ?? undefined;
+  const { type, embedUrl } = parseVideoEmbedUrl(publicVideoUrl);
+
+  useEffect(() => {
+    if (embedUrl && type === "html5") {
+      logVideoDebug("player src", { videoUrl, embedUrl, type });
+    }
+  }, [embedUrl, type, videoUrl]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [watched, setWatched] = useState(initialWatchedDuration);
   const lastReported = useRef(initialWatchedDuration);

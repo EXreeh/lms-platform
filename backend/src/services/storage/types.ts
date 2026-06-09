@@ -7,9 +7,12 @@ export type UploadCategory =
 
 export interface StoredFile {
   url: string;
+  /** Public playable URL (same as url for cloud storage). */
+  publicUrl: string;
   fileName: string;
   mimeType: string;
   size: number;
+  /** Full object key, e.g. videos/uuid.mp4 for R2. */
   storageKey: string;
   storageProvider: string;
 }

@@ -9,6 +9,7 @@ import {
   hasUploadedVideo,
   isCloudStoredVideo,
   isExternalVideoUrl,
+  resolveVideoPlaybackUrl,
 } from "@/lib/video-upload-utils";
 
 export interface LessonVideoValue {
@@ -29,8 +30,9 @@ interface LessonVideoFieldProps {
 
 function toUploadedInfo(value: LessonVideoValue): UploadedFileInfo | null {
   if (!hasUploadedVideo(value)) return null;
+  const playbackUrl = resolveVideoPlaybackUrl(value) ?? value.videoUrl;
   return {
-    url: value.videoUrl,
+    url: playbackUrl,
     fileName: value.videoFileName ?? "video",
     size: value.videoSize ?? undefined,
     mimeType: value.videoMimeType ?? undefined,
@@ -78,8 +80,10 @@ export function LessonVideoField({
       urlFallbackPlaceholder="https://youtube.com/watch?v=... or direct video URL"
       previewType="video"
       onUploaded={(result, sourceFile) => {
+        const playbackUrl = result.publicUrl ?? result.url;
         logLessonDebug("video upload response", {
           url: result.url,
+          publicUrl: playbackUrl,
           fileName: result.fileName,
           mimeType: result.mimeType,
           size: result.size,
@@ -87,7 +91,7 @@ export function LessonVideoField({
           storageProvider: result.storageProvider,
         });
         onChange({
-          videoUrl: result.url,
+          videoUrl: playbackUrl,
           videoFileName: result.fileName,
           videoMimeType: result.mimeType,
           videoSize: result.size,

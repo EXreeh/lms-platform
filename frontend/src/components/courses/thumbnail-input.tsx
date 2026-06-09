@@ -15,10 +15,14 @@ interface ThumbnailInputProps {
 export function ThumbnailInput({ value, thumbnailFileName, onChange, disabled }: ThumbnailInputProps) {
   const [urlMode, setUrlMode] = useState(false);
 
-  const uploaded: UploadedFileInfo | null =
-    value && value.startsWith("/uploads/thumbnails/")
-      ? { url: value, fileName: thumbnailFileName ?? "thumbnail", size: undefined }
-      : null;
+  const isUploadedThumbnail =
+    Boolean(value) &&
+    (value.startsWith("/uploads/thumbnails/") ||
+      (/^https?:\/\//i.test(value) && /\/thumbnails\//i.test(value)));
+
+  const uploaded: UploadedFileInfo | null = isUploadedThumbnail
+    ? { url: value, fileName: thumbnailFileName ?? "thumbnail", size: undefined }
+    : null;
 
   return (
     <div className="space-y-3">
@@ -32,14 +36,14 @@ export function ThumbnailInput({ value, thumbnailFileName, onChange, disabled }:
         disabled={disabled}
         uploaded={uploaded}
         showUrlFallback
-        urlMode={urlMode || (!!value && !value.startsWith("/uploads/"))}
+        urlMode={urlMode || (!!value && !isUploadedThumbnail)}
         onUrlModeChange={setUrlMode}
         urlValue={urlMode ? value : ""}
         onUrlChange={(url) => onChange(url, { fileName: null })}
         urlFallbackPlaceholder="https://example.com/thumbnail.jpg"
         previewType="image"
         onUploaded={(result) => {
-          onChange(result.url, { fileName: result.fileName });
+          onChange(result.publicUrl ?? result.url, { fileName: result.fileName });
           setUrlMode(false);
         }}
         onClear={() => onChange("", { fileName: null })}

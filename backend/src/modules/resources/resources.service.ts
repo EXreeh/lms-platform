@@ -39,12 +39,18 @@ export async function createResource(userId: string, role: Role, input: CreateRe
     if (!lesson) throw ApiError.badRequest("Lesson not found in this course");
   }
 
+  const { fixR2AssetUrl } = await import("../../services/storage/video-url.helpers.js");
+  const resourceUrl =
+    input.storageProvider === "r2" || /\.r2\.cloudflarestorage\.com/i.test(input.url)
+      ? fixR2AssetUrl(input.url)
+      : input.url;
+
   const resource = await prisma.resource.create({
     data: {
       title: input.title,
       description: input.description ?? null,
       type: input.type,
-      url: input.url,
+      url: resourceUrl,
       fileName: input.fileName ?? null,
       mimeType: input.mimeType ?? null,
       fileSize: input.fileSize ?? null,
@@ -82,13 +88,23 @@ export async function updateResource(
     throw ApiError.forbidden();
   }
 
+  const { fixR2AssetUrl } = await import("../../services/storage/video-url.helpers.js");
+  let resolvedUrl: string | undefined;
+  if (input.url !== undefined) {
+    const provider = input.storageProvider ?? existing.storageProvider;
+    resolvedUrl =
+      provider === "r2" || /\.r2\.cloudflarestorage\.com/i.test(input.url)
+        ? fixR2AssetUrl(input.url)
+        : input.url;
+  }
+
   const resource = await prisma.resource.update({
     where: { id: resourceId },
     data: {
       ...(input.title !== undefined && { title: input.title }),
       ...(input.description !== undefined && { description: input.description ?? null }),
       ...(input.type !== undefined && { type: input.type }),
-      ...(input.url !== undefined && { url: input.url }),
+      ...(resolvedUrl !== undefined && { url: resolvedUrl }),
       ...(input.fileName !== undefined && { fileName: input.fileName ?? null }),
       ...(input.mimeType !== undefined && { mimeType: input.mimeType ?? null }),
       ...(input.fileSize !== undefined && { fileSize: input.fileSize ?? null }),

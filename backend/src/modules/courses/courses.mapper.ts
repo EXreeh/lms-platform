@@ -1,5 +1,9 @@
 import type { Course, CourseLevel, Lesson, Module, User } from "@lms/database";
 import type { Decimal } from "@prisma/client/runtime/library";
+import {
+  resolveCourseThumbnailUrl,
+  resolveLessonVideoUrl,
+} from "../../services/storage/video-url.helpers.js";
 
 type CourseWithRelations = Course & {
   teacher?: Pick<User, "id" | "firstName" | "lastName" | "email">;
@@ -15,7 +19,7 @@ export function mapLesson(lesson: Lesson) {
     id: lesson.id,
     title: lesson.title,
     description: lesson.description,
-    videoUrl: lesson.videoUrl,
+    videoUrl: resolveLessonVideoUrl(lesson),
     videoFileName: lesson.videoFileName ?? null,
     videoMimeType: lesson.videoMimeType ?? null,
     videoSize: lesson.videoSize ?? null,
@@ -68,7 +72,7 @@ function buildBase(course: CourseWithRelations) {
     title: course.title,
     slug: course.slug,
     description: course.description,
-    thumbnail: course.thumbnail,
+    thumbnail: resolveCourseThumbnailUrl(course.thumbnail),
     thumbnailFileName: course.thumbnailFileName ?? null,
     price: decimalToNumber(course.price),
     category: course.category,
