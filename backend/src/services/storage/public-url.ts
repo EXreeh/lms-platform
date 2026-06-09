@@ -40,3 +40,19 @@ export function isAbsolutePublicMediaUrl(url: string): boolean {
 export function isPrivateR2Endpoint(url: string): boolean {
   return /\.r2\.cloudflarestorage\.com/i.test(url);
 }
+
+/** Local disk path or app-domain proxy path, e.g. /uploads/videos/x.mp4 or https://www.example.com/uploads/videos/x.mp4 */
+export function isLegacyAppUploadUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  return (
+    trimmed.startsWith("/uploads/") ||
+    /\/uploads\/(videos|resources|thumbnails)\//i.test(trimmed)
+  );
+}
+
+export function extractObjectKeyFromLegacyUrl(url: string): string | null {
+  const match = url.trim().match(/\/(videos|resources|thumbnails)\/([^?#]+)/i);
+  if (!match) return null;
+  return normalizeObjectKey(`${match[1]}/${match[2]}`);
+}

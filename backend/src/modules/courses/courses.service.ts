@@ -575,6 +575,12 @@ export async function createLesson(
   const { resolveVideoFieldsForSave } = await import(
     "../../services/storage/video-url.helpers.js"
   );
+  console.log("[lessons] create payload video", {
+    videoUrl: input.videoUrl,
+    videoStorageProvider: input.videoStorageProvider,
+    videoStorageKey: input.videoStorageKey,
+  });
+
   const videoFields = resolveVideoFieldsForSave({
     videoUrl: input.videoUrl,
     videoStorageProvider: input.videoStorageProvider,
@@ -589,7 +595,7 @@ export async function createLesson(
       videoFileName: input.videoFileName ?? null,
       videoMimeType: input.videoMimeType ?? null,
       videoSize: input.videoSize ?? null,
-      videoStorageProvider: input.videoStorageProvider ?? null,
+      videoStorageProvider: videoFields.videoStorageProvider,
       videoStorageKey: videoFields.videoStorageKey,
       duration: input.duration ?? 0,
       order,
@@ -829,7 +835,9 @@ export async function updateLesson(
     input.videoStorageKey !== undefined ||
     input.videoStorageProvider !== undefined;
 
-  let resolvedVideo: { videoUrl: string | null; videoStorageKey: string | null } | undefined;
+  let resolvedVideo:
+    | { videoUrl: string | null; videoStorageKey: string | null; videoStorageProvider: string | null }
+    | undefined;
   if (hasVideoUpdate) {
     const { resolveVideoFieldsForSave } = await import(
       "../../services/storage/video-url.helpers.js"
@@ -843,6 +851,12 @@ export async function updateLesson(
       videoStorageKey:
         input.videoStorageKey !== undefined ? input.videoStorageKey : lesson.videoStorageKey,
     });
+    console.log("[lessons] update payload video", {
+      lessonId,
+      inputVideoUrl: input.videoUrl,
+      resolvedVideoUrl: resolvedVideo.videoUrl,
+      videoStorageProvider: resolvedVideo.videoStorageProvider,
+    });
   }
 
   await prisma.lesson.update({
@@ -853,13 +867,11 @@ export async function updateLesson(
       ...(resolvedVideo && {
         videoUrl: resolvedVideo.videoUrl,
         videoStorageKey: resolvedVideo.videoStorageKey,
+        videoStorageProvider: resolvedVideo.videoStorageProvider,
       }),
       ...(input.videoFileName !== undefined && { videoFileName: input.videoFileName }),
       ...(input.videoMimeType !== undefined && { videoMimeType: input.videoMimeType }),
       ...(input.videoSize !== undefined && { videoSize: input.videoSize }),
-      ...(input.videoStorageProvider !== undefined && {
-        videoStorageProvider: input.videoStorageProvider,
-      }),
       ...(input.duration !== undefined && { duration: input.duration }),
       ...(input.order !== undefined && { order: input.order }),
     },

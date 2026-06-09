@@ -9,6 +9,8 @@
     "prebuild": "npm run build -w @lms/database",
     "build": "tsc",
     "start": "node dist/server.js",
+    "repair:r2-videos": "tsx src/scripts/repair-r2-video-urls.ts",
+    "repair:r2-videos:prod": "node dist/scripts/repair-r2-video-urls.js",
     "typecheck": "tsc --noEmit",
     "lint": "npm run typecheck"
   },

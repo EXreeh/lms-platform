@@ -1,7 +1,9 @@
 import type { LessonVideoValue } from "@/components/courses/lesson-video-field";
 import {
   buildPublicMediaUrl,
+  extractObjectKeyFromLegacyUrl,
   isAbsoluteVideoUrl,
+  isLegacyAppUploadUrl,
   isPrivateR2Url,
   normalizeObjectKey,
   resolvePublicMediaUrl,
@@ -10,7 +12,7 @@ import {
 /** True when the URL points to an uploaded file (local disk or cloud storage). */
 export function isUploadedVideoUrl(url: string): boolean {
   if (!url.trim()) return false;
-  if (url.startsWith("/uploads/videos/")) return true;
+  if (isLegacyAppUploadUrl(url)) return true;
   if (/^videos\//i.test(url)) return true;
   if (/^https?:\/\//i.test(url) && /\/videos\//i.test(url)) return true;
   if (/^https?:\/\//i.test(url) && /\.(mp4|webm|mov)(\?|$)/i.test(url)) return true;
@@ -43,19 +45,30 @@ export function resolveVideoPlaybackUrl(value: {
   videoStorageKey?: string | null;
   videoStorageProvider?: string | null;
 }): string | null {
-  if (value.videoStorageProvider === "r2" && value.videoStorageKey) {
+  if (value.videoStorageKey) {
     const key = normalizeObjectKey(
       value.videoStorageKey.includes("/")
         ? value.videoStorageKey
         : `videos/${value.videoStorageKey}`,
     );
-    return buildPublicMediaUrl(key);
+    if (value.videoStorageProvider === "r2" || value.videoStorageProvider === "s3") {
+      return buildPublicMediaUrl(key);
+    }
   }
 
   const rawUrl = value.videoUrl?.trim();
   if (!rawUrl) return null;
 
-  if (isAbsoluteVideoUrl(rawUrl)) return rawUrl;
+  if (isAbsoluteVideoUrl(rawUrl) && rawUrl.includes("media.cognitiaxai.com")) {
+    return rawUrl;
+  }
+
+  if (isLegacyAppUploadUrl(rawUrl)) {
+    const objectKey = extractObjectKeyFromLegacyUrl(rawUrl);
+    if (objectKey?.startsWith("videos/")) {
+      return buildPublicMediaUrl(objectKey);
+    }
+  }
 
   const resolved = resolvePublicMediaUrl(rawUrl);
   if (resolved) return resolved;

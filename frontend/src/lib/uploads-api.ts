@@ -41,8 +41,18 @@ const R2_PUBLIC_BASE =
   process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.replace(/\/$/, "") ||
   "https://media.cognitiaxai.com";
 
-function isLocalUploadPath(url: string): boolean {
-  return url.startsWith("/uploads/") || url.startsWith("uploads/");
+function isLegacyAppUploadUrl(url: string): boolean {
+  return (
+    url.startsWith("/uploads/") ||
+    url.startsWith("uploads/") ||
+    /\/uploads\/(videos|resources|thumbnails)\//i.test(url)
+  );
+}
+
+function extractObjectKey(url: string): string | null {
+  const match = url.match(/\/(videos|resources|thumbnails)\/([^?#]+)/i);
+  if (!match) return null;
+  return `${match[1]}/${match[2]}`;
 }
 
 function categoryFolderForKind(kind: UploadKind): string {
@@ -61,8 +71,12 @@ function normalizeUploadResult(data: UploadResult, kind: UploadKind): UploadResu
 
   let publicUrl = (data.publicUrl ?? data.url ?? "").trim();
 
-  if (isLocalUploadPath(publicUrl) && /^(videos|resources|thumbnails)\//.test(storageKey)) {
-    publicUrl = `${R2_PUBLIC_BASE}/${storageKey}`;
+  if (isLegacyAppUploadUrl(publicUrl)) {
+    const extracted = extractObjectKey(publicUrl);
+    if (extracted) {
+      storageKey = extracted;
+      publicUrl = `${R2_PUBLIC_BASE}/${storageKey}`;
+    }
   } else if (
     !publicUrl &&
     (storageKey.startsWith("videos/") ||
@@ -72,8 +86,8 @@ function normalizeUploadResult(data: UploadResult, kind: UploadKind): UploadResu
     publicUrl = `${R2_PUBLIC_BASE}/${storageKey}`;
   }
 
-  if (isLocalUploadPath(publicUrl)) {
-    console.error("[CognitiaX upload] received local path — backend may be using STORAGE_PROVIDER=local", {
+  if (isLegacyAppUploadUrl(publicUrl)) {
+    console.error("[CognitiaX upload] legacy /uploads URL — backend may be using STORAGE_PROVIDER=local", {
       url: data.url,
       publicUrl: data.publicUrl,
       storageKey: data.storageKey,
@@ -83,7 +97,7 @@ function normalizeUploadResult(data: UploadResult, kind: UploadKind): UploadResu
 
   const fileSize = data.fileSize ?? data.size;
   const storageProvider =
-    data.storageProvider === "local" && publicUrl.startsWith("http")
+    publicUrl.includes("media.cognitiaxai.com") || publicUrl.startsWith(`${R2_PUBLIC_BASE}/`)
       ? "r2"
       : data.storageProvider || (publicUrl.startsWith("http") ? "r2" : "local");
 

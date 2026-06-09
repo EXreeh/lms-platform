@@ -36,6 +36,8 @@ export function getStorageProvider(): StorageProvider {
   switch (provider) {
     case "r2":
       storageInstance = new R2StorageProvider();
+      console.log("Storage provider selected: r2");
+      console.log(`R2_PUBLIC_URL: ${env.R2_PUBLIC_URL ?? "(unset)"}`);
       logStorageInit("r2", {
         bucket: env.R2_BUCKET,
         publicUrl: env.R2_PUBLIC_URL,
@@ -47,6 +49,7 @@ export function getStorageProvider(): StorageProvider {
       break;
     case "local":
       storageInstance = new LocalStorageProvider(getUploadsBasePath(), env.STORAGE_PUBLIC_URL);
+      console.log("Storage provider selected: local");
       logStorageInit("local", { publicUrl: env.STORAGE_PUBLIC_URL });
       break;
     default:

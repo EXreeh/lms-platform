@@ -1,11 +1,11 @@
 import { env } from "../../config/env.js";
 import { ApiError } from "../../utils/api-error.js";
-import { buildPublicMediaUrl } from "./public-url.js";
+import {
+  buildPublicMediaUrl,
+  extractObjectKeyFromLegacyUrl,
+  isLegacyAppUploadUrl,
+} from "./public-url.js";
 import type { StoredFile } from "./types.js";
-
-function isLocalUploadPath(url: string): boolean {
-  return url.startsWith("/uploads/") || url.startsWith("uploads/");
-}
 
 /** Ensure cloud uploads never return local /uploads paths. */
 export function toPublicUploadResponse(stored: StoredFile): {
@@ -23,10 +23,12 @@ export function toPublicUploadResponse(stored: StoredFile): {
   let storageKey = stored.storageKey;
 
   if (env.STORAGE_PROVIDER === "r2" || env.STORAGE_PROVIDER === "s3") {
-    if (storageProvider === "local" || isLocalUploadPath(publicUrl)) {
-      const rebuilt = storageKey.includes("/")
-        ? buildPublicMediaUrl(storageKey)
-        : null;
+    if (storageProvider === "local" || isLegacyAppUploadUrl(publicUrl)) {
+      const objectKey =
+        storageKey.includes("/")
+          ? storageKey
+          : extractObjectKeyFromLegacyUrl(publicUrl);
+      const rebuilt = objectKey ? buildPublicMediaUrl(objectKey) : null;
 
       console.error("[storage] cloud provider misconfiguration detected", {
         configuredProvider: env.STORAGE_PROVIDER,

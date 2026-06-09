@@ -26,25 +26,46 @@ export function isPrivateR2Url(url: string): boolean {
   return /\.r2\.cloudflarestorage\.com/i.test(url);
 }
 
+export function isLegacyAppUploadUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  return (
+    trimmed.startsWith("/uploads/") ||
+    /\/uploads\/(videos|resources|thumbnails)\//i.test(trimmed)
+  );
+}
+
+export function extractObjectKeyFromLegacyUrl(url: string): string | null {
+  const match = url.trim().match(/\/(videos|resources|thumbnails)\/([^?#]+)/i);
+  if (!match) return null;
+  return normalizeObjectKey(`${match[1]}/${match[2]}`);
+}
+
 export function isAbsoluteVideoUrl(url: string): boolean {
   return /^https?:\/\/[^/]+\/videos\/[^?#]+/i.test(url.trim());
 }
 
 export function isUploadedMediaUrl(url: string): boolean {
   if (!url.trim()) return false;
-  if (url.startsWith("/uploads/")) return true;
-  if (/^videos\//i.test(url)) return true;
+  if (isLegacyAppUploadUrl(url)) return true;
   return /^https?:\/\//i.test(url) && /\/videos\//i.test(url);
 }
 
-/** Resolve a public custom-domain URL; never return the private R2 API endpoint. */
+/** Resolve a public custom-domain URL; never return legacy app /uploads paths. */
 export function resolvePublicMediaUrl(url: string | null | undefined): string | null {
   if (!url?.trim()) return null;
 
   const trimmed = url.trim();
 
-  if (isAbsoluteVideoUrl(trimmed)) {
+  if (isAbsoluteVideoUrl(trimmed) && trimmed.includes("media.cognitiaxai.com")) {
     return trimmed;
+  }
+
+  if (isLegacyAppUploadUrl(trimmed)) {
+    const objectKey = extractObjectKeyFromLegacyUrl(trimmed);
+    if (objectKey?.startsWith("videos/")) {
+      return buildPublicMediaUrl(objectKey);
+    }
   }
 
   if (/^videos\//i.test(trimmed)) {
@@ -56,12 +77,15 @@ export function resolvePublicMediaUrl(url: string | null | undefined): string | 
   }
 
   if (isPrivateR2Url(trimmed)) {
-    let objectKey = trimmed.replace(/^https?:\/\/[^/]+\//i, "");
-    objectKey = objectKey.replace(/[?#].*$/, "");
-    if (/^videos\//i.test(objectKey)) {
+    const objectKey = extractObjectKeyFromLegacyUrl(trimmed);
+    if (objectKey?.startsWith("videos/")) {
       return buildPublicMediaUrl(objectKey);
     }
     return null;
+  }
+
+  if (isAbsoluteVideoUrl(trimmed)) {
+    return trimmed;
   }
 
   if (trimmed.startsWith(R2_PUBLIC_BASE)) return trimmed;

@@ -2,8 +2,10 @@ import { env } from "../../config/env.js";
 import { ApiError } from "../../utils/api-error.js";
 import {
   buildPublicMediaUrl,
+  extractObjectKeyFromLegacyUrl,
   getR2PublicBaseUrl,
   isAbsolutePublicMediaUrl,
+  isLegacyAppUploadUrl,
   isPrivateR2Endpoint,
   normalizeObjectKey,
 } from "./public-url.js";
@@ -24,22 +26,29 @@ export function buildPublicObjectUrl(objectKey: string): string | null {
   return buildPublicMediaUrl(objectKey);
 }
 
-function isBareObjectKey(value: string): boolean {
-  return /^(videos|resources|thumbnails)\//i.test(value);
-}
-
 function resolveBareObjectKey(value: string): string | null {
-  if (!isBareObjectKey(value)) return null;
+  if (!/^(videos|resources|thumbnails)\//i.test(value)) return null;
   return buildPublicObjectUrl(value);
 }
 
-/** Rewrite private R2 API URLs or wrong hosts to the public custom domain. */
+/** Rewrite private R2 API URLs, legacy /uploads paths, or www app-domain upload URLs to R2 public domain. */
 export function fixR2AssetUrl(url: string): string {
   const base = getR2PublicBaseUrl();
   if (!base || !url.trim()) return url;
 
   const trimmed = url.trim();
-  if (isAbsolutePublicMediaUrl(trimmed) && trimmed.startsWith(base)) return trimmed;
+
+  if (isAbsolutePublicMediaUrl(trimmed) && trimmed.startsWith(base)) {
+    return trimmed;
+  }
+
+  if (isLegacyAppUploadUrl(trimmed)) {
+    const objectKey = extractObjectKeyFromLegacyUrl(trimmed);
+    if (objectKey) {
+      const rebuilt = buildPublicMediaUrl(objectKey, base);
+      if (rebuilt) return rebuilt;
+    }
+  }
 
   if (isPrivateR2Endpoint(trimmed)) {
     let objectKey = trimmed.replace(/^https?:\/\/[^/]+\//i, "");
@@ -70,41 +79,39 @@ export function resolveLessonVideoUrl(lesson: {
   videoStorageProvider?: string | null;
   videoStorageKey?: string | null;
 }): string | null {
-  if (lesson.videoStorageProvider === "r2") {
-    if (lesson.videoStorageKey) {
-      const key = normalizeObjectStorageKey(lesson.videoStorageKey, "video");
-      const publicUrl = buildPublicObjectUrl(key);
-      if (publicUrl) return publicUrl;
-    }
-    if (lesson.videoUrl) {
+  const useR2 =
+    lesson.videoStorageProvider === "r2" ||
+    env.STORAGE_PROVIDER === "r2" ||
+    Boolean(lesson.videoStorageKey);
+
+  if (useR2 && lesson.videoStorageKey) {
+    const key = normalizeObjectStorageKey(lesson.videoStorageKey, "video");
+    const publicUrl = buildPublicObjectUrl(key);
+    if (publicUrl) return publicUrl;
+  }
+
+  if (lesson.videoUrl) {
+    if (
+      useR2 ||
+      isLegacyAppUploadUrl(lesson.videoUrl) ||
+      isPrivateR2Endpoint(lesson.videoUrl)
+    ) {
       return fixR2AssetUrl(lesson.videoUrl);
     }
+    return lesson.videoUrl;
   }
 
-  if (lesson.videoUrl && isPrivateR2Endpoint(lesson.videoUrl)) {
-    return fixR2AssetUrl(lesson.videoUrl);
-  }
-
-  if (lesson.videoUrl && isAbsolutePublicMediaUrl(lesson.videoUrl)) {
-    return fixR2AssetUrl(lesson.videoUrl);
-  }
-
-  if (lesson.videoUrl && !/^https?:\/\//i.test(lesson.videoUrl)) {
-    const bare = resolveBareObjectKey(lesson.videoUrl);
-    if (bare) return bare;
-  }
-
-  return lesson.videoUrl ?? null;
+  return null;
 }
 
 export function resolveResourceUrl(resource: {
   url: string;
   storageProvider?: string | null;
 }): string {
-  if (resource.storageProvider === "r2") {
+  if (resource.storageProvider === "r2" || env.STORAGE_PROVIDER === "r2") {
     return fixR2AssetUrl(resource.url);
   }
-  if (/\.r2\.cloudflarestorage\.com/i.test(resource.url)) {
+  if (isLegacyAppUploadUrl(resource.url) || isPrivateR2Endpoint(resource.url)) {
     return fixR2AssetUrl(resource.url);
   }
   return resource.url;
@@ -112,7 +119,9 @@ export function resolveResourceUrl(resource: {
 
 export function resolveCourseThumbnailUrl(thumbnail: string | null | undefined): string | null {
   if (!thumbnail) return null;
-  if (thumbnail.startsWith("/uploads/")) return thumbnail;
+  if (isLegacyAppUploadUrl(thumbnail) || env.STORAGE_PROVIDER === "r2") {
+    return fixR2AssetUrl(thumbnail);
+  }
   if (/^https?:\/\//i.test(thumbnail)) return fixR2AssetUrl(thumbnail);
   return thumbnail;
 }
@@ -124,14 +133,31 @@ export function resolveVideoFieldsForSave(input: {
 }): {
   videoUrl: string | null;
   videoStorageKey: string | null;
+  videoStorageProvider: string | null;
 } {
   let storageKey = input.videoStorageKey ?? null;
-  if (storageKey && input.videoStorageProvider === "r2") {
+  let videoUrl = input.videoUrl ?? null;
+  let videoStorageProvider = input.videoStorageProvider ?? null;
+
+  if (videoUrl && isLegacyAppUploadUrl(videoUrl)) {
+    const extracted = extractObjectKeyFromLegacyUrl(videoUrl);
+    if (extracted) {
+      storageKey = storageKey ?? extracted;
+      if (env.STORAGE_PROVIDER === "r2") {
+        videoStorageProvider = "r2";
+      }
+    }
+  }
+
+  if (env.STORAGE_PROVIDER === "r2" && (storageKey || isLegacyAppUploadUrl(videoUrl ?? ""))) {
+    videoStorageProvider = "r2";
+  }
+
+  if (storageKey && videoStorageProvider === "r2") {
     storageKey = normalizeObjectKey(normalizeObjectStorageKey(storageKey, "video"));
   }
 
-  let videoUrl = input.videoUrl ?? null;
-  if (input.videoStorageProvider === "r2" && storageKey) {
+  if (videoStorageProvider === "r2" && storageKey) {
     const publicUrl = buildPublicObjectUrl(storageKey);
     if (publicUrl) {
       videoUrl = publicUrl;
@@ -148,20 +174,20 @@ export function resolveVideoFieldsForSave(input: {
     videoUrl = fixR2AssetUrl(videoUrl);
   }
 
-  if (env.STORAGE_PROVIDER === "r2" && videoUrl?.startsWith("/uploads/")) {
+  if (env.STORAGE_PROVIDER === "r2" && videoUrl && isLegacyAppUploadUrl(videoUrl)) {
     if (storageKey) {
       const rebuilt = buildPublicObjectUrl(storageKey);
       if (rebuilt) {
         videoUrl = rebuilt;
       } else {
         throw ApiError.internal(
-          "Cannot save local /uploads video path when STORAGE_PROVIDER=r2. Re-upload the video.",
+          "Cannot save legacy /uploads video path when STORAGE_PROVIDER=r2. Re-upload the video.",
           "STORAGE_CONFIG_ERROR",
         );
       }
     } else {
       throw ApiError.internal(
-        "Cannot save local /uploads video path when STORAGE_PROVIDER=r2. Re-upload the video.",
+        "Cannot save legacy /uploads video path when STORAGE_PROVIDER=r2. Re-upload the video.",
         "STORAGE_CONFIG_ERROR",
       );
     }
@@ -172,5 +198,10 @@ export function resolveVideoFieldsForSave(input: {
     if (rebuilt) videoUrl = rebuilt;
   }
 
-  return { videoUrl, videoStorageKey: storageKey };
+  if (env.STORAGE_PROVIDER === "r2" && videoUrl?.startsWith("http") && isLegacyAppUploadUrl(videoUrl)) {
+    videoUrl = fixR2AssetUrl(videoUrl);
+    videoStorageProvider = "r2";
+  }
+
+  return { videoUrl, videoStorageKey: storageKey, videoStorageProvider };
 }
