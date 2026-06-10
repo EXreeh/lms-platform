@@ -61,6 +61,11 @@ const studentNav: NavLink[] = [
     match: (p) => p.startsWith("/dashboard/student/live-classes"),
   },
   {
+    href: "/dashboard/student/recordings",
+    label: "Recordings",
+    match: (p) => p.startsWith("/dashboard/student/recordings"),
+  },
+  {
     href: "/dashboard/student/resources",
     label: "Resources",
     match: (p) => p.startsWith("/dashboard/student/resources"),
@@ -103,8 +108,13 @@ const teacherNav: NavLink[] = [
   },
   {
     href: "/dashboard/teacher/live-classes",
-    label: "Live Classes",
+    label: "My Live Classes",
     match: (p) => p.startsWith("/dashboard/teacher/live-classes"),
+  },
+  {
+    href: "/dashboard/teacher/recordings",
+    label: "Batch Recordings",
+    match: (p) => p.startsWith("/dashboard/teacher/recordings"),
   },
 ];
 
@@ -155,6 +165,11 @@ const adminNav: NavLink[] = [
     href: "/dashboard/admin/live-classes",
     label: "Live Classes",
     match: (p) => p.startsWith("/dashboard/admin/live-classes"),
+  },
+  {
+    href: "/dashboard/admin/recordings",
+    label: "Recordings",
+    match: (p) => p.startsWith("/dashboard/admin/recordings"),
   },
   {
     href: "/dashboard/admin/activity",

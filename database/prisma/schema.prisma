@@ -112,6 +112,7 @@ model User {
   messagesSent        Message[]     @relation("MessageSender")
   messageRecipients   MessageRecipient[]
   liveClassesTeaching LiveClass[]   @relation("LiveClassTeacher")
+  liveClassRecordings LiveClassRecording[] @relation("RecordingTeacher")
   courseAccess            StudentCourseAccess[] @relation("StudentAccess")
   courseAccessAssigned    StudentCourseAccess[] @relation("AccessAssignedBy")
   teacherSalaries         TeacherSalary[]
@@ -148,6 +149,8 @@ model Course {
   batches     Batch[]
   batchCourses BatchCourse[]
   studentAccess StudentCourseAccess[]
+  liveClasses  LiveClass[]
+  liveClassRecordings LiveClassRecording[]
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
@@ -460,6 +463,12 @@ enum LiveClassStatus {
   CANCELLED
 }
 
+enum RecordingStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
 enum AccessType {
   ADMIN_ASSIGNED
   BATCH_ASSIGNED
@@ -555,6 +564,7 @@ model Batch {
   feePlans    FeePlan[]
   messages    Message[]
   liveClasses LiveClass[]
+  recordings  LiveClassRecording[]
 
   @@index([teacherId, status])
   @@index([status, startDate])
@@ -705,21 +715,59 @@ model MessageRecipient {
 }
 
 model LiveClass {
-  id          String          @id @default(cuid())
-  batchId     String          @map("batch_id")
-  teacherId   String          @map("teacher_id")
-  title       String
-  description String?         @db.Text
-  scheduledAt DateTime        @map("scheduled_at")
-  duration    Int             @default(60)
-  status      LiveClassStatus @default(SCHEDULED)
-  meetingUrl  String?         @map("meeting_url")
-  createdAt   DateTime        @default(now()) @map("created_at")
+  id              String          @id @default(cuid())
+  batchId         String          @map("batch_id")
+  courseId        String          @map("course_id")
+  teacherId       String          @map("teacher_id")
+  title           String
+  description     String?         @db.Text
+  scheduledAt     DateTime        @map("scheduled_at")
+  durationMinutes Int             @default(60) @map("duration")
+  status          LiveClassStatus @default(SCHEDULED)
+  liveUrl         String?         @map("live_url")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
 
-  batch   Batch @relation(fields: [batchId], references: [id], onDelete: Cascade)
-  teacher User  @relation("LiveClassTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  batch      Batch                 @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  course     Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacher    User                  @relation("LiveClassTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  recordings LiveClassRecording[]
 
   @@index([batchId, scheduledAt])
+  @@index([courseId, scheduledAt])
   @@index([teacherId, scheduledAt])
+  @@index([status, scheduledAt])
   @@map("live_classes")
+}
+
+model LiveClassRecording {
+  id                  String          @id @default(cuid())
+  liveClassId         String          @map("live_class_id")
+  batchId             String          @map("batch_id")
+  courseId            String          @map("course_id")
+  teacherId           String          @map("teacher_id")
+  title               String
+  description         String?         @db.Text
+  videoUrl            String          @map("video_url")
+  videoStorageKey     String?         @map("video_storage_key")
+  videoStorageProvider String?        @map("video_storage_provider")
+  videoFileName       String?         @map("video_file_name")
+  videoMimeType       String?         @map("video_mime_type")
+  videoSize           Int?            @map("video_size")
+  durationSeconds     Int?            @map("duration_seconds")
+  status              RecordingStatus @default(ACTIVE)
+  uploadedAt          DateTime        @default(now()) @map("uploaded_at")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  liveClass LiveClass @relation(fields: [liveClassId], references: [id], onDelete: Cascade)
+  batch     Batch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  teacher   User      @relation("RecordingTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([liveClassId, status])
+  @@index([batchId, status])
+  @@index([courseId, status])
+  @@index([teacherId, uploadedAt])
+  @@map("live_class_recordings")
 }

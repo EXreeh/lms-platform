@@ -48,7 +48,10 @@ export function isAbsoluteVideoUrl(url: string): boolean {
   const trimmed = url.trim();
   if (!/^https?:\/\//i.test(trimmed)) return false;
   if (isLegacyAppUploadUrl(trimmed)) return false;
-  return trimmed.startsWith(`${R2_PUBLIC_BASE}/videos/`);
+  return (
+    trimmed.startsWith(`${R2_PUBLIC_BASE}/videos/`) ||
+    trimmed.startsWith(`${R2_PUBLIC_BASE}/recordings/`)
+  );
 }
 
 export function isUploadedMediaUrl(url: string): boolean {
@@ -75,11 +78,11 @@ export function resolvePublicMediaUrl(url: string | null | undefined): string | 
     return null;
   }
 
-  if (/^videos\//i.test(trimmed)) {
+  if (/^(videos|recordings)\//i.test(trimmed)) {
     return buildPublicMediaUrl(trimmed);
   }
 
-  if (trimmed.startsWith("/videos/")) {
+  if (trimmed.startsWith("/videos/") || trimmed.startsWith("/recordings/")) {
     return `${R2_PUBLIC_BASE}${trimmed}`;
   }
 

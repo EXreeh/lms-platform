@@ -27,7 +27,7 @@ export function buildPublicObjectUrl(objectKey: string): string | null {
 }
 
 function resolveBareObjectKey(value: string): string | null {
-  if (!/^(videos|resources|thumbnails)\//i.test(value)) return null;
+  if (!/^(videos|resources|thumbnails|recordings)\//i.test(value)) return null;
   return buildPublicObjectUrl(value);
 }
 

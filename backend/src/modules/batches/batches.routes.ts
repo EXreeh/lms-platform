@@ -33,6 +33,11 @@ batchesRoutes.post(
   asyncHandler(batchesController.create),
 );
 
+batchesRoutes.get(
+  "/:batchId/recordings",
+  authorize("ADMIN", "TEACHER", "STUDENT"),
+  asyncHandler(batchesController.batchRecordings),
+);
 batchesRoutes.get("/:batchId", asyncHandler(batchesController.getOne));
 batchesRoutes.patch(
   "/:batchId",

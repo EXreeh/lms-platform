@@ -52,9 +52,15 @@ const teacherNav: NavItem[] = [
   },
   {
     href: "/dashboard/teacher/live-classes",
-    label: "Live Classes",
+    label: "My Live Classes",
     icon: "▶",
     match: (p) => p.startsWith("/dashboard/teacher/live-classes"),
+  },
+  {
+    href: "/dashboard/teacher/recordings",
+    label: "Batch Recordings",
+    icon: "🎬",
+    match: (p) => p.startsWith("/dashboard/teacher/recordings"),
   },
   {
     href: "/dashboard/profile",
@@ -100,6 +106,12 @@ const studentNav: NavItem[] = [
     label: "Live Classes",
     icon: "▶",
     match: (p) => p.startsWith("/dashboard/student/live-classes"),
+  },
+  {
+    href: "/dashboard/student/recordings",
+    label: "Recordings",
+    icon: "🎬",
+    match: (p) => p.startsWith("/dashboard/student/recordings"),
   },
   {
     href: "/dashboard/student/resources",
@@ -187,6 +199,12 @@ const adminNav: NavItem[] = [
     label: "Live Classes",
     icon: "▶",
     match: (p) => p.startsWith("/dashboard/admin/live-classes"),
+  },
+  {
+    href: "/dashboard/admin/recordings",
+    label: "Recordings",
+    icon: "🎬",
+    match: (p) => p.startsWith("/dashboard/admin/recordings"),
   },
   {
     href: "/dashboard/admin/activity",

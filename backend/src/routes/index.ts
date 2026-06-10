@@ -14,7 +14,13 @@ import { adminRoutes } from "../modules/admin/admin.routes.js";
 import { feesRoutes } from "../modules/fees/fees.routes.js";
 import { batchesRoutes } from "../modules/batches/batches.routes.js";
 import { messagesRoutes } from "../modules/messages/messages.routes.js";
-import { liveClassesRoutes } from "../modules/live-classes/live-classes.routes.js";
+import {
+  adminLiveClassesRoutes,
+  liveClassesRoutes,
+  recordingsRoutes,
+  studentLiveClassesRoutes,
+  teacherLiveClassesRoutes,
+} from "../modules/live-classes/live-classes.routes.js";
 import { courseAccessRoutes } from "../modules/course-access/course-access.routes.js";
 import { teacherSalaryRoutes } from "../modules/teacher-salary/teacher-salary.routes.js";
 import { teacherAttendanceRoutes } from "../modules/teacher-attendance/teacher-attendance.routes.js";
@@ -63,7 +69,11 @@ apiRouter.use("/admin", adminRoutes);
 apiRouter.use("/fees", feesRoutes);
 apiRouter.use("/batches", batchesRoutes);
 apiRouter.use("/messages", messagesRoutes);
+apiRouter.use("/admin/live-classes", adminLiveClassesRoutes);
+apiRouter.use("/teacher/live-classes", teacherLiveClassesRoutes);
+apiRouter.use("/student/live-classes", studentLiveClassesRoutes);
 apiRouter.use("/live-classes", liveClassesRoutes);
+apiRouter.use("/recordings", recordingsRoutes);
 apiRouter.use("/course-access", courseAccessRoutes);
 apiRouter.use("/teacher-salaries", teacherSalaryRoutes);
 apiRouter.use("/teacher-attendance", teacherAttendanceRoutes);

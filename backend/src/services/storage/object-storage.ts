@@ -102,6 +102,56 @@ export class ObjectStorageProvider implements StorageProvider {
     return url;
   }
 
+  async saveWithKey(
+    file: Express.Multer.File,
+    objectKeyPath: string,
+    contentType?: string,
+  ): Promise<StoredFile> {
+    if (!file.buffer?.length) {
+      throw ApiError.internal(
+        "Cloud upload requires in-memory file buffer.",
+        "STORAGE_ERROR",
+      );
+    }
+
+    const resolvedType =
+      contentType ??
+      resolveVideoContentType(file.mimetype, file.originalname) ??
+      (file.mimetype || "application/octet-stream");
+    const publicUrl = buildPublicMediaUrl(
+      objectKeyPath,
+      normalizePublicBaseUrl(this.config.publicBaseUrl),
+    );
+    if (!publicUrl) {
+      throw ApiError.internal("Cannot build public URL for recording", "STORAGE_CONFIG_ERROR");
+    }
+
+    try {
+      await this.client.send(
+        new PutObjectCommand({
+          Bucket: this.config.bucket,
+          Key: objectKeyPath,
+          Body: file.buffer,
+          ContentType: resolvedType,
+          ContentLength: file.size,
+        }),
+      );
+
+      return {
+        url: publicUrl,
+        publicUrl,
+        fileName: sanitizeDisplayName(file.originalname),
+        mimeType: resolvedType,
+        size: file.size,
+        fileSize: file.size,
+        storageKey: objectKeyPath,
+        storageProvider: this.config.provider,
+      };
+    } catch (err) {
+      mapS3Error(err, this.config.provider, this.config.bucket);
+    }
+  }
+
   async save(file: Express.Multer.File, category: UploadCategory): Promise<StoredFile> {
     if (!file.buffer?.length) {
       throw ApiError.internal(

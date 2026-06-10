@@ -51,7 +51,7 @@ export function resolveVideoPlaybackUrl(value: {
         ? value.videoStorageKey
         : `videos/${value.videoStorageKey}`,
     );
-    if (key.startsWith("videos/")) {
+    if (key.startsWith("videos/") || key.startsWith("recordings/")) {
       const built = buildPublicMediaUrl(key);
       if (built) return built;
     }

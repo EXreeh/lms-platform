@@ -28,7 +28,7 @@ export function buildPublicMediaUrl(objectKey: string, baseUrl?: string): string
   if (!base) return null;
 
   const key = normalizeObjectKey(objectKey);
-  if (!/^(videos|resources|thumbnails)\//i.test(key)) return null;
+  if (!/^(videos|resources|thumbnails|recordings)\//i.test(key)) return null;
 
   return `${base}/${key}`;
 }

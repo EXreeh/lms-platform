@@ -140,18 +140,74 @@ export interface TeacherSalarySummary {
   recordCount: number;
 }
 
+export type LiveClassStatus = "SCHEDULED" | "LIVE" | "COMPLETED" | "CANCELLED";
+export type RecordingStatus = "ACTIVE" | "ARCHIVED" | "DELETED";
+
+export interface LiveClassRecordingSummary {
+  id: string;
+  title: string;
+  videoUrl: string;
+  status: RecordingStatus;
+  uploadedAt: string;
+}
+
 export interface LiveClass {
   id: string;
   batchId: string;
   batchName: string;
+  batchStatus?: string;
+  courseId: string;
+  courseTitle: string;
+  courseSlug: string;
   teacherId: string;
   teacherName: string;
   title: string;
   description: string | null;
   scheduledAt: string;
+  durationMinutes: number;
   duration: number;
-  status: string;
-  meetingUrl: string | null;
+  status: LiveClassStatus;
+  liveUrl: string | null;
+  recordingCount?: number;
+  recordings?: LiveClassRecordingSummary[];
   createdAt: string;
-  joinMessage: string;
+  updatedAt: string;
+  /** @deprecated */
+  meetingUrl?: string | null;
+  /** @deprecated */
+  joinMessage?: string;
+}
+
+export interface LiveClassRecording {
+  id: string;
+  liveClassId: string;
+  liveClassTitle: string;
+  liveClassScheduledAt: string;
+  batchId: string;
+  batchName: string;
+  courseId: string;
+  courseTitle: string;
+  courseSlug: string;
+  teacherId: string;
+  teacherName: string;
+  title: string;
+  description: string | null;
+  videoUrl: string;
+  videoStorageKey: string | null;
+  videoStorageProvider: string | null;
+  videoFileName: string | null;
+  videoMimeType: string | null;
+  videoSize: number | null;
+  durationSeconds: number | null;
+  status: RecordingStatus;
+  uploadedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LiveClassStats {
+  upcoming: number;
+  completed: number;
+  today: number;
+  totalRecordings: number;
 }

@@ -85,3 +85,13 @@ export async function studentMine(req: Request, res: Response): Promise<void> {
   const data = await batchesService.getStudentBatch(user.id);
   res.json({ success: true, data });
 }
+
+export async function batchRecordings(req: Request, res: Response): Promise<void> {
+  const user = requireUser(req);
+  const { listRecordings } = await import("../live-classes/live-classes.service.js");
+  const data = await listRecordings(
+    { batchId: req.params.batchId, status: "ACTIVE" },
+    { role: user.role, userId: user.id },
+  );
+  res.json({ success: true, data });
+}

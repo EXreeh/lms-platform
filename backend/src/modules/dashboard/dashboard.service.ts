@@ -32,7 +32,7 @@ const EMPTY_FEE_STATS = {
 };
 
 export async function getTeacherDashboard(userId: string) {
-  const [courses, batches, unreadMessages, upcomingLive] = await Promise.all([
+  const [courses, batches, unreadMessages, upcomingLive, liveClassStats] = await Promise.all([
     prisma.course.findMany({
       where: { teacherId: userId, deleteStatus: { not: "DELETED" } },
       include: courseListInclude,
@@ -41,6 +41,7 @@ export async function getTeacherDashboard(userId: string) {
     batchesService.getTeacherBatches(userId),
     messagesService.getUnreadCount(userId),
     liveClassesService.listLiveClasses({ teacherId: userId, upcoming: true }),
+    liveClassesService.getLiveClassStats({ role: "TEACHER", userId }),
   ]);
 
   const mapped = courses.map((c) => ({
@@ -89,6 +90,8 @@ export async function getTeacherDashboard(userId: string) {
       batchStudentCount,
       unreadMessages: unreadMessages ?? 0,
       upcomingLiveClasses: upcomingLive?.length ?? 0,
+      todaysLiveClasses: liveClassStats?.today ?? 0,
+      totalRecordings: liveClassStats?.totalRecordings ?? 0,
     },
     batches: batches ?? [],
     latestMessage,
@@ -105,7 +108,7 @@ export async function getAdminDashboard(adminUserId: string) {
   try {
     await feesService.refreshOverdueStatuses();
 
-    const [stats, recentUsers, courses, teachers, activityResult, feeAnalytics, activeBatches, upcomingLive, unreadMessages] =
+    const [stats, recentUsers, courses, teachers, activityResult, feeAnalytics, activeBatches, upcomingLive, liveClassStats, unreadMessages] =
       await Promise.all([
         getPlatformStats(),
         prisma.user.findMany({
@@ -146,6 +149,7 @@ export async function getAdminDashboard(adminUserId: string) {
         feesService.getFeeAnalytics(),
         batchesService.getActiveBatchCount(),
         liveClassesService.getUpcomingCount(),
+        liveClassesService.getLiveClassStats({ role: "ADMIN", userId: adminUserId }),
         messagesService.getUnreadCount(adminUserId),
       ]);
 
@@ -170,6 +174,9 @@ export async function getAdminDashboard(adminUserId: string) {
         overdueStudents: feeAnalytics?.overdueStudents ?? 0,
         activeBatches: activeBatches ?? 0,
         upcomingLiveClasses: upcomingLive ?? 0,
+        completedLiveClasses: liveClassStats?.completed ?? 0,
+        todaysLiveClasses: liveClassStats?.today ?? 0,
+        totalRecordings: liveClassStats?.totalRecordings ?? 0,
         unreadMessages: unreadMessages ?? 0,
       },
       recentRegistrations: (recentUsers ?? []).map((u) => ({

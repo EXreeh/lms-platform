@@ -27,6 +27,7 @@ import { useToast } from "@/context/toast-context";
 import { ApiClientError } from "@/lib/api";
 import { getDashboardPathForRole } from "@/lib/auth-storage";
 import { layout } from "@/lib/layout";
+import { BatchLiveSection } from "@/components/learning/batch-live-section";
 
 function flattenLessons(modules: ModuleWithProgress[]): LessonWithProgress[] {
   return modules.flatMap((m) => m.lessons);
@@ -263,6 +264,10 @@ export default function CourseLearnPage() {
                     initialWatchedDuration={activeLesson.progress?.watchedDuration ?? 0}
                     onWatchUpdate={isAdminPreview ? undefined : handleWatchUpdate}
                   />
+
+                  {!isAdminPreview && data?.course.id ? (
+                    <BatchLiveSection courseId={data.course.id} />
+                  ) : null}
 
                   <div className="rounded-2xl border border-border bg-card p-6">
                     <div className="flex flex-wrap items-start justify-between gap-4">
