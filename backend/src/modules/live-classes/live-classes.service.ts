@@ -1,4 +1,4 @@
-import type { LiveClassStatus, Prisma, RecordingStatus, Role } from "@lms/database";
+import type { LiveClassStatus, MeetingProvider, Prisma, RecordingStatus, Role } from "@lms/database";
 import { prisma } from "../../config/database.js";
 import { ApiError } from "../../utils/api-error.js";
 import { logPrismaRouteError } from "../../utils/prisma-safe.js";
@@ -16,6 +16,12 @@ import {
   saveLiveClassRecording,
 } from "../../services/storage/recording-storage.js";
 import { resolveLessonVideoUrl } from "../../services/storage/video-url.helpers.js";
+import {
+  canJoinLiveClass,
+  normalizeMeetingInput,
+  resolveJoinUrl,
+  type MeetingInput,
+} from "./meeting.helpers.js";
 
 const liveClassInclude = {
   batch: { select: { id: true, name: true, status: true } },
@@ -39,8 +45,9 @@ const recordingInclude = {
 type LiveClassRow = Prisma.LiveClassGetPayload<{ include: typeof liveClassInclude }>;
 type RecordingRow = Prisma.LiveClassRecordingGetPayload<{ include: typeof recordingInclude }>;
 
-export function mapLiveClass(row: LiveClassRow) {
-  return {
+export function mapLiveClass(row: LiveClassRow, role: Role = "ADMIN") {
+  const joinUrl = resolveJoinUrl(row);
+  const base = {
     id: row.id,
     batchId: row.batchId,
     batchName: row.batch.name,
@@ -56,7 +63,8 @@ export function mapLiveClass(row: LiveClassRow) {
     durationMinutes: row.durationMinutes,
     duration: row.durationMinutes,
     status: row.status,
-    liveUrl: row.liveUrl,
+    meetingProvider: row.meetingProvider,
+    canJoin: canJoinLiveClass(row.status) && Boolean(joinUrl),
     recordingCount: row._count.recordings,
     recordings: row.recordings?.map((r) => ({
       id: r.id,
@@ -67,6 +75,25 @@ export function mapLiveClass(row: LiveClassRow) {
     })) ?? [],
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+
+  if (role === "STUDENT") {
+    return {
+      ...base,
+      joinUrl,
+      meetingUrl: joinUrl,
+      meetingPassword: row.meetingPassword,
+    };
+  }
+
+  return {
+    ...base,
+    meetingUrl: row.meetingUrl,
+    joinUrl,
+    meetingId: row.meetingId,
+    meetingPassword: row.meetingPassword,
+    startUrl: row.startUrl,
+    liveUrl: row.meetingUrl,
   };
 }
 
@@ -153,7 +180,10 @@ function buildListWhere(filters: {
   return where;
 }
 
-export async function listLiveClasses(filters: Parameters<typeof buildListWhere>[0]) {
+export async function listLiveClasses(
+  filters: Parameters<typeof buildListWhere>[0],
+  role: Role = "ADMIN",
+) {
   try {
     const rows = await prisma.liveClass.findMany({
       where: buildListWhere(filters),
@@ -161,18 +191,50 @@ export async function listLiveClasses(filters: Parameters<typeof buildListWhere>
       orderBy: { scheduledAt: "asc" },
       take: 100,
     });
-    return rows.map(mapLiveClass);
+    return rows.map((row) => mapLiveClass(row, role));
   } catch (error) {
     logPrismaRouteError("/api/live-classes", error, "listLiveClasses");
     return [];
   }
 }
 
+export async function listUpcomingLiveClasses(studentId: string) {
+  return listLiveClasses({ studentId, upcoming: true }, "STUDENT");
+}
+
+export async function joinLiveClass(id: string, role: Role, userId: string) {
+  const row = await prisma.liveClass.findUnique({ where: { id }, include: liveClassInclude });
+  if (!row) throw ApiError.notFound("Live class not found");
+  await assertCanAccessLiveClass(role, userId, row);
+
+  if (!canJoinLiveClass(row.status)) {
+    throw ApiError.badRequest("This live class cannot be joined");
+  }
+
+  const joinUrl = resolveJoinUrl(row);
+  if (!joinUrl) throw ApiError.badRequest("No meeting link available");
+
+  if (role === "STUDENT") {
+    return {
+      joinUrl,
+      meetingUrl: joinUrl,
+      meetingPassword: row.meetingPassword,
+    };
+  }
+
+  return {
+    joinUrl,
+    meetingUrl: row.meetingUrl ?? joinUrl,
+    meetingPassword: row.meetingPassword,
+    startUrl: row.startUrl,
+  };
+}
+
 export async function getLiveClassById(id: string, role: Role, userId: string) {
   const row = await prisma.liveClass.findUnique({ where: { id }, include: liveClassInclude });
   if (!row) throw ApiError.notFound("Live class not found");
   await assertCanAccessLiveClass(role, userId, row);
-  return mapLiveClass(row);
+  return mapLiveClass(row, role);
 }
 
 export async function createLiveClass(
@@ -184,8 +246,7 @@ export async function createLiveClass(
     description?: string;
     scheduledAt: string;
     durationMinutes?: number;
-    liveUrl?: string;
-  },
+  } & MeetingInput,
   actor: { role: Role; userId: string },
 ) {
   const batch = await getBatchOrThrow(input.batchId);
@@ -201,6 +262,8 @@ export async function createLiveClass(
     teacherId = actor.userId;
   }
 
+  const meeting = normalizeMeetingInput(input);
+
   const row = await prisma.liveClass.create({
     data: {
       batchId: input.batchId,
@@ -210,7 +273,12 @@ export async function createLiveClass(
       description: input.description,
       scheduledAt: new Date(input.scheduledAt),
       durationMinutes: input.durationMinutes ?? 60,
-      liveUrl: input.liveUrl || null,
+      meetingProvider: meeting.meetingProvider,
+      meetingUrl: meeting.meetingUrl,
+      meetingId: meeting.meetingId,
+      meetingPassword: meeting.meetingPassword,
+      startUrl: meeting.startUrl,
+      joinUrl: meeting.joinUrl,
     },
     include: liveClassInclude,
   });
@@ -223,7 +291,7 @@ export async function createLiveClass(
     scheduledAt: row.scheduledAt.toISOString(),
   });
 
-  return mapLiveClass(row);
+  return mapLiveClass(row, actor.role);
 }
 
 export async function updateLiveClass(
@@ -234,8 +302,7 @@ export async function updateLiveClass(
     scheduledAt?: string;
     durationMinutes?: number;
     status?: LiveClassStatus;
-    liveUrl?: string | null;
-  },
+  } & MeetingInput,
   actor: { role: Role; userId: string },
 ) {
   const existing = await prisma.liveClass.findUnique({ where: { id } });
@@ -247,6 +314,26 @@ export async function updateLiveClass(
     throw ApiError.forbidden();
   }
 
+  const hasMeetingUpdate =
+    input.meetingProvider !== undefined ||
+    input.meetingUrl !== undefined ||
+    input.liveUrl !== undefined ||
+    input.meetingId !== undefined ||
+    input.meetingPassword !== undefined ||
+    input.startUrl !== undefined ||
+    input.joinUrl !== undefined;
+
+  const meeting = hasMeetingUpdate
+    ? normalizeMeetingInput({
+        meetingProvider: input.meetingProvider ?? existing.meetingProvider,
+        meetingUrl: input.meetingUrl ?? input.liveUrl ?? existing.meetingUrl,
+        meetingId: input.meetingId ?? existing.meetingId,
+        meetingPassword: input.meetingPassword ?? existing.meetingPassword,
+        startUrl: input.startUrl ?? existing.startUrl,
+        joinUrl: input.joinUrl ?? existing.joinUrl,
+      })
+    : null;
+
   const row = await prisma.liveClass.update({
     where: { id },
     data: {
@@ -255,12 +342,27 @@ export async function updateLiveClass(
       ...(input.scheduledAt !== undefined && { scheduledAt: new Date(input.scheduledAt) }),
       ...(input.durationMinutes !== undefined && { durationMinutes: input.durationMinutes }),
       ...(input.status !== undefined && { status: input.status }),
-      ...(input.liveUrl !== undefined && { liveUrl: input.liveUrl || null }),
+      ...(meeting && {
+        meetingProvider: meeting.meetingProvider as MeetingProvider,
+        meetingUrl: meeting.meetingUrl,
+        meetingId: meeting.meetingId,
+        meetingPassword: meeting.meetingPassword,
+        startUrl: meeting.startUrl,
+        joinUrl: meeting.joinUrl,
+      }),
     },
     include: liveClassInclude,
   });
 
-  return mapLiveClass(row);
+  return mapLiveClass(row, actor.role);
+}
+
+export async function updateLiveClassStatus(
+  id: string,
+  status: LiveClassStatus,
+  actor: { role: Role; userId: string },
+) {
+  return updateLiveClass(id, { status }, actor);
 }
 
 export async function deleteLiveClass(id: string, actor: { role: Role; userId: string }) {
@@ -279,7 +381,7 @@ export async function deleteLiveClass(id: string, actor: { role: Role; userId: s
     include: liveClassInclude,
   });
 
-  return mapLiveClass(row);
+  return mapLiveClass(row, actor.role);
 }
 
 export async function listRecordings(

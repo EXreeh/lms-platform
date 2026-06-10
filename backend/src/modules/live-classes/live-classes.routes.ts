@@ -7,6 +7,7 @@ import {
   createLiveClassSchema,
   createRecordingSchema,
   updateLiveClassSchema,
+  updateLiveClassStatusSchema,
 } from "./live-classes.validation.js";
 import {
   handleMulterErrorForCategory,
@@ -31,6 +32,7 @@ const recordingUpload = [
 liveClassesRoutes.use(authenticate);
 liveClassesRoutes.get("/", asyncHandler(liveClassesController.list));
 liveClassesRoutes.get("/stats", asyncHandler(liveClassesController.stats));
+liveClassesRoutes.post("/:id/join", asyncHandler(liveClassesController.join));
 liveClassesRoutes.get("/:id", asyncHandler(liveClassesController.getOne));
 liveClassesRoutes.post(
   "/:id/recordings",
@@ -53,6 +55,11 @@ adminLiveClassesRoutes.patch(
   validateBody(updateLiveClassSchema),
   asyncHandler(liveClassesController.update),
 );
+adminLiveClassesRoutes.patch(
+  "/:id/status",
+  validateBody(updateLiveClassStatusSchema),
+  asyncHandler(liveClassesController.updateStatus),
+);
 adminLiveClassesRoutes.delete("/:id", asyncHandler(liveClassesController.remove));
 adminLiveClassesRoutes.get("/recordings/list", asyncHandler(liveClassesController.listRecordings));
 
@@ -63,6 +70,16 @@ teacherLiveClassesRoutes.post(
   "/",
   validateBody(createLiveClassSchema),
   asyncHandler(liveClassesController.create),
+);
+teacherLiveClassesRoutes.patch(
+  "/:id",
+  validateBody(updateLiveClassSchema),
+  asyncHandler(liveClassesController.update),
+);
+teacherLiveClassesRoutes.patch(
+  "/:id/status",
+  validateBody(updateLiveClassStatusSchema),
+  asyncHandler(liveClassesController.updateStatus),
 );
 teacherLiveClassesRoutes.post(
   "/:id/recordings",
@@ -75,9 +92,10 @@ teacherLiveClassesRoutes.get(
   asyncHandler(liveClassesController.studentBatchRecordings),
 );
 
-// Student routes
+// Student routes — specific paths before /:id
 studentLiveClassesRoutes.use(authenticate, authorize("STUDENT"));
 studentLiveClassesRoutes.get("/", asyncHandler(liveClassesController.list));
+studentLiveClassesRoutes.get("/upcoming", asyncHandler(liveClassesController.listUpcoming));
 studentLiveClassesRoutes.get(
   "/batches/:batchId/recordings",
   asyncHandler(liveClassesController.studentBatchRecordings),
@@ -86,6 +104,7 @@ studentLiveClassesRoutes.get(
   "/courses/:courseId/batch-recordings",
   asyncHandler(liveClassesController.studentCourseBatchRecordings),
 );
+studentLiveClassesRoutes.get("/:id", asyncHandler(liveClassesController.getOne));
 
 // Shared recordings routes
 recordingsRoutes.use(authenticate);

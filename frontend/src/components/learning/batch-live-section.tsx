@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { JoinLiveClassButton } from "@/components/live-classes/join-live-class-button";
 import { RecordingPlayer } from "@/components/live-classes/recording-player";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -67,11 +68,14 @@ export function BatchLiveSection({ courseId }: BatchLiveSectionProps) {
         ) : (
           <ul className="mt-4 space-y-2">
             {liveClasses.map((c) => (
-              <li key={c.id} className="rounded-xl border border-border px-4 py-3 text-sm">
-                <p className="font-medium">{c.title}</p>
-                <p className="text-muted-foreground">
-                  {new Date(c.scheduledAt).toLocaleString()} · {c.status}
-                </p>
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border px-4 py-3 text-sm">
+                <div>
+                  <p className="font-medium">{c.title}</p>
+                  <p className="text-muted-foreground">
+                    {new Date(c.scheduledAt).toLocaleString()} · {c.status}
+                  </p>
+                </div>
+                <JoinLiveClassButton liveClass={c} />
               </li>
             ))}
           </ul>

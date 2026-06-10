@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+const meetingProviderSchema = z.enum(["ZOOM", "GOOGLE_MEET", "CUSTOM"]);
+const optionalUrl = z.string().url().optional().or(z.literal(""));
+
 export const liveClassListQuerySchema = z.object({
   batchId: z.string().optional(),
   courseId: z.string().optional(),
@@ -11,6 +14,17 @@ export const liveClassListQuerySchema = z.object({
   search: z.string().optional(),
 });
 
+const meetingFieldsSchema = {
+  meetingProvider: meetingProviderSchema.optional(),
+  meetingUrl: optionalUrl,
+  meetingId: z.string().max(120).optional().or(z.literal("")),
+  meetingPassword: z.string().max(64).optional().or(z.literal("")),
+  startUrl: optionalUrl,
+  joinUrl: optionalUrl,
+  /** @deprecated */
+  liveUrl: optionalUrl,
+};
+
 export const createLiveClassSchema = z.object({
   batchId: z.string().min(1),
   courseId: z.string().optional(),
@@ -19,7 +33,7 @@ export const createLiveClassSchema = z.object({
   description: z.string().max(5000).optional(),
   scheduledAt: z.string().min(1),
   durationMinutes: z.coerce.number().int().min(15).max(480).optional(),
-  liveUrl: z.string().url().optional().or(z.literal("")),
+  ...meetingFieldsSchema,
 });
 
 export const updateLiveClassSchema = z.object({
@@ -28,7 +42,17 @@ export const updateLiveClassSchema = z.object({
   scheduledAt: z.string().optional(),
   durationMinutes: z.coerce.number().int().min(15).max(480).optional(),
   status: z.enum(["SCHEDULED", "LIVE", "COMPLETED", "CANCELLED"]).optional(),
-  liveUrl: z.string().url().optional().nullable().or(z.literal("")),
+  ...meetingFieldsSchema,
+  meetingUrl: optionalUrl.nullable(),
+  meetingId: z.string().max(120).optional().nullable().or(z.literal("")),
+  meetingPassword: z.string().max(64).optional().nullable().or(z.literal("")),
+  startUrl: optionalUrl.nullable(),
+  joinUrl: optionalUrl.nullable(),
+  liveUrl: optionalUrl.nullable(),
+});
+
+export const updateLiveClassStatusSchema = z.object({
+  status: z.enum(["SCHEDULED", "LIVE", "COMPLETED", "CANCELLED"]),
 });
 
 export const createRecordingSchema = z.object({

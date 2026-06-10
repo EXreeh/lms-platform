@@ -7,6 +7,7 @@ import {
   liveClassListQuerySchema,
   recordingListQuerySchema,
   updateLiveClassSchema,
+  updateLiveClassStatusSchema,
 } from "./live-classes.validation.js";
 
 function requireUser(req: Request) {
@@ -37,13 +38,26 @@ export async function list(req: Request, res: Response): Promise<void> {
   if (user.role === "STUDENT") filters.studentId = user.id;
   if (user.role === "ADMIN" && query.teacherId) filters.teacherId = query.teacherId;
 
-  const data = await liveClassesService.listLiveClasses(filters);
+  const data = await liveClassesService.listLiveClasses(filters, user.role);
+  res.json({ success: true, data });
+}
+
+export async function listUpcoming(req: Request, res: Response): Promise<void> {
+  const user = requireUser(req);
+  if (user.role !== "STUDENT") throw ApiError.forbidden();
+  const data = await liveClassesService.listUpcomingLiveClasses(user.id);
   res.json({ success: true, data });
 }
 
 export async function getOne(req: Request, res: Response): Promise<void> {
   const user = requireUser(req);
   const data = await liveClassesService.getLiveClassById(req.params.id, user.role, user.id);
+  res.json({ success: true, data });
+}
+
+export async function join(req: Request, res: Response): Promise<void> {
+  const user = requireUser(req);
+  const data = await liveClassesService.joinLiveClass(req.params.id, user.role, user.id);
   res.json({ success: true, data });
 }
 
@@ -56,6 +70,12 @@ export async function create(req: Request, res: Response): Promise<void> {
 export async function update(req: Request, res: Response): Promise<void> {
   const body = updateLiveClassSchema.parse(req.body);
   const data = await liveClassesService.updateLiveClass(req.params.id, body, actor(req));
+  res.json({ success: true, data });
+}
+
+export async function updateStatus(req: Request, res: Response): Promise<void> {
+  const body = updateLiveClassStatusSchema.parse(req.body);
+  const data = await liveClassesService.updateLiveClassStatus(req.params.id, body.status, actor(req));
   res.json({ success: true, data });
 }
 

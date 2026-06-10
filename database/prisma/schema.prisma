@@ -463,6 +463,12 @@ enum LiveClassStatus {
   CANCELLED
 }
 
+enum MeetingProvider {
+  ZOOM
+  GOOGLE_MEET
+  CUSTOM
+}
+
 enum RecordingStatus {
   ACTIVE
   ARCHIVED
@@ -715,18 +721,23 @@ model MessageRecipient {
 }
 
 model LiveClass {
-  id              String          @id @default(cuid())
-  batchId         String          @map("batch_id")
-  courseId        String          @map("course_id")
-  teacherId       String          @map("teacher_id")
+  id              String           @id @default(cuid())
+  batchId         String           @map("batch_id")
+  courseId        String           @map("course_id")
+  teacherId       String           @map("teacher_id")
   title           String
-  description     String?         @db.Text
-  scheduledAt     DateTime        @map("scheduled_at")
-  durationMinutes Int             @default(60) @map("duration")
-  status          LiveClassStatus @default(SCHEDULED)
-  liveUrl         String?         @map("live_url")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  description     String?          @db.Text
+  scheduledAt     DateTime         @map("scheduled_at")
+  durationMinutes Int              @default(60) @map("duration")
+  status          LiveClassStatus  @default(SCHEDULED)
+  meetingProvider MeetingProvider  @default(ZOOM) @map("meeting_provider")
+  meetingUrl      String?          @map("meeting_url")
+  meetingId       String?          @map("meeting_id")
+  meetingPassword String?          @map("meeting_password")
+  startUrl        String?          @map("start_url")
+  joinUrl         String?          @map("join_url")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
   batch      Batch                 @relation(fields: [batchId], references: [id], onDelete: Cascade)
   course     Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)

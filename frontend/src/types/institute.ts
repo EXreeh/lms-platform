@@ -141,6 +141,7 @@ export interface TeacherSalarySummary {
 }
 
 export type LiveClassStatus = "SCHEDULED" | "LIVE" | "COMPLETED" | "CANCELLED";
+export type MeetingProvider = "ZOOM" | "GOOGLE_MEET" | "CUSTOM";
 export type RecordingStatus = "ACTIVE" | "ARCHIVED" | "DELETED";
 
 export interface LiveClassRecordingSummary {
@@ -167,15 +168,30 @@ export interface LiveClass {
   durationMinutes: number;
   duration: number;
   status: LiveClassStatus;
-  liveUrl: string | null;
+  meetingProvider?: MeetingProvider;
+  meetingUrl?: string | null;
+  joinUrl?: string | null;
+  meetingId?: string | null;
+  meetingPassword?: string | null;
+  startUrl?: string | null;
+  canJoin?: boolean;
   recordingCount?: number;
   recordings?: LiveClassRecordingSummary[];
   createdAt: string;
   updatedAt: string;
   /** @deprecated */
-  meetingUrl?: string | null;
-  /** @deprecated */
-  joinMessage?: string;
+  liveUrl?: string | null;
+}
+
+export interface LiveClassJoinInfo {
+  liveClassId: string;
+  title: string;
+  joinUrl: string;
+  meetingUrl: string;
+  meetingPassword?: string | null;
+  meetingProvider?: MeetingProvider;
+  startUrl?: string | null;
+  meetingId?: string | null;
 }
 
 export interface LiveClassRecording {

@@ -1,4 +1,10 @@
-import type { LiveClass, LiveClassRecording, LiveClassStats } from "@/types/institute";
+import type {
+  LiveClass,
+  LiveClassJoinInfo,
+  LiveClassRecording,
+  LiveClassStats,
+  MeetingProvider,
+} from "@/types/institute";
 import { apiRequest } from "./api";
 import { getAuthToken } from "./auth-storage";
 import { uploadApiUrl } from "./constants";
@@ -69,11 +75,40 @@ export function fetchLiveClass(id: string) {
   return apiRequest<{ success: boolean; data: LiveClass }>(`/live-classes/${id}`, { auth: true });
 }
 
+export function fetchStudentLiveClass(id: string) {
+  return apiRequest<{ success: boolean; data: LiveClass }>(`/student/live-classes/${id}`, {
+    auth: true,
+  });
+}
+
+export function fetchStudentUpcomingLiveClasses() {
+  return apiRequest<{ success: boolean; data: LiveClass[] }>(`/student/live-classes/upcoming`, {
+    auth: true,
+  });
+}
+
+export function joinLiveClass(id: string) {
+  return apiRequest<{ success: boolean; data: LiveClassJoinInfo }>(`/live-classes/${id}/join`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
 export function fetchLiveClassStats() {
   return apiRequest<{ success: boolean; data: LiveClassStats }>(`/live-classes/stats`, {
     auth: true,
   });
 }
+
+export type LiveClassMeetingInput = {
+  meetingProvider?: MeetingProvider;
+  meetingUrl?: string;
+  meetingId?: string;
+  meetingPassword?: string;
+  startUrl?: string;
+  joinUrl?: string;
+  liveUrl?: string;
+};
 
 export function scheduleLiveClass(
   body: {
@@ -84,8 +119,7 @@ export function scheduleLiveClass(
     description?: string;
     scheduledAt: string;
     durationMinutes?: number;
-    liveUrl?: string;
-  },
+  } & LiveClassMeetingInput,
   role: "ADMIN" | "TEACHER" = "ADMIN",
 ) {
   const path = role === "TEACHER" ? "/teacher/live-classes" : "/admin/live-classes";
@@ -104,12 +138,30 @@ export function updateLiveClass(
     scheduledAt?: string;
     durationMinutes?: number;
     status?: string;
-    liveUrl?: string | null;
-  },
+  } & LiveClassMeetingInput,
+  role: "ADMIN" | "TEACHER" = "ADMIN",
 ) {
-  return apiRequest<{ success: boolean; data: LiveClass }>(`/admin/live-classes/${id}`, {
+  const path =
+    role === "TEACHER" ? `/teacher/live-classes/${id}` : `/admin/live-classes/${id}`;
+  return apiRequest<{ success: boolean; data: LiveClass }>(path, {
     method: "PATCH",
     body,
+    auth: true,
+  });
+}
+
+export function updateLiveClassStatus(
+  id: string,
+  status: string,
+  role: "ADMIN" | "TEACHER" = "ADMIN",
+) {
+  const path =
+    role === "TEACHER"
+      ? `/teacher/live-classes/${id}/status`
+      : `/admin/live-classes/${id}/status`;
+  return apiRequest<{ success: boolean; data: LiveClass }>(path, {
+    method: "PATCH",
+    body: { status },
     auth: true,
   });
 }

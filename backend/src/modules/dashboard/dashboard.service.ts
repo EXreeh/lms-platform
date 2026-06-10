@@ -40,7 +40,7 @@ export async function getTeacherDashboard(userId: string) {
     }),
     batchesService.getTeacherBatches(userId),
     messagesService.getUnreadCount(userId),
-    liveClassesService.listLiveClasses({ teacherId: userId, upcoming: true }),
+    liveClassesService.listLiveClasses({ teacherId: userId, upcoming: true }, "TEACHER"),
     liveClassesService.getLiveClassStats({ role: "TEACHER", userId }),
   ]);
 
@@ -234,7 +234,7 @@ export async function getStudentDashboard(userId: string) {
       feesService.getStudentFeeDashboard(userId),
       batchesService.getStudentBatch(userId),
       messagesService.getUnreadCount(userId),
-      liveClassesService.listLiveClasses({ studentId: userId, upcoming: true }),
+      liveClassesService.listLiveClasses({ studentId: userId, upcoming: true }, "STUDENT"),
     ]);
 
   const latestMessages = await messagesService.getInbox(userId);
