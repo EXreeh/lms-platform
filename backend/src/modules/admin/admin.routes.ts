@@ -67,6 +67,7 @@ adminRoutes.patch("/courses/:courseId/reject", asyncHandler(adminController.reje
 adminRoutes.patch("/courses/:courseId/publish", asyncHandler(adminController.publishCourse));
 adminRoutes.patch("/courses/:courseId/archive", asyncHandler(adminController.archiveCourse));
 adminRoutes.delete("/courses/:courseId", asyncHandler(adminController.deleteCourse));
+adminRoutes.post("/courses/archive-demo", asyncHandler(adminController.archiveDemoCourses));
 
 adminRoutes.get("/activity", asyncHandler(adminController.listActivity));
 

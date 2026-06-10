@@ -81,6 +81,7 @@ export const listCoursesQuerySchema = z.object({
   status: courseStatusEnum.optional(),
   deleteStatus: z.enum(["ACTIVE", "PENDING_DELETE", "DELETED"]).optional(),
   teacherId: z.string().optional(),
+  activeOnly: z.enum(["true", "false"]).optional(),
   sortBy: z.enum(["createdAt", "title", "updatedAt"]).default("updatedAt"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });

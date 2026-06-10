@@ -21,6 +21,7 @@ import {
 import type { CourseAccessRecord } from "@/lib/course-access-api";
 import type { AccessType } from "@/types/institute";
 import { useToast } from "@/context/toast-context";
+import { ACTIVE_COURSE_LIST_PARAMS, filterActiveCourses } from "@/lib/course-filters";
 import { formatApiError } from "@/lib/format-api-error";
 
 async function loadStudents(search?: string): Promise<UserSelectOption[]> {
@@ -78,9 +79,9 @@ export default function AdminCourseAccessPage() {
   }, [load]);
 
   useEffect(() => {
-    void fetchAdminCourses({ limit: 100 }).then((c) => {
+    void fetchAdminCourses(ACTIVE_COURSE_LIST_PARAMS).then((c) => {
       setCourses(
-        c.data.courses.map((course) => ({
+        filterActiveCourses(c.data.courses).map((course) => ({
           value: course.id,
           label: course.title,
         })),

@@ -10,6 +10,7 @@ import {
   canTeacherEditCourse,
   courseNotDeletedFilter,
   entityFilter,
+  getActiveCourseWhereClause,
   isCatalogVisible,
 } from "./courses.helpers.js";
 import { mapCourse } from "./courses.mapper.js";
@@ -249,21 +250,21 @@ export async function listCourses(
   role: Role | undefined,
   query: ListCoursesQuery,
 ) {
-  const where: Prisma.CourseWhereInput = { ...courseNotDeletedFilter() };
+  const where: Prisma.CourseWhereInput =
+    role === "ADMIN" ? { ...courseNotDeletedFilter() } : { ...getActiveCourseWhereClause() };
 
   if (query.mine && userId && role === "TEACHER") {
     where.teacherId = userId;
+    where.deleteStatus = { in: ["ACTIVE", "PENDING_DELETE"] };
     if (query.status) where.status = query.status;
   } else if (role === "ADMIN" && query.mine) {
     where.teacherId = userId;
   } else if (role === "TEACHER" && !query.mine) {
     where.status = "APPROVED";
-    where.deleteStatus = "ACTIVE";
   } else if (role === "ADMIN") {
     if (query.status) where.status = query.status;
   } else if (role === "STUDENT" && userId) {
     where.status = "APPROVED";
-    where.deleteStatus = "ACTIVE";
     try {
       const access = await prisma.studentCourseAccess.findMany({
         where: { studentId: userId, revokedAt: null },
@@ -317,14 +318,19 @@ export async function listCourses(
 }
 
 export async function getCourse(idOrSlug: string, userId?: string, role?: Role) {
-  const deleted = await prisma.course.findFirst({
+  const unavailable = await prisma.course.findFirst({
     where: {
-      OR: [{ id: idOrSlug }, { slug: idOrSlug }],
-      deleteStatus: "DELETED",
+      AND: [
+        { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+        { OR: [{ deleteStatus: "DELETED" }, { status: "ARCHIVED" }] },
+      ],
     },
-    select: { id: true },
+    select: { id: true, deleteStatus: true, status: true },
   });
-  if (deleted) {
+  if (
+    unavailable &&
+    (unavailable.deleteStatus === "DELETED" || (unavailable.status === "ARCHIVED" && role !== "ADMIN"))
+  ) {
     throw ApiError.notFound("This course is no longer available.");
   }
 
@@ -481,10 +487,16 @@ export async function adminUnpublishCourse(_userId: string, idOrSlug: string) {
 
 export async function adminArchiveCourse(userId: string, idOrSlug: string) {
   const existing = await getCourseOrThrow(idOrSlug, "admin");
-  const course = await prisma.course.update({
-    where: { id: existing.id },
-    data: { status: "ARCHIVED" },
-    include: buildCourseInclude("manage"),
+  const course = await prisma.$transaction(async (tx) => {
+    await tx.studentCourseAccess.updateMany({
+      where: { courseId: existing.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return tx.course.update({
+      where: { id: existing.id },
+      data: { status: "ARCHIVED" },
+      include: buildCourseInclude("manage"),
+    });
   });
 
   await logActivity({
@@ -713,7 +725,7 @@ export async function deleteLesson(userId: string, role: Role, lessonId: string)
 
 export async function getCategories() {
   const rows = await prisma.course.findMany({
-    where: { status: "APPROVED", deleteStatus: "ACTIVE" },
+    where: { status: "APPROVED", ...getActiveCourseWhereClause() },
     select: { category: true },
     distinct: ["category"],
     orderBy: { category: "asc" },
@@ -932,10 +944,16 @@ export async function approveDeleteRequest(
 
   switch (entityType) {
     case "course": {
-      await prisma.course.update({
-        where: { id: entityId },
-        data: { ...data, status: "ARCHIVED" },
-      });
+      await prisma.$transaction([
+        prisma.course.update({
+          where: { id: entityId },
+          data: { ...data, status: "ARCHIVED" },
+        }),
+        prisma.studentCourseAccess.updateMany({
+          where: { courseId: entityId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        }),
+      ]);
       courseId = entityId;
       break;
     }

@@ -68,6 +68,16 @@ async function seedCourse(courseData: SeedCourse, teacherId: string) {
 }
 
 async function main() {
+  if (process.env.NODE_ENV === "production") {
+    console.log("Skipping demo seed in production");
+    return;
+  }
+
+  if (process.env.SEED_DEMO_DATA !== "true") {
+    console.log("Skipping demo seed (set SEED_DEMO_DATA=true to enable)");
+    return;
+  }
+
   console.log("🌱 Seeding CognitiaX AI LMS demo data…");
 
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12);

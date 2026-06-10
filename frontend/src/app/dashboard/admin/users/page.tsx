@@ -28,6 +28,7 @@ import { fetchBatches } from "@/lib/batches-api";
 import type { AdminUser, AdminUserDetail } from "@/types/admin";
 import type { Role } from "@/types/auth";
 import { ApiClientError } from "@/lib/api";
+import { ACTIVE_COURSE_LIST_PARAMS, filterActiveCourses } from "@/lib/course-filters";
 import { useToast } from "@/context/toast-context";
 
 type ConfirmAction =
@@ -102,13 +103,13 @@ export default function AdminUsersPage() {
       try {
         const [batchRes, courseRes] = await Promise.all([
           fetchBatches(),
-          fetchAdminCourses({ limit: 100 }),
+          fetchAdminCourses(ACTIVE_COURSE_LIST_PARAMS),
         ]);
         setBatches(
           batchRes.data.map((b) => ({ value: b.id, label: b.name })),
         );
         setCourses(
-          courseRes.data.courses.map((c) => ({ value: c.id, label: c.title })),
+          filterActiveCourses(courseRes.data.courses).map((c) => ({ value: c.id, label: c.title })),
         );
       } catch {
         /* optional dropdowns */

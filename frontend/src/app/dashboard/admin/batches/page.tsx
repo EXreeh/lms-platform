@@ -29,6 +29,7 @@ import { fetchAdminUsers, fetchAdminCourses } from "@/lib/admin-api";
 import type { Batch, BatchStatus } from "@/types/institute";
 import type { Role } from "@/types/auth";
 import { useToast } from "@/context/toast-context";
+import { ACTIVE_COURSE_LIST_PARAMS, filterActiveCourses } from "@/lib/course-filters";
 import { formatApiError } from "@/lib/format-api-error";
 
 async function loadUsers(role: Role, search?: string): Promise<UserSelectOption[]> {
@@ -140,9 +141,9 @@ export default function AdminBatchesPage() {
   }, [load, search]);
 
   useEffect(() => {
-    void fetchAdminCourses({ limit: 100 }).then((res) => {
+    void fetchAdminCourses(ACTIVE_COURSE_LIST_PARAMS).then((res) => {
       setCourses(
-        res.data.courses.map((course) => ({
+        filterActiveCourses(res.data.courses).map((course) => ({
           value: course.id,
           label: course.title,
         })),

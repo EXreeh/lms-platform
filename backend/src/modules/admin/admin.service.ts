@@ -4,7 +4,10 @@ import { ApiError } from "../../utils/api-error.js";
 import { hashPassword } from "../../utils/password.js";
 import { mapCourse } from "../courses/courses.mapper.js";
 import * as coursesService from "../courses/courses.service.js";
-import { courseNotDeletedFilter } from "../courses/courses.helpers.js";
+import {
+  courseNotDeletedFilter,
+  getActiveCourseWhereClause,
+} from "../courses/courses.helpers.js";
 import { activityMessage, logActivity } from "./activity.service.js";
 import type {
   ChangeRoleInput,
@@ -435,7 +438,10 @@ export async function resetUserPassword(
 }
 
 export async function listAdminCourses(query: ListAdminCoursesQuery) {
-  const where: Prisma.CourseWhereInput = { ...courseNotDeletedFilter() };
+  const where: Prisma.CourseWhereInput =
+    query.activeOnly === "true"
+      ? { ...getActiveCourseWhereClause() }
+      : { ...courseNotDeletedFilter() };
   if (query.status) where.status = query.status;
   if (query.deleteStatus) where.deleteStatus = query.deleteStatus;
   if (query.teacherId) where.teacherId = query.teacherId;
@@ -557,7 +563,55 @@ export async function adminArchiveCourse(adminId: string, courseId: string) {
 }
 
 export async function adminDeleteCourse(adminId: string, courseId: string) {
-  return coursesService.approveDeleteRequest(adminId, "course", courseId);
+  return coursesService.deleteCourse(adminId, "ADMIN", courseId);
+}
+
+const DEMO_COURSE_TITLE_PATTERNS = [
+  "Demo Course",
+  "Sample Course",
+  "Test Course",
+  "Python Demo",
+  "React Demo",
+  "JavaScript Basics Demo",
+];
+
+export async function archiveDemoCourses(adminId: string) {
+  const candidates = await prisma.course.findMany({
+    where: {
+      ...getActiveCourseWhereClause(),
+      OR: DEMO_COURSE_TITLE_PATTERNS.map((pattern) => ({
+        title: { contains: pattern, mode: "insensitive" as const },
+      })),
+    },
+    select: { id: true, title: true, slug: true },
+  });
+
+  if (candidates.length === 0) {
+    return { archived: 0, courses: [] as { id: string; title: string; slug: string }[] };
+  }
+
+  const ids = candidates.map((c) => c.id);
+  await prisma.$transaction([
+    prisma.course.updateMany({
+      where: { id: { in: ids } },
+      data: { status: "ARCHIVED", deleteStatus: "DELETED" },
+    }),
+    prisma.studentCourseAccess.updateMany({
+      where: { courseId: { in: ids }, revokedAt: null },
+      data: { revokedAt: new Date() },
+    }),
+  ]);
+
+  for (const course of candidates) {
+    await logActivity({
+      type: "COURSE_ARCHIVED",
+      userId: adminId,
+      courseId: course.id,
+      metadata: { title: course.title, reason: "demo_cleanup" },
+    });
+  }
+
+  return { archived: candidates.length, courses: candidates };
 }
 
 export async function getReviewQueue() {

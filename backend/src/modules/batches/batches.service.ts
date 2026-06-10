@@ -100,8 +100,11 @@ export async function createBatch(
   }
 
   if (input.courseId) {
-    const course = await prisma.course.findUnique({ where: { id: input.courseId } });
-    if (!course) throw ApiError.badRequest("Course not found");
+    const { getActiveCourseWhereClause } = await import("../courses/courses.helpers.js");
+    const course = await prisma.course.findFirst({
+      where: { id: input.courseId, status: "APPROVED", ...getActiveCourseWhereClause() },
+    });
+    if (!course) throw ApiError.badRequest("Course not found or is no longer active");
   }
 
   const studentIds = [...new Set(input.studentIds ?? [])];

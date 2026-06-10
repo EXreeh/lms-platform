@@ -342,8 +342,9 @@ export async function getAssignedCoursesForStudent(studentId: string) {
     return results;
   } catch (error) {
     logPrismaRouteError("/api/course-access/my-courses", error, "getAssignedCoursesForStudent");
+    const { getActiveCourseWhereClause } = await import("../courses/courses.helpers.js");
     const enrollments = await prisma.enrollment.findMany({
-      where: { studentId },
+      where: { studentId, course: getActiveCourseWhereClause() },
       include: { course: { include: courseInclude } },
     });
     return enrollments.map((e) => ({

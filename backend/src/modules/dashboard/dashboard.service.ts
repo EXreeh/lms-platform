@@ -1,5 +1,6 @@
 import type { Role } from "@lms/database";
 import { prisma } from "../../config/database.js";
+import { getActiveCourseWhereClause } from "../courses/courses.helpers.js";
 import { mapCourse } from "../courses/courses.mapper.js";
 import * as learningService from "../learning/learning.service.js";
 import { getPlatformStats, listActivity } from "../admin/admin.service.js";
@@ -34,7 +35,7 @@ const EMPTY_FEE_STATS = {
 export async function getTeacherDashboard(userId: string) {
   const [courses, batches, unreadMessages, upcomingLive, liveClassStats] = await Promise.all([
     prisma.course.findMany({
-      where: { teacherId: userId, deleteStatus: { not: "DELETED" } },
+      where: { teacherId: userId, ...getActiveCourseWhereClause() },
       include: courseListInclude,
       orderBy: { updatedAt: "desc" },
     }),
@@ -253,7 +254,7 @@ export async function getStudentDashboard(userId: string) {
   const recommended = await prisma.course.findMany({
     where: {
       status: "APPROVED",
-      deleteStatus: "ACTIVE",
+      ...getActiveCourseWhereClause(),
       id: { notIn: enrolledIds.length ? enrolledIds : ["__none__"] },
     },
     include: courseListInclude,

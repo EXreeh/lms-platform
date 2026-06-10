@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/courses/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { fetchCourses, fetchCategories } from "@/lib/courses-api";
+import { filterActiveCourses } from "@/lib/course-filters";
 import { useAuth } from "@/context/auth-context";
 import { COURSE_LEVELS } from "@/types/course";
 import type { Course, CourseLevel } from "@/types/course";
@@ -41,7 +42,7 @@ export default function CoursesPage() {
         },
         isStudent,
       );
-      setCourses(res.data.courses);
+      setCourses(filterActiveCourses(res.data.courses));
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Could not load courses. Please refresh the page.");
     } finally {

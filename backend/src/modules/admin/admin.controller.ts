@@ -121,6 +121,12 @@ export async function deleteCourse(req: Request, res: Response): Promise<void> {
   res.json({ success: true, ...result });
 }
 
+export async function archiveDemoCourses(req: Request, res: Response): Promise<void> {
+  const admin = requireAdmin(req);
+  const result = await adminService.archiveDemoCourses(admin.id);
+  res.json({ success: true, data: result });
+}
+
 export async function reviewQueue(_req: Request, res: Response): Promise<void> {
   const courses = await adminService.getReviewQueue();
   res.json({ success: true, data: { courses } });

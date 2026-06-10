@@ -1,5 +1,20 @@
-import type { CourseStatus, EntityStatus, Role } from "@lms/database";
+import type { CourseStatus, EntityStatus, Prisma, Role } from "@lms/database";
 import { ApiError } from "../../utils/api-error.js";
+
+/** Courses visible in selectors, catalogs, assignments, and student-facing lists. */
+export function getActiveCourseWhereClause(): Prisma.CourseWhereInput {
+  return {
+    deleteStatus: "ACTIVE",
+    status: { not: "ARCHIVED" },
+  };
+}
+
+export function isActiveCourse(course: {
+  deleteStatus: EntityStatus;
+  status: CourseStatus;
+}): boolean {
+  return course.deleteStatus === "ACTIVE" && course.status !== "ARCHIVED";
+}
 
 export function activeEntityFilter() {
   return { deleteStatus: "ACTIVE" as const };

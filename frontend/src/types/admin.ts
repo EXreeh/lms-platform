@@ -107,6 +107,7 @@ export interface ListCoursesParams {
   status?: CourseStatus;
   deleteStatus?: "ACTIVE" | "PENDING_DELETE" | "DELETED";
   teacherId?: string;
+  activeOnly?: boolean;
   sortBy?: "createdAt" | "title" | "updatedAt";
   sortOrder?: "asc" | "desc";
 }

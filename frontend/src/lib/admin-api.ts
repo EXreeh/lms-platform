@@ -136,10 +136,19 @@ export function resetUserPassword(userId: string, password: string) {
 }
 
 export function fetchAdminCourses(params: ListCoursesParams = {}) {
+  const query = { ...params } as Record<string, string | number | boolean | undefined>;
+  if (params.activeOnly) query.activeOnly = "true";
   return apiRequest<{ success: boolean; data: { courses: AdminCourse[]; pagination: Pagination } }>(
-    `/admin/courses${queryString(params as Record<string, string | number | boolean | undefined>)}`,
+    `/admin/courses${queryString(query)}`,
     { auth: true },
   );
+}
+
+export function archiveDemoCourses() {
+  return apiRequest<{
+    success: boolean;
+    data: { archived: number; courses: { id: string; title: string; slug: string }[] };
+  }>("/admin/courses/archive-demo", { method: "POST", auth: true });
 }
 
 export function fetchCourseAnalytics(courseId: string) {

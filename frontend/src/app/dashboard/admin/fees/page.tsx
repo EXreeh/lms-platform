@@ -23,6 +23,7 @@ import { fetchAdminUsers, fetchAdminCourses } from "@/lib/admin-api";
 import { fetchBatches } from "@/lib/batches-api";
 import type { FeeAnalytics, FeePlan } from "@/types/institute";
 import { useToast } from "@/context/toast-context";
+import { ACTIVE_COURSE_LIST_PARAMS, filterActiveCourses } from "@/lib/course-filters";
 import { formatApiError } from "@/lib/format-api-error";
 import { StatCard } from "@/components/dashboard/stat-card";
 
@@ -92,11 +93,11 @@ export default function AdminFeesPage() {
 
   useEffect(() => {
     void Promise.all([
-      fetchAdminCourses({ limit: 100 }),
+      fetchAdminCourses(ACTIVE_COURSE_LIST_PARAMS),
       fetchBatches({ status: "ACTIVE" }),
     ]).then(([courseRes, batchRes]) => {
       setCourses(
-        courseRes.data.courses.map((c) => ({ value: c.id, label: c.title })),
+        filterActiveCourses(courseRes.data.courses).map((c) => ({ value: c.id, label: c.title })),
       );
       setBatches(batchRes.data.map((b) => ({ value: b.id, label: b.name })));
     });
