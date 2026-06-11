@@ -26,6 +26,7 @@ import { useToast } from "@/context/toast-context";
 import { ACTIVE_COURSE_LIST_PARAMS, filterActiveCourses } from "@/lib/course-filters";
 import { formatApiError } from "@/lib/format-api-error";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { paymentProgressPercent } from "@/lib/fee-installments";
 
 async function loadStudents(search?: string): Promise<UserSelectOption[]> {
   const res = await fetchAdminUsers({
@@ -240,7 +241,7 @@ export default function AdminFeesPage() {
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    {["Student", "Total", "Paid", "Pending", "Status", "Due"].map((h) => (
+                    {["Student", "Total", "Paid", "Pending", "Progress", "Status", "Due"].map((h) => (
                       <th key={h} className="px-4 py-3 font-medium">
                         {h}
                       </th>
@@ -250,7 +251,7 @@ export default function AdminFeesPage() {
                 <tbody>
                   {plans.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                      <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                         No fee records yet
                       </td>
                     </tr>
@@ -265,6 +266,9 @@ export default function AdminFeesPage() {
                         <td className="px-4 py-3">₹{p.totalAmount}</td>
                         <td className="px-4 py-3">₹{p.paidAmount}</td>
                         <td className="px-4 py-3">₹{p.pendingAmount}</td>
+                        <td className="px-4 py-3">
+                          {paymentProgressPercent(p.paidAmount, p.totalAmount)}%
+                        </td>
                         <td className="px-4 py-3">{p.status}</td>
                         <td className="px-4 py-3">
                           {p.dueDate ? new Date(p.dueDate).toLocaleDateString() : "—"}
@@ -282,27 +286,53 @@ export default function AdminFeesPage() {
               <h2 className="font-serif text-lg font-bold">
                 {selected.student?.name} — {selected.accessLabel}
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Pending ₹{selected.pendingAmount}
-                {selected.dueDate
-                  ? ` · Due ${new Date(selected.dueDate).toLocaleDateString()}`
-                  : ""}
-              </p>
+              <div className="mt-2 grid gap-2 text-sm sm:grid-cols-4">
+                <div>Total: ₹{selected.totalAmount.toLocaleString("en-IN")}</div>
+                <div>Paid: ₹{selected.paidAmount.toLocaleString("en-IN")}</div>
+                <div>Pending: ₹{selected.pendingAmount.toLocaleString("en-IN")}</div>
+                <div>
+                  Progress: {paymentProgressPercent(selected.paidAmount, selected.totalAmount)}% ·{" "}
+                  {selected.status}
+                </div>
+              </div>
+              {selected.dueDate && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Due {new Date(selected.dueDate).toLocaleDateString()}
+                </p>
+              )}
               {selected.payments && selected.payments.length > 0 && (
-                <ul className="mt-4 divide-y divide-border text-sm">
-                  {selected.payments.map((pay) => (
-                    <li key={pay.id} className="flex justify-between py-2">
-                      <span>
-                        ₹{pay.amount} · {pay.paymentMode}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {(pay.paidAt ?? pay.paymentDate)
-                          ? new Date(pay.paidAt ?? pay.paymentDate!).toLocaleDateString()
-                          : "—"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="mt-4 overflow-x-auto rounded-lg border border-border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/40 text-left">
+                      <tr>
+                        <th className="p-2">Amount</th>
+                        <th className="p-2">Date</th>
+                        <th className="p-2">Method</th>
+                        <th className="p-2">Txn ID</th>
+                        <th className="p-2">Receipt</th>
+                        <th className="p-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selected.payments.map((pay) => (
+                        <tr key={pay.id} className="border-t border-border">
+                          <td className="p-2">₹{pay.amount.toLocaleString("en-IN")}</td>
+                          <td className="p-2">
+                            {(pay.paidAt ?? pay.paymentDate)
+                              ? new Date(pay.paidAt ?? pay.paymentDate!).toLocaleDateString()
+                              : "—"}
+                          </td>
+                          <td className="p-2">
+                            {pay.paymentMethod ?? pay.provider ?? pay.paymentMode ?? "—"}
+                          </td>
+                          <td className="p-2 text-xs">{pay.razorpayPaymentId ?? "—"}</td>
+                          <td className="p-2">{pay.receiptNumber ?? "—"}</td>
+                          <td className="p-2">{pay.status ?? "CAPTURED"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button variant="gold" onClick={() => setConfirmPayment(true)}>

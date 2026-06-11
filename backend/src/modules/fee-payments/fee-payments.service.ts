@@ -8,9 +8,12 @@ import { getRazorpayClient, getRazorpayKeyId } from "../payments/razorpay.client
 import { syncFeeAmounts } from "../fees/fees.service.js";
 import {
   buildReceiptPayload,
+  getMinInstallmentAmount,
   mapFeePayment,
   toNumber,
   toPaise,
+  validateOfflinePaymentAmount,
+  validateStudentInstallmentAmount,
 } from "./fee-payments.helpers.js";
 import type { CreateOrderInput, OfflinePaymentInput, VerifyPaymentInput } from "./fee-payments.validation.js";
 
@@ -53,26 +56,13 @@ async function generateReceiptNumber(): Promise<string> {
   throw ApiError.internal("Could not generate receipt number");
 }
 
-function validatePayAmount(
-  plan: { pendingAmount: Parameters<typeof toNumber>[0]; allowPartialPayments: boolean },
-  amount: number,
-) {
-  const pending = toNumber(plan.pendingAmount);
-  if (pending <= 0) throw ApiError.badRequest("No pending amount on this fee plan");
-  if (amount <= 0) throw ApiError.badRequest("Amount must be greater than zero");
-  if (amount > pending + 0.01) throw ApiError.badRequest("Amount exceeds pending balance");
-  if (!plan.allowPartialPayments && Math.abs(amount - pending) > 0.01) {
-    throw ApiError.badRequest("Full payment is required for this fee plan");
-  }
-}
-
 export async function createFeePaymentOrder(
   studentId: string,
   feePlanId: string,
   input: CreateOrderInput,
 ) {
   const plan = await assertStudentOwnsFeePlan(studentId, feePlanId);
-  validatePayAmount(plan, input.amount);
+  validateStudentInstallmentAmount(toNumber(plan.pendingAmount), input.amount);
 
   const openAttempt = await prisma.paymentAttempt.findFirst({
     where: {
@@ -92,6 +82,7 @@ export async function createFeePaymentOrder(
       amount: toPaise(input.amount),
       currency: openAttempt.currency,
       feeTitle: plan.title,
+      minInstallmentAmount: getMinInstallmentAmount(),
       student: {
         name: `${plan.student.firstName} ${plan.student.lastName}`.trim(),
         email: plan.student.email,
@@ -213,11 +204,8 @@ async function captureFeePayment(params: {
 }
 
 export async function verifyFeePayment(studentId: string, input: VerifyPaymentInput) {
-  await assertStudentOwnsFeePlan(studentId, input.feePlanId);
-  validatePayAmount(
-    await prisma.feePlan.findUniqueOrThrow({ where: { id: input.feePlanId } }),
-    input.amount,
-  );
+  const plan = await assertStudentOwnsFeePlan(studentId, input.feePlanId);
+  validateStudentInstallmentAmount(toNumber(plan.pendingAmount), input.amount);
 
   const body = `${input.razorpay_order_id}|${input.razorpay_payment_id}`;
   const expectedSignature = crypto
@@ -229,6 +217,13 @@ export async function verifyFeePayment(studentId: string, input: VerifyPaymentIn
     await prisma.paymentAttempt.updateMany({
       where: { razorpayOrderId: input.razorpay_order_id },
       data: { status: "FAILED", errorDescription: "Invalid signature" },
+    });
+    await logAudit({
+      actorId: studentId,
+      action: "PAYMENT_FAILED",
+      entityType: "PaymentAttempt",
+      entityId: input.razorpay_order_id,
+      metadata: { feePlanId: input.feePlanId, reason: "Invalid signature" },
     });
     throw ApiError.badRequest("Invalid payment signature", "INVALID_SIGNATURE");
   }
@@ -277,7 +272,7 @@ export async function recordOfflinePayment(adminId: string, input: OfflinePaymen
   if (!plan) throw ApiError.notFound("Fee plan not found");
   if (plan.status === "CANCELLED") throw ApiError.badRequest("Fee plan is cancelled");
 
-  validatePayAmount(plan, input.amount);
+  validateOfflinePaymentAmount(toNumber(plan.pendingAmount), input.amount);
 
   const receiptNumber = await generateReceiptNumber();
   const paidAt = input.paidAt ? new Date(input.paidAt) : new Date();
@@ -310,14 +305,13 @@ export async function recordOfflinePayment(adminId: string, input: OfflinePaymen
 
   await logAudit({
     actorId: adminId,
-    action: "PAYMENT_CAPTURED",
+    action: "OFFLINE_PAYMENT_RECORDED",
     entityType: "FeePayment",
     entityId: payment.id,
     metadata: {
       feePlanId: input.feePlanId,
       amount: input.amount,
       provider: input.provider,
-      offline: true,
       receiptNumber,
     },
   });

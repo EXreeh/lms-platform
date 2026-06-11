@@ -1,8 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { openRazorpayCheckout } from "@/lib/razorpay";
 import { createFeePaymentOrder, verifyFeePayment } from "@/lib/fee-payments-api";
+import {
+  defaultPayAmount,
+  isValidInstallmentAmount,
+  validateInstallmentAmount,
+} from "@/lib/fee-installments";
 import { formatApiError } from "@/lib/format-api-error";
 import type { FeePlan } from "@/types/institute";
 
@@ -10,7 +15,7 @@ interface UseFeePaymentOptions {
   plan: FeePlan;
   userName?: string;
   userEmail?: string;
-  onSuccess?: (receiptNumber: string | null, paymentId: string) => void;
+  onSuccess?: (amount: number, receiptNumber: string | null, paymentId: string) => void;
   onError?: (message: string) => void;
 }
 
@@ -22,18 +27,21 @@ export function useFeePayment({
   onError,
 }: UseFeePaymentOptions) {
   const [paying, setPaying] = useState(false);
-  const [payAmount, setPayAmount] = useState(
-    plan.allowPartialPayments ? String(plan.pendingAmount) : String(plan.pendingAmount),
+  const [payAmount, setPayAmount] = useState(String(defaultPayAmount(plan.pendingAmount)));
+
+  const amountNum = Number(payAmount);
+  const validationError = useMemo(
+    () =>
+      plan.pendingAmount > 0 ? validateInstallmentAmount(plan.pendingAmount, amountNum) : null,
+    [plan.pendingAmount, amountNum],
   );
+  const canPay = plan.pendingAmount > 0 && isValidInstallmentAmount(plan.pendingAmount, amountNum);
 
   const startPayment = useCallback(async () => {
-    const amount = plan.allowPartialPayments ? Number(payAmount) : plan.pendingAmount;
-    if (!Number.isFinite(amount) || amount <= 0) {
-      onError?.("Enter a valid payment amount");
-      return;
-    }
-    if (amount > plan.pendingAmount) {
-      onError?.("Amount exceeds pending balance");
+    const amount = amountNum;
+    const err = validateInstallmentAmount(plan.pendingAmount, amount);
+    if (err) {
+      onError?.(err);
       return;
     }
 
@@ -59,9 +67,9 @@ export function useFeePayment({
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             });
-            onSuccess?.(verifyRes.data.receiptNumber, verifyRes.data.payment.id);
-          } catch (err) {
-            onError?.(formatApiError(err, "Payment verification failed"));
+            onSuccess?.(amount, verifyRes.data.receiptNumber, verifyRes.data.payment.id);
+          } catch (verifyErr) {
+            onError?.(formatApiError(verifyErr, "Payment verification failed"));
           } finally {
             setPaying(false);
           }
@@ -76,7 +84,14 @@ export function useFeePayment({
       setPaying(false);
       onError?.(formatApiError(err, "Could not start payment"));
     }
-  }, [payAmount, plan, userName, userEmail, onSuccess, onError]);
+  }, [amountNum, plan, userName, userEmail, onSuccess, onError]);
 
-  return { paying, payAmount, setPayAmount, startPayment };
+  return {
+    paying,
+    payAmount,
+    setPayAmount,
+    startPayment,
+    validationError,
+    canPay,
+  };
 }

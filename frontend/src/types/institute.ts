@@ -73,6 +73,7 @@ export interface StudentFeeDashboard {
   totalFee: number;
   paidFee: number;
   pendingFee: number;
+  minInstallmentAmount?: number;
   plans: FeePlan[];
   reminders: {
     id: string;

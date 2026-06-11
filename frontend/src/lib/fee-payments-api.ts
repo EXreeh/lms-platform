@@ -38,7 +38,11 @@ export interface PaymentReceipt {
   studentEmail: string;
   courseName: string | null;
   batchName: string | null;
+  installmentAmount: number;
   amount: number;
+  totalFee: number;
+  totalPaidTillNow: number;
+  pendingAmountAfter: number;
   currency: string;
   provider: string;
   paymentMethod: string | null;

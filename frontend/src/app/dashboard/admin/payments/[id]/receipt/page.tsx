@@ -59,8 +59,22 @@ export default function AdminPaymentReceiptPage() {
                   <dd>{receipt.feeTitle}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-muted-foreground">Amount</dt>
-                  <dd className="font-bold">₹{receipt.amount}</dd>
+                  <dt className="text-muted-foreground">Installment paid</dt>
+                  <dd className="font-bold">
+                    ₹{(receipt.installmentAmount ?? receipt.amount).toLocaleString("en-IN")}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Total fee</dt>
+                  <dd>₹{receipt.totalFee.toLocaleString("en-IN")}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Total paid till now</dt>
+                  <dd>₹{receipt.totalPaidTillNow.toLocaleString("en-IN")}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Pending after payment</dt>
+                  <dd>₹{receipt.pendingAmountAfter.toLocaleString("en-IN")}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Paid on</dt>

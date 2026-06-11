@@ -1,5 +1,7 @@
 import type { FeePayment, FeePaymentProvider, FeePlan } from "@lms/database";
 import { Decimal } from "@prisma/client/runtime/library";
+import { env } from "../../config/env.js";
+import { ApiError } from "../../utils/api-error.js";
 
 export function toNumber(value: Decimal | number): number {
   return typeof value === "number" ? value : Number(value);
@@ -7,6 +9,43 @@ export function toNumber(value: Decimal | number): number {
 
 export function toPaise(amount: number): number {
   return Math.round(amount * 100);
+}
+
+export function getMinInstallmentAmount(): number {
+  return env.MIN_INSTALLMENT_AMOUNT;
+}
+
+/** Student online Razorpay payments — enforces ₹10,000 minimum when pending exceeds it. */
+export function validateStudentInstallmentAmount(pendingAmount: number, amount: number): void {
+  if (!Number.isFinite(amount)) {
+    throw ApiError.badRequest("Invalid payment amount");
+  }
+  if (amount <= 0) {
+    throw ApiError.badRequest("Invalid payment amount");
+  }
+  if (pendingAmount <= 0) {
+    throw ApiError.badRequest("This fee is already fully paid");
+  }
+  if (amount > pendingAmount + 0.01) {
+    throw ApiError.badRequest("Amount cannot be more than pending fee");
+  }
+  const min = getMinInstallmentAmount();
+  if (pendingAmount > min && amount + 0.01 < min) {
+    throw ApiError.badRequest("Minimum installment amount is ₹10,000");
+  }
+}
+
+/** Admin offline partial payments — no minimum installment. */
+export function validateOfflinePaymentAmount(pendingAmount: number, amount: number): void {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw ApiError.badRequest("Invalid payment amount");
+  }
+  if (pendingAmount <= 0) {
+    throw ApiError.badRequest("This fee is already fully paid");
+  }
+  if (amount > pendingAmount + 0.01) {
+    throw ApiError.badRequest("Amount cannot be more than pending fee");
+  }
 }
 
 export function mapPaymentModeToProvider(mode: string): FeePaymentProvider {
@@ -81,6 +120,10 @@ export function buildReceiptPayload(
     batch?: { name: string } | null;
   },
 ) {
+  const totalFee = toNumber(plan.totalAmount);
+  const totalPaid = toNumber(plan.paidAmount);
+  const pendingAfter = toNumber(plan.pendingAmount);
+
   return {
     receiptNumber: payment.receiptNumber,
     paymentId: payment.id,
@@ -90,7 +133,11 @@ export function buildReceiptPayload(
     studentEmail: plan.student.email,
     courseName: plan.course?.title ?? null,
     batchName: plan.batch?.name ?? null,
+    installmentAmount: payment.amount,
     amount: payment.amount,
+    totalFee,
+    totalPaidTillNow: totalPaid,
+    pendingAmountAfter: pendingAfter,
     currency: payment.currency,
     provider: payment.provider,
     paymentMethod: payment.paymentMethod,

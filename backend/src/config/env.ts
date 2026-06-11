@@ -53,6 +53,7 @@ const envSchema = z.object({
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  MIN_INSTALLMENT_AMOUNT: z.coerce.number().positive().default(10000),
   STORAGE_PROVIDER: z.preprocess(
     (val) => {
       if (typeof val !== "string" || !val.trim()) return undefined;

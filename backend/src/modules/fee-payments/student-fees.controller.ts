@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { ApiError } from "../../utils/api-error.js";
 import * as feesService from "../fees/fees.service.js";
 import * as feePaymentsService from "./fee-payments.service.js";
+import { getMinInstallmentAmount } from "./fee-payments.helpers.js";
 import { createOrderSchema, verifyPaymentSchema } from "./fee-payments.validation.js";
 
 function requireStudent(req: Request) {
@@ -14,7 +15,10 @@ export async function listFees(req: Request, res: Response): Promise<void> {
   const user = requireStudent(req);
   await feesService.refreshOverdueStatuses();
   const data = await feesService.getStudentFeeDashboard(user.id);
-  res.json({ success: true, data });
+  res.json({
+    success: true,
+    data: { ...data, minInstallmentAmount: getMinInstallmentAmount() },
+  });
 }
 
 export async function getFee(req: Request, res: Response): Promise<void> {
