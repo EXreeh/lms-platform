@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { ApiError } from "../../utils/api-error.js";
-import { requireOwnerUser } from "../../middleware/authorize.js";
+import { requireAdminUser } from "../../middleware/authorize.js";
 import {
   changeRoleSchema,
   createAdminSchema,
@@ -13,7 +13,7 @@ import {
 import * as ownerService from "./owner.service.js";
 
 function requireOwner(req: Request) {
-  requireOwnerUser(req);
+  requireAdminUser(req);
   if (!req.user) throw ApiError.unauthorized();
   return req.user;
 }

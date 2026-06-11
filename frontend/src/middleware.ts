@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { TOKEN_COOKIE } from "@/lib/constants";
 import { parseJwtPayload, isTokenExpired } from "@/lib/jwt";
-import { DASHBOARD_PATHS, type Role } from "@/types/auth";
+import { DASHBOARD_PATHS, displayRole, type AppRole, type Role } from "@/types/auth";
 
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
 const PUBLIC_EXACT = ["/", "/login", "/register", "/forgot-password"];
@@ -43,8 +43,29 @@ function redirectToLogin(request: NextRequest, pathname: string) {
   return res;
 }
 
+function redirectOwnerPath(pathname: string, request: NextRequest): NextResponse | null {
+  if (!pathname.startsWith("/dashboard/owner")) return null;
+
+  if (pathname.startsWith("/dashboard/owner/audit-logs")) {
+    return NextResponse.redirect(new URL("/dashboard/admin/audit-logs", request.url));
+  }
+  if (pathname.startsWith("/dashboard/owner/security")) {
+    return NextResponse.redirect(new URL("/dashboard/admin/security", request.url));
+  }
+  if (pathname.startsWith("/dashboard/owner/users")) {
+    return NextResponse.redirect(new URL("/dashboard/admin/users", request.url));
+  }
+  if (pathname.startsWith("/dashboard/owner/admins")) {
+    return NextResponse.redirect(new URL("/dashboard/admin/users?role=ADMIN", request.url));
+  }
+  return NextResponse.redirect(new URL("/dashboard/admin", request.url));
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const ownerRedirect = redirectOwnerPath(pathname, request);
+  if (ownerRedirect) return ownerRedirect;
+
   const token = request.cookies.get(TOKEN_COOKIE)?.value;
   const { valid: tokenValid, role } = isTokenValid(token);
 
@@ -58,21 +79,20 @@ export function middleware(request: NextRequest) {
       return redirectToLogin(request, pathname);
     }
 
-    const roleBase: Record<Role, string> = {
+    const appRole = displayRole(role);
+    const roleBase: Record<AppRole, string> = {
       STUDENT: "/dashboard/student",
       TEACHER: "/dashboard/teacher",
       ADMIN: "/dashboard/admin",
-      OWNER: "/dashboard/owner",
     };
-    const allowedBase = roleBase[role];
-    const isInstituteAdmin = role === "ADMIN" || role === "OWNER";
+    const allowedBase = roleBase[appRole];
+    const isInstituteAdmin = appRole === "ADMIN";
     const canAccess =
       pathname.startsWith("/dashboard/profile") ||
       pathname.startsWith(allowedBase) ||
       (isInstituteAdmin &&
         (pathname.startsWith("/dashboard/teacher") ||
-          pathname.startsWith("/dashboard/admin"))) ||
-      (role === "OWNER" && pathname.startsWith("/dashboard/owner"));
+          pathname.startsWith("/dashboard/admin")));
 
     if (!canAccess) {
       return NextResponse.redirect(new URL(getRoleDashboard(role), request.url));

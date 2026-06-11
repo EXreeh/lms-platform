@@ -21,7 +21,15 @@ import type {
   SuspendUserInput,
 } from "./admin.validation.js";
 import { notifyAccountCredentials } from "./credentials.helper.js";
-import { canCreateAdmin, canModifyTargetUser, isAdminRole } from "../../utils/roles.js";
+import {
+  canAssignRole,
+  canCreateAdmin,
+  canModifyTargetUser,
+  isAdminRole,
+  normalizeAppRole,
+} from "../../utils/roles.js";
+import { listAuditLogs } from "../audit/audit.service.js";
+import { env } from "../../config/env.js";
 
 const teacherSelect = {
   id: true,
@@ -58,7 +66,7 @@ function mapAdminUser(user: {
     lastName: user.lastName,
     name: `${user.firstName} ${user.lastName}`.trim(),
     email: user.email,
-    role: user.role,
+    role: normalizeAppRole(user.role),
     emailVerified: user.emailVerified,
     suspended: user.suspended,
     lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
@@ -101,9 +109,6 @@ async function getActorRole(actorId: string): Promise<Role> {
 async function assertCanModifyUser(actorId: string, target: { id: string; role: Role }) {
   const actorRole = await getActorRole(actorId);
   assertNotSelf(actorId, target.id, "modify");
-  if (target.role === "OWNER") {
-    throw ApiError.forbidden("Owner accounts cannot be modified");
-  }
   if (!canModifyTargetUser(actorRole, target.role)) {
     throw ApiError.forbidden("You do not have permission to modify this user");
   }
@@ -326,7 +331,7 @@ export async function createTeacher(actorId: string, input: CreateTeacherInput) 
 export async function createAdmin(actorId: string, input: CreateAdminInput) {
   const actorRole = await getActorRole(actorId);
   if (!canCreateAdmin(actorRole)) {
-    throw ApiError.forbidden("Only the platform owner can create admin accounts");
+    throw ApiError.forbidden("Admin access required to create admin accounts");
   }
   const user = await createInstituteUser(actorId, input, "ADMIN");
 
@@ -347,14 +352,11 @@ export async function changeUserRole(actorId: string, userId: string, input: Cha
   const target = await getUserOrThrow(userId);
   assertNotSelf(actorId, target.id, "change the role of");
 
-  if (target.role === "OWNER" || input.role === "OWNER") {
-    throw ApiError.forbidden("Owner role cannot be assigned or changed through this panel");
+  if (!canCreateAdmin(actorRole)) {
+    throw ApiError.forbidden("Admin access required to change user roles");
   }
-  if (input.role === "ADMIN" && actorRole !== "OWNER") {
-    throw ApiError.forbidden("Only the platform owner can promote users to admin");
-  }
-  if (target.role === "ADMIN" && actorRole !== "OWNER") {
-    throw ApiError.forbidden("Only the platform owner can modify admin accounts");
+  if (!canAssignRole(input.role)) {
+    throw ApiError.forbidden("Invalid role assignment");
   }
 
   if (target.role === input.role) {
@@ -400,6 +402,10 @@ export async function suspendUser(actorId: string, userId: string, input: Suspen
   const target = await getUserOrThrow(userId);
   await assertCanModifyUser(actorId, target);
 
+  if (input.suspended && isAdminRole(target.role)) {
+    await assertLastAdminGuard(target, "suspend");
+  }
+
   const user = await prisma.user.update({
     where: { id: userId },
     data: { suspended: input.suspended },
@@ -432,6 +438,10 @@ export async function suspendUser(actorId: string, userId: string, input: Suspen
 export async function deleteUser(actorId: string, userId: string) {
   const target = await getUserOrThrow(userId);
   await assertCanModifyUser(actorId, target);
+
+  if (isAdminRole(target.role)) {
+    await assertLastAdminGuard(target, "delete");
+  }
 
   if (target.role === "TEACHER") {
     const courseCount = await prisma.course.count({ where: { teacherId: userId } });
@@ -814,4 +824,68 @@ export async function streamCertificatePdfAdmin(
 ) {
   const { streamCertificatePdfAdmin: stream } = await import("../certificates/certificates.service.js");
   return stream(res, certificateId, adminId);
+}
+
+export async function getAuditLogs(query: Parameters<typeof listAuditLogs>[0]) {
+  return listAuditLogs(query);
+}
+
+export async function getSecuritySettings() {
+  return {
+    nodeEnv: env.NODE_ENV,
+    storageProvider: env.STORAGE_PROVIDER,
+    corsOriginsConfigured: Boolean(env.ALLOWED_ORIGINS?.trim()),
+    jwtConfigured: Boolean(env.JWT_SECRET?.length >= 32),
+    r2Configured: env.STORAGE_PROVIDER === "r2",
+    emailProvider: env.EMAIL_PROVIDER,
+    rateLimitingEnabled: true,
+    cookieSecure: env.NODE_ENV === "production",
+    demoSeedDisabled: env.NODE_ENV === "production" || process.env.SEED_DEMO_DATA !== "true",
+  };
+}
+
+export async function getLoginHistory(limit = 50) {
+  const logs = await prisma.auditLog.findMany({
+    where: { action: { in: ["USER_LOGIN", "USER_LOGIN_FAILED"] } },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: {
+      actor: { select: { id: true, email: true, firstName: true, lastName: true, role: true } },
+    },
+  });
+  return logs.map((l) => ({
+    id: l.id,
+    action: l.action,
+    actor: l.actor
+      ? { ...l.actor, role: normalizeAppRole(l.actor.role) }
+      : null,
+    ipAddress: l.ipAddress,
+    userAgent: l.userAgent,
+    metadata: l.metadata,
+    createdAt: l.createdAt.toISOString(),
+  }));
+}
+
+export async function listAdmins() {
+  const users = await prisma.user.findMany({
+    where: { role: { in: ["ADMIN", "OWNER"] } },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      role: true,
+      suspended: true,
+      lastLoginAt: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return users.map((u) => ({
+    ...u,
+    role: normalizeAppRole(u.role),
+    name: `${u.firstName} ${u.lastName}`.trim(),
+    lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
+    createdAt: u.createdAt.toISOString(),
+  }));
 }

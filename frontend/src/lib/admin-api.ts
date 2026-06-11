@@ -107,7 +107,7 @@ export function createTeacherAccount(
   });
 }
 
-export function changeUserRole(userId: string, role: import("@/types/auth").Role) {
+export function changeUserRole(userId: string, role: import("@/types/auth").AppRole) {
   return apiRequest<{ success: boolean; data: { user: AdminUser } }>(
     `/admin/users/${userId}/role`,
     { method: "PATCH", body: { role }, auth: true },
@@ -278,6 +278,55 @@ export function restoreAdminResource(resourceId: string) {
 export function fetchAdminCertificates() {
   return apiRequest<{ success: boolean; data: { certificates: import("@/types/certificate").Certificate[] } }>(
     "/admin/certificates",
+    { auth: true },
+  );
+}
+
+export function fetchAdminAuditLogs(params: { page?: number; limit?: number; action?: string } = {}) {
+  return apiRequest<{
+    success: boolean;
+    data: {
+      logs: Array<{
+        id: string;
+        action: string;
+        actorId: string | null;
+        actorRole: string | null;
+        entityType: string | null;
+        entityId: string | null;
+        metadata: unknown;
+        ipAddress: string | null;
+        createdAt: string;
+        actor: { id: string; name: string; email: string; role: string } | null;
+      }>;
+      pagination: Pagination;
+    };
+  }>(`/admin/audit-logs${queryString(params)}`, { auth: true });
+}
+
+export function fetchAdminSecurity() {
+  return apiRequest<{
+    success: boolean;
+    data: {
+      nodeEnv: string;
+      storageProvider: string;
+      jwtConfigured: boolean;
+      r2Configured: boolean;
+      demoSeedDisabled: boolean;
+      corsOriginsConfigured?: boolean;
+      emailProvider?: string;
+      rateLimitingEnabled?: boolean;
+      cookieSecure?: boolean;
+    };
+  }>("/admin/security", { auth: true });
+}
+
+export function fetchAdminLoginHistory() {
+  return apiRequest<{ success: boolean; data: unknown[] }>("/admin/login-history", { auth: true });
+}
+
+export function fetchAdminAdmins() {
+  return apiRequest<{ success: boolean; data: import("@/types/admin").AdminUser[] }>(
+    "/admin/users/admins",
     { auth: true },
   );
 }

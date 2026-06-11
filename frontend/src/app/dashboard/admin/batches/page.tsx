@@ -27,12 +27,12 @@ import {
 } from "@/lib/batches-api";
 import { fetchAdminUsers, fetchAdminCourses } from "@/lib/admin-api";
 import type { Batch, BatchStatus } from "@/types/institute";
-import type { Role } from "@/types/auth";
+import type { AppRole } from "@/types/auth";
 import { useToast } from "@/context/toast-context";
 import { ACTIVE_COURSE_LIST_PARAMS, filterActiveCourses } from "@/lib/course-filters";
 import { formatApiError } from "@/lib/format-api-error";
 
-async function loadUsers(role: Role, search?: string): Promise<UserSelectOption[]> {
+async function loadUsers(role: AppRole, search?: string): Promise<UserSelectOption[]> {
   const res = await fetchAdminUsers({ role, search: search || undefined, limit: 100 });
   return res.data.users.map((u) => ({
     id: u.id,

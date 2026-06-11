@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const roleEnum = z.enum(["STUDENT", "TEACHER", "ADMIN", "OWNER"]);
 
+/** Roles that can be assigned via admin panel (OWNER excluded). */
+export const assignableRoleEnum = z.enum(["STUDENT", "TEACHER", "ADMIN"]);
+
 export const listUsersQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -55,7 +58,17 @@ export const createTeacherSchema = createAccountBaseSchema.extend({
 export const createAdminSchema = createAccountBaseSchema;
 
 export const changeRoleSchema = z.object({
-  role: roleEnum,
+  role: assignableRoleEnum,
+});
+
+export const listAuditLogsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  action: z.string().optional(),
+  actorId: z.string().optional(),
+  entityType: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
 });
 
 export const suspendUserSchema = z.object({
@@ -119,3 +132,4 @@ export type SuspendUserInput = z.infer<typeof suspendUserSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type ListAdminCoursesQuery = z.infer<typeof listCoursesQuerySchema>;
 export type ListActivityQuery = z.infer<typeof listActivityQuerySchema>;
+export type ListAuditLogsQuery = z.infer<typeof listAuditLogsQuerySchema>;

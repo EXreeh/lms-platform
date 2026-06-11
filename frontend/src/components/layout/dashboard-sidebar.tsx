@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/auth-context";
-import { isValidRole } from "@/lib/auth-session";
+import { displayRole, type AppRole, type Role } from "@/types/auth";
 
 interface NavItem {
   href: string;
@@ -216,6 +216,18 @@ const adminNav: NavItem[] = [
       p.startsWith("/dashboard/admin/certificates"),
   },
   {
+    href: "/dashboard/admin/audit-logs",
+    label: "Audit Logs",
+    icon: "📜",
+    match: (p) => p.startsWith("/dashboard/admin/audit-logs"),
+  },
+  {
+    href: "/dashboard/admin/security",
+    label: "Security",
+    icon: "🔒",
+    match: (p) => p.startsWith("/dashboard/admin/security"),
+  },
+  {
     href: "/dashboard/profile",
     label: "Profile",
     icon: "👤",
@@ -223,33 +235,21 @@ const adminNav: NavItem[] = [
   },
 ];
 
-const ownerNav: NavItem[] = [
-  { href: "/dashboard/owner", label: "Owner Console", icon: "◆", match: (p) => p === "/dashboard/owner" },
-  { href: "/dashboard/owner/users", label: "All Users", icon: "👥", match: (p) => p.startsWith("/dashboard/owner/users") },
-  { href: "/dashboard/owner/admins", label: "Admins", icon: "🛡", match: (p) => p.startsWith("/dashboard/owner/admins") },
-  { href: "/dashboard/owner/audit-logs", label: "Audit Logs", icon: "📜", match: (p) => p.startsWith("/dashboard/owner/audit-logs") },
-  { href: "/dashboard/owner/security", label: "Security", icon: "🔒", match: (p) => p.startsWith("/dashboard/owner/security") },
-  { href: "/dashboard/admin", label: "Admin Panel", icon: "◎", match: (p) => p.startsWith("/dashboard/admin") },
-  { href: "/dashboard/profile", label: "Profile", icon: "👤", match: (p) => p.startsWith("/dashboard/profile") },
-];
-
 interface DashboardSidebarProps {
-  role: "TEACHER" | "ADMIN" | "STUDENT" | "OWNER";
+  role: AppRole;
+}
+
+function sidebarRole(role: Role | AppRole): AppRole {
+  return displayRole(role as Role);
 }
 
 export function DashboardSidebar({ role: fallbackRole }: DashboardSidebarProps) {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
-  const role =
-    isAuthenticated && user && isValidRole(user.role) ? user.role : fallbackRole;
+  const rawRole: Role | AppRole = isAuthenticated && user ? user.role : fallbackRole;
+  const role = sidebarRole(rawRole);
   const items =
-    role === "OWNER"
-      ? ownerNav
-      : role === "STUDENT"
-        ? studentNav
-        : role === "ADMIN"
-          ? adminNav
-          : teacherNav;
+    role === "STUDENT" ? studentNav : role === "ADMIN" ? adminNav : teacherNav;
 
   return (
     <aside className="w-full shrink-0 lg:w-56">
@@ -261,7 +261,6 @@ export function DashboardSidebar({ role: fallbackRole }: DashboardSidebarProps) 
               (item.href !== "/dashboard/teacher" &&
                 item.href !== "/dashboard/student" &&
                 item.href !== "/dashboard/admin" &&
-                item.href !== "/dashboard/owner" &&
                 pathname.startsWith(item.href)));
 
           return (

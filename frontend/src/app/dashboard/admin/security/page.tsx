@@ -5,26 +5,30 @@ import Link from "next/link";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { Spinner } from "@/components/ui/spinner";
-import { fetchOwnerSecurity } from "@/lib/owner-api";
+import { fetchAdminSecurity } from "@/lib/admin-api";
 
-export default function OwnerSecurityPage() {
+export default function AdminSecurityPage() {
   const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void fetchOwnerSecurity()
+    void fetchAdminSecurity()
       .then((res) => setSettings(res.data as Record<string, unknown>))
       .finally(() => setLoading(false));
   }, []);
 
   return (
-    <DashboardShell title="Security" description="Production security configuration status." badge="Owner">
+    <DashboardShell title="Security" description="Production security configuration status." badge="Admin">
       <div className="flex flex-col gap-8 lg:flex-row">
-        <DashboardSidebar role="OWNER" />
+        <DashboardSidebar role="ADMIN" />
         <div className="min-w-0 flex-1">
-          <Link href="/dashboard/owner" className="text-sm text-primary hover:underline">← Owner console</Link>
+          <Link href="/dashboard/admin" className="text-sm text-primary hover:underline">
+            ← Admin dashboard
+          </Link>
           {loading ? (
-            <div className="flex justify-center py-12"><Spinner label="Loading" /></div>
+            <div className="flex justify-center py-12">
+              <Spinner label="Loading" />
+            </div>
           ) : settings ? (
             <dl className="mt-4 grid gap-3 sm:grid-cols-2">
               {Object.entries(settings).map(([key, value]) => (

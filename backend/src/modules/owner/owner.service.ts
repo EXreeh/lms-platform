@@ -45,7 +45,7 @@ export async function listAdmins() {
 export async function createAdminAsOwner(actorId: string, input: CreateAdminInput) {
   const actor = await prisma.user.findUnique({ where: { id: actorId }, select: { role: true } });
   if (!actor || !canCreateAdmin(actor.role)) {
-    throw ApiError.forbidden("Only the platform owner can create admin accounts");
+    throw ApiError.forbidden("Admin access required to create admin accounts");
   }
   return adminService.createAdmin(actorId, input);
 }
@@ -55,9 +55,8 @@ export async function ownerChangeRole(actorId: string, userId: string, input: Ch
     prisma.user.findUnique({ where: { id: actorId }, select: { role: true } }),
     prisma.user.findUnique({ where: { id: userId }, select: { role: true } }),
   ]);
-  if (!actor || !canCreateAdmin(actor.role)) throw ApiError.forbidden("Owner access required");
+  if (!actor || !canCreateAdmin(actor.role)) throw ApiError.forbidden("Admin access required");
   if (!target) throw ApiError.notFound("User not found");
-  if (target.role === "OWNER") throw ApiError.forbidden("Owner role cannot be changed");
   return adminService.changeUserRole(actorId, userId, input);
 }
 

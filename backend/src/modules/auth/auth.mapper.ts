@@ -1,4 +1,5 @@
 import type { Role } from "@lms/database";
+import { normalizeAppRole } from "../../utils/roles.js";
 
 type UserRow = {
   id: string;
@@ -17,7 +18,7 @@ export type PublicUser = {
   lastName: string;
   name: string;
   email: string;
-  role: Role;
+  role: "STUDENT" | "TEACHER" | "ADMIN";
   emailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -41,7 +42,7 @@ export function toPublicUser(user: UserRow): PublicUser {
     lastName: user.lastName,
     name: `${user.firstName} ${user.lastName}`.trim(),
     email: user.email,
-    role: user.role,
+    role: normalizeAppRole(user.role),
     emailVerified: user.emailVerified,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,

@@ -1,4 +1,4 @@
-import type { Role } from "./auth";
+import type { AppRole } from "./auth";
 import type { CourseStatus } from "./course";
 
 export interface Pagination {
@@ -14,7 +14,7 @@ export interface AdminUser {
   lastName: string;
   name: string;
   email: string;
-  role: Role;
+  role: AppRole;
   emailVerified: boolean;
   suspended: boolean;
   lastLoginAt: string | null;
@@ -94,7 +94,7 @@ export interface ListUsersParams {
   page?: number;
   limit?: number;
   search?: string;
-  role?: Role;
+  role?: AppRole;
   suspended?: boolean;
   sortBy?: "createdAt" | "lastName" | "email" | "role";
   sortOrder?: "asc" | "desc";

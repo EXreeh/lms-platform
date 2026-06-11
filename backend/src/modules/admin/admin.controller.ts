@@ -11,6 +11,7 @@ import {
   resetPasswordSchema,
   listCoursesQuerySchema,
   listActivityQuerySchema,
+  listAuditLogsQuerySchema,
 } from "./admin.validation.js";
 
 import { isAdminRole } from "../../utils/roles.js";
@@ -205,4 +206,29 @@ export async function listCertificates(_req: Request, res: Response): Promise<vo
 export async function downloadCertificate(req: Request, res: Response): Promise<void> {
   const admin = requireAdmin(req);
   await adminService.streamCertificatePdfAdmin(res, req.params.certificateId, admin.id);
+}
+
+export async function listAdmins(req: Request, res: Response): Promise<void> {
+  requireAdmin(req);
+  const data = await adminService.listAdmins();
+  res.json({ success: true, data });
+}
+
+export async function auditLogs(req: Request, res: Response): Promise<void> {
+  requireAdmin(req);
+  const query = listAuditLogsQuerySchema.parse(req.query);
+  const data = await adminService.getAuditLogs(query);
+  res.json({ success: true, data });
+}
+
+export async function loginHistory(req: Request, res: Response): Promise<void> {
+  requireAdmin(req);
+  const data = await adminService.getLoginHistory();
+  res.json({ success: true, data });
+}
+
+export async function securitySettings(req: Request, res: Response): Promise<void> {
+  requireAdmin(req);
+  const data = await adminService.getSecuritySettings();
+  res.json({ success: true, data });
 }

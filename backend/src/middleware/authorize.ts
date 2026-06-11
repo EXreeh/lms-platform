@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import type { Role } from "@lms/database";
 import { ApiError } from "../utils/api-error.js";
-import { canAccessAdminPanel, canManagePlatform, isAdminRole } from "../utils/roles.js";
+import { canAccessAdminPanel, isAdminRole } from "../utils/roles.js";
 
 export function authorize(...allowedRoles: Role[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
@@ -19,7 +19,7 @@ export function authorize(...allowedRoles: Role[]) {
   };
 }
 
-/** Institute admin APIs — ADMIN and OWNER. */
+/** Institute admin APIs — ADMIN and legacy OWNER. */
 export function authorizeAdmin() {
   return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user) {
@@ -34,14 +34,19 @@ export function authorizeAdmin() {
   };
 }
 
-/** Platform owner-only APIs. */
-export function authorizeOwner() {
-  return authorize("OWNER");
-}
-
-/** Teacher panel — teacher plus institute admins. */
+/** Teacher panel — teacher plus institute admins (including legacy OWNER). */
 export function authorizeTeacherPanel() {
-  return authorize("TEACHER", "ADMIN", "OWNER");
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      next(ApiError.unauthorized());
+      return;
+    }
+    if (req.user.role === "TEACHER" || isAdminRole(req.user.role)) {
+      next();
+      return;
+    }
+    next(ApiError.forbidden("Insufficient permissions"));
+  };
 }
 
 /** Student-only APIs. */
@@ -52,11 +57,5 @@ export function authorizeStudent() {
 export function requireAdminUser(req: Request): void {
   if (!req.user || !isAdminRole(req.user.role)) {
     throw ApiError.forbidden("Admin access required");
-  }
-}
-
-export function requireOwnerUser(req: Request): void {
-  if (!req.user || !canManagePlatform(req.user.role)) {
-    throw ApiError.forbidden("Owner access required");
   }
 }

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
 import { liveClassJoinRateLimiter, recordingAccessRateLimiter } from "../../middleware/rate-limit.js";
-import { authorize, authorizeAdmin } from "../../middleware/authorize.js";
+import { authorize, authorizeAdmin, authorizeTeacherPanel } from "../../middleware/authorize.js";
 import { validateBody } from "../../middleware/validate.js";
 import {
   createLiveClassSchema,
@@ -37,7 +37,7 @@ liveClassesRoutes.post("/:id/join", liveClassJoinRateLimiter, asyncHandler(liveC
 liveClassesRoutes.get("/:id", asyncHandler(liveClassesController.getOne));
 liveClassesRoutes.post(
   "/:id/recordings",
-  authorize("TEACHER", "ADMIN", "OWNER"),
+  authorizeTeacherPanel(),
   ...recordingUpload,
   validateBody(createRecordingSchema),
   asyncHandler(liveClassesController.uploadRecording),
@@ -112,11 +112,11 @@ recordingsRoutes.use(authenticate);
 recordingsRoutes.get("/:id", recordingAccessRateLimiter, asyncHandler(liveClassesController.getRecording));
 recordingsRoutes.patch(
   "/:id/archive",
-  authorize("TEACHER", "ADMIN", "OWNER"),
+  authorizeTeacherPanel(),
   asyncHandler(liveClassesController.archiveRecording),
 );
 recordingsRoutes.delete(
   "/:id",
-  authorize("TEACHER", "ADMIN", "OWNER"),
+  authorizeTeacherPanel(),
   asyncHandler(liveClassesController.deleteRecording),
 );

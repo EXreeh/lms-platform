@@ -19,7 +19,7 @@ export function getDashboardRedirectForRole(
   if (safe.startsWith("/dashboard/profile")) return safe;
 
   if (role === "ADMIN" || role === "OWNER") {
-    if (safe.startsWith("/dashboard/admin") || safe.startsWith("/dashboard/owner") || safe.startsWith("/dashboard/teacher")) {
+    if (safe.startsWith("/dashboard/admin") || safe.startsWith("/dashboard/teacher")) {
       return safe;
     }
     return DASHBOARD_PATHS[role];

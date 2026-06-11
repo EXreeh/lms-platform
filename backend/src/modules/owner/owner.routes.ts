@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
-import { authorizeOwner } from "../../middleware/authorize.js";
+import { authorizeAdmin } from "../../middleware/authorize.js";
 import { validateBody } from "../../middleware/validate.js";
 import {
   changeRoleSchema,
@@ -15,7 +15,7 @@ import * as ownerController from "./owner.controller.js";
 
 export const ownerRoutes = Router();
 
-ownerRoutes.use(authenticate, authorizeOwner());
+ownerRoutes.use(authenticate, authorizeAdmin());
 
 ownerRoutes.get("/users", asyncHandler(ownerController.listUsers));
 ownerRoutes.get("/admins", asyncHandler(ownerController.listAdmins));

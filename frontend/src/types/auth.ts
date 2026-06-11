@@ -1,4 +1,8 @@
-export type Role = "STUDENT" | "TEACHER" | "ADMIN" | "OWNER";
+/** App-facing roles shown in UI. Legacy JWT may still carry OWNER — treated as ADMIN. */
+export type AppRole = "STUDENT" | "TEACHER" | "ADMIN";
+
+/** Includes legacy OWNER from existing tokens / database enum. */
+export type Role = AppRole | "OWNER";
 
 export interface User {
   id: string;
@@ -6,7 +10,7 @@ export interface User {
   lastName: string;
   name: string;
   email: string;
-  role: Role;
+  role: AppRole;
   emailVerified: boolean;
   createdAt: string;
   updatedAt: string;
@@ -48,9 +52,14 @@ export interface PasswordResetVerifyResponse {
   };
 }
 
+export function displayRole(role: Role): AppRole {
+  if (role === "OWNER") return "ADMIN";
+  return role;
+}
+
 export const DASHBOARD_PATHS: Record<Role, string> = {
   STUDENT: "/dashboard/student",
   TEACHER: "/dashboard/teacher",
   ADMIN: "/dashboard/admin",
-  OWNER: "/dashboard/owner",
+  OWNER: "/dashboard/admin",
 };

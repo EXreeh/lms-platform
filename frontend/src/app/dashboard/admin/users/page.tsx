@@ -26,7 +26,7 @@ import {
 import { useAuth } from "@/context/auth-context";
 import { fetchBatches } from "@/lib/batches-api";
 import type { AdminUser, AdminUserDetail } from "@/types/admin";
-import type { Role } from "@/types/auth";
+import type { AppRole } from "@/types/auth";
 import { ApiClientError } from "@/lib/api";
 import { ACTIVE_COURSE_LIST_PARAMS, filterActiveCourses } from "@/lib/course-filters";
 import { useToast } from "@/context/toast-context";
@@ -34,7 +34,7 @@ import { useToast } from "@/context/toast-context";
 type ConfirmAction =
   | { type: "delete"; user: AdminUser }
   | { type: "suspend"; user: AdminUser; suspend: boolean }
-  | { type: "role"; user: AdminUser; role: Role }
+  | { type: "role"; user: AdminUser; role: AppRole }
   | { type: "promoteAdmin"; user: AdminUser }
   | { type: "reset"; user: AdminUser };
 
@@ -44,7 +44,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 15, total: 0, totalPages: 0 });
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<Role | "">("");
+  const [roleFilter, setRoleFilter] = useState<AppRole | "">("");
   const [suspendedFilter, setSuspendedFilter] = useState<"" | "true" | "false">("");
   const [sortBy, setSortBy] = useState<"createdAt" | "lastName" | "email" | "role">("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -340,7 +340,7 @@ export default function AdminUsersPage() {
                 { value: "ADMIN", label: "Admin" },
               ]}
               onChange={(e) => {
-                setRoleFilter(e.target.value as Role | "");
+                setRoleFilter(e.target.value as AppRole | "");
                 setPagination((p) => ({ ...p, page: 1 }));
               }}
             />

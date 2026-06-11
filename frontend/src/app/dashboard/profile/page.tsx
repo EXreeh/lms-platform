@@ -16,14 +16,13 @@ import {
 import { formatApiError } from "@/lib/format-api-error";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/context/toast-context";
-import type { Role } from "@/types/auth";
+import { displayRole, type AppRole, type Role } from "@/types/auth";
 import { brand } from "@/lib/design-tokens";
 
-const ROLE_LABELS: Record<Role, string> = {
+const ROLE_LABELS: Record<AppRole, string> = {
   STUDENT: "Student",
   TEACHER: "Teacher",
   ADMIN: "Administrator",
-  OWNER: "Platform Owner",
 };
 
 function statEntries(role: Role, stats: Record<string, number>): { label: string; value: number | string; icon: string }[] {
@@ -101,7 +100,7 @@ export default function ProfilePage() {
     };
   }, [authUser?.id, toastError]);
 
-  const role = profile?.user.role ?? authUser?.role ?? "STUDENT";
+  const role = displayRole(profile?.user.role ?? authUser?.role ?? "STUDENT");
 
   function handleCancelEdit() {
     if (profile) {
@@ -231,7 +230,7 @@ export default function ProfilePage() {
                     </div>
                     <div>
                       <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Role</dt>
-                      <dd className="mt-1 font-medium">{ROLE_LABELS[profile.user.role]}</dd>
+                      <dd className="mt-1 font-medium">{ROLE_LABELS[displayRole(profile.user.role)]}</dd>
                     </div>
                     <div>
                       <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Member since</dt>

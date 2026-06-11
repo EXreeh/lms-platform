@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
-import { authorize, authorizeAdmin } from "../../middleware/authorize.js";
+import { authorize, authorizeAdmin, authorizeTeacherPanel } from "../../middleware/authorize.js";
 import { validateBody } from "../../middleware/validate.js";
 import {
   addFeePaymentSchema,
@@ -17,7 +17,7 @@ feesRoutes.use(authenticate);
 feesRoutes.get("/me", authorize("STUDENT"), asyncHandler(feesController.studentDashboard));
 feesRoutes.get(
   "/student-access/:studentId",
-  authorize("TEACHER", "ADMIN", "OWNER"),
+  authorizeTeacherPanel(),
   asyncHandler(feesController.studentAccess),
 );
 

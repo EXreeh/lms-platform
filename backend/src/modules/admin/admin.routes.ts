@@ -37,6 +37,7 @@ adminRoutes.post(
   asyncHandler(adminController.createAdmin),
 );
 adminRoutes.post("/users", validateBody(createTeacherSchema), asyncHandler(adminController.createTeacher));
+adminRoutes.get("/users/admins", asyncHandler(adminController.listAdmins));
 adminRoutes.get("/users/:userId", asyncHandler(adminController.getUser));
 adminRoutes.patch(
   "/users/:userId/role",
@@ -70,6 +71,9 @@ adminRoutes.delete("/courses/:courseId", asyncHandler(adminController.deleteCour
 adminRoutes.post("/courses/archive-demo", asyncHandler(adminController.archiveDemoCourses));
 
 adminRoutes.get("/activity", asyncHandler(adminController.listActivity));
+adminRoutes.get("/audit-logs", asyncHandler(adminController.auditLogs));
+adminRoutes.get("/login-history", asyncHandler(adminController.loginHistory));
+adminRoutes.get("/security", asyncHandler(adminController.securitySettings));
 
 adminRoutes.get("/resources", asyncHandler(adminController.listResources));
 adminRoutes.delete("/resources/:resourceId", asyncHandler(adminController.removeResource));
