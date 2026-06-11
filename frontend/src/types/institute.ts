@@ -1,4 +1,13 @@
-export type FeeStatus = "PENDING" | "PARTIAL" | "PAID" | "OVERDUE";
+export type FeeStatus = "PENDING" | "PARTIAL" | "PAID" | "OVERDUE" | "CANCELLED";
+export type FeePaymentProvider = "RAZORPAY" | "CASH" | "BANK_TRANSFER" | "UPI_MANUAL";
+export type FeePaymentStatus =
+  | "CREATED"
+  | "ATTEMPTED"
+  | "AUTHORIZED"
+  | "CAPTURED"
+  | "FAILED"
+  | "REFUNDED"
+  | "CANCELLED";
 export type PaymentMode = "CASH" | "UPI" | "BANK_TRANSFER" | "CARD" | "OTHER";
 export type BatchStatus = "ACTIVE" | "COMPLETED" | "CANCELLED" | "DELETED";
 export type AccessType = "ADMIN_ASSIGNED" | "BATCH_ASSIGNED" | "FULL_FEE_PAID" | "TRIAL";
@@ -15,10 +24,14 @@ export interface FeePlan {
   studentId: string;
   courseId: string | null;
   batchId: string | null;
+  title: string;
+  description: string | null;
+  currency: string;
+  allowPartialPayments: boolean;
   totalAmount: number;
   paidAmount: number;
   pendingAmount: number;
-  dueDate: string;
+  dueDate: string | null;
   status: FeeStatus;
   accessGranted: boolean;
   lifetimeAccess: boolean;
@@ -34,16 +47,24 @@ export interface FeePlan {
 export interface FeePayment {
   id: string;
   amount: number;
-  paymentMode: PaymentMode;
-  paymentDate: string;
+  provider?: FeePaymentProvider;
+  status?: FeePaymentStatus;
+  paymentMode: PaymentMode | null;
+  paymentMethod?: string | null;
+  receiptNumber?: string | null;
+  razorpayPaymentId?: string | null;
+  paymentDate: string | null;
+  paidAt?: string | null;
   note: string | null;
   recordedByName?: string;
   createdAt: string;
 }
 
 export interface FeeAnalytics {
+  totalAssigned?: number;
   totalCollected: number;
   totalPending: number;
+  overdueAmount?: number;
   overdueStudents: number;
   planCount: number;
 }

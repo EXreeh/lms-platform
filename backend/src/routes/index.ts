@@ -12,6 +12,14 @@ import { paymentsRoutes } from "../modules/payments/payments.routes.js";
 import { uploadsRoutes } from "../modules/uploads/uploads.routes.js";
 import { adminRoutes } from "../modules/admin/admin.routes.js";
 import { feesRoutes } from "../modules/fees/fees.routes.js";
+import {
+  adminFeePaymentsRoutes,
+  adminFeesRoutes,
+} from "../modules/fee-payments/admin-fee-payments.routes.js";
+import {
+  studentFeePaymentsRoutes,
+  studentFeesRoutes,
+} from "../modules/fee-payments/student-fees.routes.js";
 import { batchesRoutes } from "../modules/batches/batches.routes.js";
 import { messagesRoutes } from "../modules/messages/messages.routes.js";
 import {
@@ -66,6 +74,10 @@ apiRouter.use("/certificates", certificatesRoutes);
 apiRouter.use("/payments", paymentsRoutes);
 apiRouter.use("/uploads", uploadsRoutes);
 apiRouter.use("/admin", adminRoutes);
+apiRouter.use("/admin/fees", adminFeesRoutes);
+apiRouter.use("/admin/payments", adminFeePaymentsRoutes);
+apiRouter.use("/student/fees", studentFeesRoutes);
+apiRouter.use("/student/payments", studentFeePaymentsRoutes);
 apiRouter.use("/owner", (_req, res) => {
   res.status(404).json({ success: false, message: "Not found" });
 });

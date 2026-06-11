@@ -144,6 +144,30 @@ export const liveClassJoinRateLimiter = rateLimit({
   },
 });
 
+/** Fee payment order creation — 20 per 15 minutes per user. */
+export const feePaymentOrderRateLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  keyGenerator: (req) => `${req.ip}:${req.user?.id ?? "anon"}`,
+  handler: (req, res) => {
+    logRateLimitHit(req, "fee-payment-order");
+    sendRateLimitResponse(res, "Too many payment attempts. Please wait before trying again.");
+  },
+});
+
+/** Fee payment verification — 30 per 15 minutes per user. */
+export const feePaymentVerifyRateLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => `${req.ip}:${req.user?.id ?? "anon"}`,
+  handler: (req, res) => {
+    logRateLimitHit(req, "fee-payment-verify");
+    sendRateLimitResponse(res, "Too many verification attempts. Please wait before trying again.");
+  },
+});
+
 /** Recording access — 120 per 15 minutes per user. */
 export const recordingAccessRateLimiter = rateLimit({
   ...baseOptions,

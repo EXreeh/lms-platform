@@ -105,7 +105,10 @@ model User {
   certificates    Certificate[]
   payments        Payment[]
   feePlans        FeePlan[]
+  feePlansCreated FeePlan[] @relation("FeePlanCreator")
+  feePayments     FeePayment[] @relation("StudentFeePayments")
   feePaymentsRecorded FeePayment[] @relation("FeePaymentRecorder")
+  paymentAttempts PaymentAttempt[]
   feeRemindersReceived FeeReminder[] @relation("FeeReminderStudent")
   feeRemindersSent     FeeReminder[] @relation("FeeReminderSender")
   batchesTeaching     Batch[]       @relation("BatchTeacher")
@@ -433,6 +436,7 @@ enum FeeStatus {
   PARTIAL
   PAID
   OVERDUE
+  CANCELLED
 }
 
 enum PaymentMode {
@@ -441,6 +445,23 @@ enum PaymentMode {
   BANK_TRANSFER
   CARD
   OTHER
+}
+
+enum FeePaymentProvider {
+  RAZORPAY
+  CASH
+  BANK_TRANSFER
+  UPI_MANUAL
+}
+
+enum FeePaymentStatus {
+  CREATED
+  ATTEMPTED
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
+  CANCELLED
 }
 
 enum ReminderStatus {
@@ -510,46 +531,94 @@ enum SalaryStatus {
 }
 
 model FeePlan {
-  id              String    @id @default(cuid())
-  studentId       String    @map("student_id")
-  courseId        String?   @map("course_id")
-  batchId         String?   @map("batch_id")
-  totalAmount     Decimal   @map("total_amount") @db.Decimal(12, 2)
-  paidAmount      Decimal   @default(0) @map("paid_amount") @db.Decimal(12, 2)
-  pendingAmount   Decimal   @map("pending_amount") @db.Decimal(12, 2)
-  dueDate         DateTime  @map("due_date")
-  status          FeeStatus @default(PENDING)
-  accessGranted   Boolean   @default(false) @map("access_granted")
-  lifetimeAccess  Boolean   @default(false) @map("lifetime_access")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id                   String    @id @default(cuid())
+  studentId            String    @map("student_id")
+  courseId             String?   @map("course_id")
+  batchId              String?   @map("batch_id")
+  title                String    @default("Institute Fee")
+  description          String?   @db.Text
+  totalAmount          Decimal   @map("total_amount") @db.Decimal(12, 2)
+  paidAmount           Decimal   @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  pendingAmount        Decimal   @map("pending_amount") @db.Decimal(12, 2)
+  currency             String    @default("INR")
+  dueDate              DateTime? @map("due_date")
+  status               FeeStatus @default(PENDING)
+  allowPartialPayments Boolean   @default(true) @map("allow_partial_payments")
+  accessGranted        Boolean   @default(false) @map("access_granted")
+  lifetimeAccess       Boolean   @default(false) @map("lifetime_access")
+  createdById          String?   @map("created_by_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
 
-  student   User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  course    Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
-  batch     Batch?        @relation(fields: [batchId], references: [id], onDelete: SetNull)
-  payments  FeePayment[]
-  reminders FeeReminder[]
+  student          User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course           Course?          @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  batch            Batch?           @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  createdBy        User?            @relation("FeePlanCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  payments         FeePayment[]
+  paymentAttempts  PaymentAttempt[]
+  reminders        FeeReminder[]
 
   @@index([studentId, status])
   @@index([dueDate, status])
+  @@index([batchId])
+  @@index([courseId])
   @@map("fee_plans")
 }
 
 model FeePayment {
-  id           String      @id @default(cuid())
-  feePlanId    String      @map("fee_plan_id")
-  amount       Decimal     @db.Decimal(12, 2)
-  paymentMode  PaymentMode @map("payment_mode")
-  paymentDate  DateTime    @map("payment_date")
-  note         String?     @db.Text
-  recordedById String      @map("recorded_by_id")
-  createdAt    DateTime    @default(now()) @map("created_at")
+  id                String             @id @default(cuid())
+  feePlanId         String             @map("fee_plan_id")
+  studentId         String             @map("student_id")
+  amount            Decimal            @db.Decimal(12, 2)
+  currency          String             @default("INR")
+  provider          FeePaymentProvider @default(RAZORPAY)
+  status            FeePaymentStatus   @default(CREATED)
+  razorpayOrderId   String?            @unique @map("razorpay_order_id")
+  razorpayPaymentId String?            @unique @map("razorpay_payment_id")
+  razorpaySignature String?            @map("razorpay_signature")
+  paymentMethod     String?            @map("payment_method")
+  receiptNumber     String?            @unique @map("receipt_number")
+  paidAt            DateTime?          @map("paid_at")
+  failureReason     String?            @map("failure_reason")
+  metadata          Json?
+  note              String?            @db.Text
+  paymentMode       PaymentMode?       @map("payment_mode")
+  paymentDate       DateTime?          @map("payment_date")
+  recordedById      String?            @map("recorded_by_id")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
 
   feePlan    FeePlan @relation(fields: [feePlanId], references: [id], onDelete: Cascade)
-  recordedBy User    @relation("FeePaymentRecorder", fields: [recordedById], references: [id], onDelete: Cascade)
+  student    User    @relation("StudentFeePayments", fields: [studentId], references: [id], onDelete: Cascade)
+  recordedBy User?   @relation("FeePaymentRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
 
-  @@index([feePlanId, paymentDate])
+  @@index([feePlanId, paidAt])
+  @@index([studentId, status])
+  @@index([status, createdAt])
   @@map("fee_payments")
+}
+
+model PaymentAttempt {
+  id                String             @id @default(cuid())
+  feePlanId         String             @map("fee_plan_id")
+  studentId         String             @map("student_id")
+  provider          FeePaymentProvider @default(RAZORPAY)
+  amount            Decimal            @db.Decimal(12, 2)
+  currency          String             @default("INR")
+  status            FeePaymentStatus   @default(CREATED)
+  razorpayOrderId   String             @unique @map("razorpay_order_id")
+  razorpayPaymentId String?            @unique @map("razorpay_payment_id")
+  errorCode         String?            @map("error_code")
+  errorDescription  String?            @map("error_description")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  feePlan FeePlan @relation(fields: [feePlanId], references: [id], onDelete: Cascade)
+  student User    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([feePlanId, createdAt])
+  @@index([studentId, status])
+  @@map("payment_attempts")
 }
 
 model FeeReminder {

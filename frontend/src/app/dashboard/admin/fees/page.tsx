@@ -266,7 +266,9 @@ export default function AdminFeesPage() {
                         <td className="px-4 py-3">₹{p.paidAmount}</td>
                         <td className="px-4 py-3">₹{p.pendingAmount}</td>
                         <td className="px-4 py-3">{p.status}</td>
-                        <td className="px-4 py-3">{new Date(p.dueDate).toLocaleDateString()}</td>
+                        <td className="px-4 py-3">
+                          {p.dueDate ? new Date(p.dueDate).toLocaleDateString() : "—"}
+                        </td>
                       </tr>
                     ))
                   )}
@@ -281,7 +283,10 @@ export default function AdminFeesPage() {
                 {selected.student?.name} — {selected.accessLabel}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Pending ₹{selected.pendingAmount} · Due {new Date(selected.dueDate).toLocaleDateString()}
+                Pending ₹{selected.pendingAmount}
+                {selected.dueDate
+                  ? ` · Due ${new Date(selected.dueDate).toLocaleDateString()}`
+                  : ""}
               </p>
               {selected.payments && selected.payments.length > 0 && (
                 <ul className="mt-4 divide-y divide-border text-sm">
@@ -291,7 +296,9 @@ export default function AdminFeesPage() {
                         ₹{pay.amount} · {pay.paymentMode}
                       </span>
                       <span className="text-muted-foreground">
-                        {new Date(pay.paymentDate).toLocaleDateString()}
+                        {(pay.paidAt ?? pay.paymentDate)
+                          ? new Date(pay.paidAt ?? pay.paymentDate!).toLocaleDateString()
+                          : "—"}
                       </span>
                     </li>
                   ))}

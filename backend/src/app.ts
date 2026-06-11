@@ -10,6 +10,7 @@ import { notFoundHandler } from "./middleware/not-found.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { getUploadsBasePath } from "./services/storage/index.js";
 import { setUploadStaticHeaders } from "./utils/static-upload-headers.js";
+import { razorpayWebhookHandler } from "./modules/fee-payments/fee-payments.webhook.js";
 
 export function createApp() {
   const app = express();
@@ -29,6 +30,13 @@ export function createApp() {
   app.use(cors(getCorsOptions()));
   app.use(cookieParser());
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
+
+  app.post(
+    "/api/webhooks/razorpay",
+    express.raw({ type: "application/json" }),
+    razorpayWebhookHandler,
+  );
+
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
 

@@ -1,31 +1,120 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
-import { brand } from "@/lib/design-tokens";
+import { StatCard } from "@/components/dashboard/stat-card";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  fetchAdminFeePayments,
+  fetchAdminPaymentStats,
+  type FeePaymentRecord,
+} from "@/lib/fee-payments-api";
+import { formatApiError } from "@/lib/format-api-error";
+import { useToast } from "@/context/toast-context";
 
 export default function AdminPaymentsPage() {
+  const { error: toastError } = useToast();
+  const [stats, setStats] = useState<{
+    totalAssigned: number;
+    totalCollected: number;
+    totalPending: number;
+    overdueAmount: number;
+    paymentCount: number;
+    latestPayments: FeePaymentRecord[];
+  } | null>(null);
+  const [payments, setPayments] = useState<FeePaymentRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [statsRes, listRes] = await Promise.all([
+        fetchAdminPaymentStats(),
+        fetchAdminFeePayments({ limit: 50 }),
+      ]);
+      setStats(statsRes.data);
+      setPayments(listRes.data.payments);
+    } catch (err) {
+      toastError(formatApiError(err, "Failed to load payments"));
+    } finally {
+      setLoading(false);
+    }
+  }, [toastError]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   return (
     <DashboardShell
-      title="Revenue & Payments"
-      description={`Payment reporting for ${brand.name} will appear here once Razorpay is configured.`}
-      badge="Administrator"
+      title="Payments"
+      description="Institute fee collections and payment history."
+      badge="Admin"
     >
       <div className="flex flex-col gap-8 lg:flex-row">
         <DashboardSidebar role="ADMIN" />
         <div className="min-w-0 flex-1">
-          <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
-            <p className="font-serif text-xl font-bold text-foreground">Payments not configured yet</p>
-            <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-              Revenue widgets and transaction history are hidden until Razorpay credentials are added to
-              the backend environment. No placeholder revenue data is shown.
-            </p>
-            <p className="mt-6 text-xs text-muted-foreground">
-              To enable later: set <code className="rounded bg-muted px-1.5 py-0.5">RAZORPAY_KEY_ID</code> and{" "}
-              <code className="rounded bg-muted px-1.5 py-0.5">RAZORPAY_KEY_SECRET</code> in{" "}
-              <code className="rounded bg-muted px-1.5 py-0.5">backend/.env</code>.
-            </p>
-          </div>
+          <Link href="/dashboard/admin/fees" className="text-sm text-primary hover:underline">
+            ← Fee management
+          </Link>
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <Spinner label="Loading payments" />
+            </div>
+          ) : stats ? (
+            <div className="mt-4 space-y-8">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatCard label="Total assigned" value={`₹${stats.totalAssigned}`} icon="📋" />
+                <StatCard label="Collected" value={`₹${stats.totalCollected}`} icon="✓" accent="green" />
+                <StatCard label="Pending" value={`₹${stats.totalPending}`} icon="⏳" accent="gold" />
+                <StatCard label="Overdue" value={`₹${stats.overdueAmount}`} icon="!" />
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-left">
+                    <tr>
+                      <th className="p-3">Date</th>
+                      <th className="p-3">Student</th>
+                      <th className="p-3">Fee</th>
+                      <th className="p-3">Amount</th>
+                      <th className="p-3">Provider</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Receipt</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payments.map((p) => (
+                      <tr key={p.id} className="border-t border-border">
+                        <td className="p-3">
+                          {p.paidAt ? new Date(p.paidAt).toLocaleDateString() : "—"}
+                        </td>
+                        <td className="p-3">{p.student?.name ?? "—"}</td>
+                        <td className="p-3">{p.feePlan?.title ?? "—"}</td>
+                        <td className="p-3">₹{p.amount}</td>
+                        <td className="p-3">{p.provider}</td>
+                        <td className="p-3">{p.status}</td>
+                        <td className="p-3">
+                          {p.status === "CAPTURED" ? (
+                            <Link
+                              href={`/dashboard/admin/payments/${p.id}/receipt`}
+                              className="text-primary hover:underline"
+                            >
+                              {p.receiptNumber ?? "View"}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </DashboardShell>

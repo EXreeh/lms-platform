@@ -1,91 +1,85 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
-import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { fetchMyPayments } from "@/lib/payments-api";
+import { fetchStudentFeePayments, type FeePaymentRecord } from "@/lib/fee-payments-api";
 import { formatApiError } from "@/lib/format-api-error";
-import { formatPaymentAmount, type Payment } from "@/types/payment";
-import { useToast } from "@/context/toast-context";
 
 export default function StudentPaymentsPage() {
-  const { error: toastError } = useToast();
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetchMyPayments();
-      setPayments(res.data.payments);
-    } catch (err) {
-      toastError(formatApiError(err, "Failed to load payments"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toastError]);
+  const [payments, setPayments] = useState<FeePaymentRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void fetchStudentFeePayments()
+      .then((res) => setPayments(res.data))
+      .catch((err) => setError(formatApiError(err, "Failed to load payments")))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <DashboardShell
       title="Payment History"
-      description="View your course purchases on CognitiaX AI."
+      description="Your institute fee payment records."
       badge="Student Portal"
     >
       <div className="flex flex-col gap-8 lg:flex-row">
         <DashboardSidebar role="STUDENT" />
         <div className="min-w-0 flex-1">
-          {isLoading ? (
+          <Link href="/dashboard/student/fees" className="text-sm text-primary hover:underline">
+            ← My fees
+          </Link>
+          {loading ? (
             <div className="flex justify-center py-16">
-              <Spinner size="lg" />
+              <Spinner label="Loading" />
             </div>
+          ) : error ? (
+            <p className="mt-4 text-red-600">{error}</p>
           ) : payments.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border p-12 text-center">
-              <p className="text-4xl">🧾</p>
-              <h2 className="mt-4 font-serif text-xl font-bold">No payments yet</h2>
-              <p className="mt-2 text-muted-foreground">
-                Purchases for paid courses will appear here after checkout.
-              </p>
-              <Link href="/courses" className="mt-6 inline-block">
-                <Button variant="gold">Browse courses</Button>
-              </Link>
-            </div>
+            <p className="mt-6 text-sm text-muted-foreground">No payments yet.</p>
           ) : (
-            <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-              {payments.map((p, i) => (
-                <motion.li
-                  key={p.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card p-5"
-                >
-                  <div>
-                    <p className="font-serif text-lg font-bold">{p.course?.title ?? "Course"}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(p.createdAt).toLocaleString()} · {p.status}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold">{formatPaymentAmount(p.amount, p.currency)}</span>
-                    {p.course?.slug && p.status === "CAPTURED" && (
-                      <Link href={`/courses/${p.course.slug}/learn`}>
-                        <Button variant="secondary" size="sm">
-                          Open course
-                        </Button>
-                      </Link>
-                    )}
-                  </div>
-                </motion.li>
-              ))}
-            </motion.ul>
+            <div className="mt-4 overflow-x-auto rounded-xl border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 text-left">
+                  <tr>
+                    <th className="p-3">Date</th>
+                    <th className="p-3">Fee</th>
+                    <th className="p-3">Amount</th>
+                    <th className="p-3">Method</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Receipt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((p) => (
+                    <tr key={p.id} className="border-t border-border">
+                      <td className="p-3">
+                        {p.paidAt ? new Date(p.paidAt).toLocaleDateString() : "—"}
+                      </td>
+                      <td className="p-3">{p.feePlan?.title ?? "—"}</td>
+                      <td className="p-3">₹{p.amount}</td>
+                      <td className="p-3">{p.paymentMethod ?? p.provider}</td>
+                      <td className="p-3">{p.status}</td>
+                      <td className="p-3">
+                        {p.status === "CAPTURED" ? (
+                          <Link
+                            href={`/dashboard/student/payments/${p.id}/receipt`}
+                            className="text-primary hover:underline"
+                          >
+                            {p.receiptNumber ?? "View"}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

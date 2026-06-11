@@ -31,21 +31,24 @@ const feeInclude = {
   course: { select: { id: true, title: true, slug: true } },
   batch: { select: { id: true, name: true } },
   payments: {
-    orderBy: { paymentDate: "desc" as const },
+    where: { status: "CAPTURED" },
+    orderBy: { paidAt: "desc" as const },
     include: { recordedBy: { select: { firstName: true, lastName: true } } },
   },
 } satisfies Prisma.FeePlanInclude;
 
-async function syncFeeAmounts(planId: string) {
+export async function syncFeeAmounts(planId: string) {
   const plan = await prisma.feePlan.findUnique({
     where: { id: planId },
-    include: { payments: true },
+    include: { payments: { where: { status: "CAPTURED" } } },
   });
   if (!plan) {
     throw ApiError.notFound("Fee plan not found");
   }
 
-  const paidSum = plan.payments.reduce((sum, p) => sum + toNumber(p.amount), 0);
+  const paidSum = plan.payments
+    .filter((p) => p.status === "CAPTURED")
+    .reduce((sum, p) => sum + toNumber(p.amount), 0);
   const total = toNumber(plan.totalAmount);
   const pending = Math.max(0, total - paidSum);
   const status = computeFeeStatus(pending, paidSum, plan.dueDate);
@@ -94,14 +97,81 @@ async function syncFeeAmounts(planId: string) {
   });
 }
 
+export async function updateFeePlan(
+  feePlanId: string,
+  input: {
+    title?: string;
+    description?: string | null;
+    totalAmount?: number;
+    dueDate?: string | null;
+    allowPartialPayments?: boolean;
+    status?: FeeStatus;
+  },
+) {
+  const plan = await prisma.feePlan.findUnique({ where: { id: feePlanId } });
+  if (!plan) throw ApiError.notFound("Fee plan not found");
+
+  const paid = toNumber(plan.paidAmount);
+  const totalAmount = input.totalAmount ?? toNumber(plan.totalAmount);
+  if (totalAmount < paid) {
+    throw ApiError.badRequest("Total amount cannot be less than already paid amount");
+  }
+
+  const dueDate =
+    input.dueDate === null ? null : input.dueDate ? new Date(input.dueDate) : plan.dueDate;
+  const pending = Math.max(0, totalAmount - paid);
+  const status =
+    input.status === "CANCELLED" ? "CANCELLED" : computeFeeStatus(pending, paid, dueDate);
+
+  const updated = await prisma.feePlan.update({
+    where: { id: feePlanId },
+    data: {
+      title: input.title,
+      description: input.description,
+      totalAmount,
+      dueDate,
+      allowPartialPayments: input.allowPartialPayments,
+      pendingAmount: pending,
+      status,
+    },
+    include: feeInclude,
+  });
+
+  return mapFeePlan(updated);
+}
+
+export async function cancelFeePlan(feePlanId: string) {
+  const plan = await prisma.feePlan.findUnique({ where: { id: feePlanId } });
+  if (!plan) throw ApiError.notFound("Fee plan not found");
+
+  const updated = await prisma.feePlan.update({
+    where: { id: feePlanId },
+    data: { status: "CANCELLED" },
+    include: feeInclude,
+  });
+  return mapFeePlan(updated);
+}
+
 export async function listFeePlans(filters: {
   status?: FeeStatus;
   studentId?: string;
+  batchId?: string;
+  courseId?: string;
   search?: string;
+  from?: string;
+  to?: string;
 }) {
   const where: Prisma.FeePlanWhereInput = {};
   if (filters.status) where.status = filters.status;
   if (filters.studentId) where.studentId = filters.studentId;
+  if (filters.batchId) where.batchId = filters.batchId;
+  if (filters.courseId) where.courseId = filters.courseId;
+  if (filters.from || filters.to) {
+    where.createdAt = {
+      ...(filters.from ? { gte: new Date(filters.from) } : {}),
+      ...(filters.to ? { lte: new Date(filters.to) } : {}),
+    };
+  }
   if (filters.search?.trim()) {
     const q = filters.search.trim();
     where.OR = [
@@ -136,9 +206,18 @@ export async function getFeeAnalytics() {
       if (p.status === "OVERDUE") overdueCount += 1;
     }
 
+    let totalAssigned = 0;
+    let overdueAmount = 0;
+    for (const p of plans) {
+      totalAssigned += toNumber(p.totalAmount);
+      if (p.status === "OVERDUE") overdueAmount += toNumber(p.pendingAmount);
+    }
+
     return {
+      totalAssigned,
       totalCollected,
       totalPending,
+      overdueAmount,
       overdueStudents: overdueCount,
       planCount: plans.length,
     };
@@ -159,8 +238,12 @@ export async function createFeePlan(
     studentId: string;
     courseId?: string | null;
     batchId?: string | null;
+    title?: string;
+    description?: string | null;
     totalAmount: number;
-    dueDate: string;
+    dueDate?: string | null;
+    allowPartialPayments?: boolean;
+    createdById?: string;
   },
 ) {
   const student = await prisma.user.findFirst({
@@ -168,16 +251,20 @@ export async function createFeePlan(
   });
   if (!student) throw ApiError.badRequest("Student not found");
 
-  const dueDate = new Date(input.dueDate);
+  const dueDate = input.dueDate ? new Date(input.dueDate) : null;
   const plan = await prisma.feePlan.create({
     data: {
       studentId: input.studentId,
       courseId: input.courseId ?? null,
       batchId: input.batchId ?? null,
+      title: input.title?.trim() || "Institute Fee",
+      description: input.description ?? null,
       totalAmount: input.totalAmount,
       paidAmount: 0,
       pendingAmount: input.totalAmount,
       dueDate,
+      allowPartialPayments: input.allowPartialPayments ?? true,
+      createdById: input.createdById ?? null,
       status: computeFeeStatus(input.totalAmount, 0, dueDate),
     },
     include: feeInclude,
@@ -204,12 +291,21 @@ export async function addFeePayment(
     throw ApiError.badRequest("Payment amount exceeds pending balance");
   }
 
+  const paidAt = input.paymentDate ? new Date(input.paymentDate) : new Date();
+  const { mapPaymentModeToProvider } = await import("../fee-payments/fee-payments.helpers.js");
+  const provider = mapPaymentModeToProvider(input.paymentMode);
+
   await prisma.feePayment.create({
     data: {
       feePlanId,
+      studentId: plan.studentId,
       amount: input.amount,
+      currency: plan.currency,
+      provider,
+      status: "CAPTURED",
       paymentMode: input.paymentMode as never,
-      paymentDate: input.paymentDate ? new Date(input.paymentDate) : new Date(),
+      paymentDate: paidAt,
+      paidAt,
       note: input.note,
       recordedById,
     },

@@ -6,8 +6,11 @@ export const createFeePlanSchema = z.object({
   studentId: z.string().min(1),
   courseId: z.string().optional().nullable(),
   batchId: z.string().optional().nullable(),
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(2000).optional().nullable(),
   totalAmount: z.coerce.number().positive(),
-  dueDate: z.string().datetime({ offset: true }).or(z.string().date()),
+  dueDate: z.string().datetime({ offset: true }).or(z.string().date()).optional().nullable(),
+  allowPartialPayments: z.boolean().optional(),
 });
 
 export const addFeePaymentSchema = z.object({
@@ -22,7 +25,7 @@ export const sendFeeReminderSchema = z.object({
 });
 
 export const feeListQuerySchema = z.object({
-  status: z.enum(["PENDING", "PARTIAL", "PAID", "OVERDUE"]).optional(),
+  status: z.enum(["PENDING", "PARTIAL", "PAID", "OVERDUE", "CANCELLED"]).optional(),
   studentId: z.string().optional(),
   search: z.string().optional(),
 });

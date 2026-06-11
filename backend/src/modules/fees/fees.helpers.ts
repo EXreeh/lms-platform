@@ -8,12 +8,12 @@ export function toNumber(value: Decimal | number): number {
 export function computeFeeStatus(
   pendingAmount: number,
   paidAmount: number,
-  dueDate: Date,
+  dueDate: Date | null | undefined,
 ): FeeStatus {
   if (pendingAmount <= 0) {
     return "PAID";
   }
-  if (new Date() > dueDate) {
+  if (dueDate && new Date() > dueDate) {
     return "OVERDUE";
   }
   if (paidAmount > 0) {
@@ -26,14 +26,24 @@ export function mapFeePlan(plan: FeePlan & {
   student?: { id: string; firstName: string; lastName: string; email: string };
   course?: { id: string; title: string; slug: string } | null;
   batch?: { id: string; name: string } | null;
+  title?: string;
+  description?: string | null;
+  currency?: string;
+  allowPartialPayments?: boolean;
   payments?: Array<{
     id: string;
     amount: Decimal;
-    paymentMode: string;
-    paymentDate: Date;
+    provider?: string;
+    status?: string;
+    paymentMode: string | null;
+    paymentMethod?: string | null;
+    receiptNumber?: string | null;
+    razorpayPaymentId?: string | null;
+    paymentDate: Date | null;
+    paidAt?: Date | null;
     note: string | null;
     createdAt: Date;
-    recordedBy?: { firstName: string; lastName: string };
+    recordedBy?: { firstName: string; lastName: string } | null;
   }>;
 }) {
   const total = toNumber(plan.totalAmount);
@@ -48,7 +58,11 @@ export function mapFeePlan(plan: FeePlan & {
     totalAmount: total,
     paidAmount: paid,
     pendingAmount: pending,
-    dueDate: plan.dueDate.toISOString(),
+    title: plan.title,
+    description: plan.description ?? null,
+    currency: plan.currency,
+    allowPartialPayments: plan.allowPartialPayments,
+    dueDate: plan.dueDate?.toISOString() ?? null,
     status: plan.status,
     accessGranted: plan.accessGranted,
     lifetimeAccess: plan.lifetimeAccess,
@@ -73,8 +87,14 @@ export function mapFeePlan(plan: FeePlan & {
     payments: plan.payments?.map((p) => ({
       id: p.id,
       amount: toNumber(p.amount),
+      provider: p.provider,
+      status: p.status,
       paymentMode: p.paymentMode,
-      paymentDate: p.paymentDate.toISOString(),
+      paymentMethod: p.paymentMethod,
+      receiptNumber: p.receiptNumber,
+      razorpayPaymentId: p.razorpayPaymentId,
+      paymentDate: (p.paidAt ?? p.paymentDate)?.toISOString() ?? null,
+      paidAt: p.paidAt?.toISOString() ?? null,
       note: p.note,
       recordedByName: p.recordedBy
         ? `${p.recordedBy.firstName} ${p.recordedBy.lastName}`

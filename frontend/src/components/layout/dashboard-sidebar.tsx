@@ -96,6 +96,12 @@ const studentNav: NavItem[] = [
     match: (p) => p.startsWith("/dashboard/student/fees"),
   },
   {
+    href: "/dashboard/student/payments",
+    label: "Payments",
+    icon: "💳",
+    match: (p) => p.startsWith("/dashboard/student/payments"),
+  },
+  {
     href: "/dashboard/student/messages",
     label: "Messages",
     icon: "✉",
@@ -169,6 +175,12 @@ const adminNav: NavItem[] = [
     label: "Fees",
     icon: "₹",
     match: (p) => p.startsWith("/dashboard/admin/fees"),
+  },
+  {
+    href: "/dashboard/admin/payments",
+    label: "Payments",
+    icon: "💳",
+    match: (p) => p.startsWith("/dashboard/admin/payments"),
   },
   {
     href: "/dashboard/admin/course-access",

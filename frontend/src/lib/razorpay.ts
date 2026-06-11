@@ -64,7 +64,7 @@ export interface OpenCheckoutParams {
   orderId: string;
   amount: number;
   currency: string;
-  courseTitle: string;
+  description: string;
   userName?: string;
   userEmail?: string;
   onSuccess: (response: RazorpaySuccessResponse) => void | Promise<void>;
@@ -81,7 +81,7 @@ export async function openRazorpayCheckout(params: OpenCheckoutParams) {
     amount: params.amount,
     currency: params.currency,
     name: "CognitiaX AI",
-    description: params.courseTitle,
+    description: params.description,
     order_id: params.orderId,
     prefill: { name: params.userName, email: params.userEmail },
     theme: { color: "#166534" },

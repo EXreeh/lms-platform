@@ -74,7 +74,7 @@ export function useCoursePurchase({
         orderId,
         amount,
         currency,
-        courseTitle,
+        description: courseTitle,
         userName,
         userEmail,
         onSuccess: async (response) => {
