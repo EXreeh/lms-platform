@@ -8,6 +8,7 @@ import { sendEmail } from "../../services/email/email.service.js";
 import { passwordResetEmail } from "../../services/email/templates/password-reset.js";
 import { createAndSendOtp, verifyOtp } from "../otp/otp.service.js";
 import { logActivity } from "../admin/activity.service.js";
+import { logAudit } from "../audit/audit.service.js";
 import { publicUserSelect, toPublicUser, type PublicUser } from "./auth.mapper.js";
 import type {
   LoginInput,
@@ -64,6 +65,14 @@ export async function login(input: LoginInput) {
   await logActivity({
     type: "LOGIN",
     userId: user.id,
+    metadata: { email: user.email },
+  });
+  await logAudit({
+    actorId: user.id,
+    actorRole: user.role,
+    action: "USER_LOGIN",
+    entityType: "user",
+    entityId: user.id,
     metadata: { email: user.email },
   });
 

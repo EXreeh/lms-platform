@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
-import { authorize } from "../../middleware/authorize.js";
+import { authorize, authorizeAdmin } from "../../middleware/authorize.js";
 import { validateBody } from "../../middleware/validate.js";
 import { createOrderSchema, verifyPaymentSchema } from "./payments.validation.js";
 import * as paymentsController from "./payments.controller.js";
@@ -38,12 +38,12 @@ paymentsRoutes.get(
 
 paymentsRoutes.get(
   "/admin/analytics",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(paymentsController.revenueAnalytics),
 );
 
 paymentsRoutes.get(
   "/admin/all",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(paymentsController.listAll),
 );

@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
-import { authorize } from "../../middleware/authorize.js";
+import { liveClassJoinRateLimiter, recordingAccessRateLimiter } from "../../middleware/rate-limit.js";
+import { authorize, authorizeAdmin } from "../../middleware/authorize.js";
 import { validateBody } from "../../middleware/validate.js";
 import {
   createLiveClassSchema,
@@ -32,18 +33,18 @@ const recordingUpload = [
 liveClassesRoutes.use(authenticate);
 liveClassesRoutes.get("/", asyncHandler(liveClassesController.list));
 liveClassesRoutes.get("/stats", asyncHandler(liveClassesController.stats));
-liveClassesRoutes.post("/:id/join", asyncHandler(liveClassesController.join));
+liveClassesRoutes.post("/:id/join", liveClassJoinRateLimiter, asyncHandler(liveClassesController.join));
 liveClassesRoutes.get("/:id", asyncHandler(liveClassesController.getOne));
 liveClassesRoutes.post(
   "/:id/recordings",
-  authorize("ADMIN", "TEACHER"),
+  authorize("TEACHER", "ADMIN", "OWNER"),
   ...recordingUpload,
   validateBody(createRecordingSchema),
   asyncHandler(liveClassesController.uploadRecording),
 );
 
 // Admin routes
-adminLiveClassesRoutes.use(authenticate, authorize("ADMIN"));
+adminLiveClassesRoutes.use(authenticate, authorizeAdmin());
 adminLiveClassesRoutes.get("/", asyncHandler(liveClassesController.list));
 adminLiveClassesRoutes.post(
   "/",
@@ -108,14 +109,14 @@ studentLiveClassesRoutes.get("/:id", asyncHandler(liveClassesController.getOne))
 
 // Shared recordings routes
 recordingsRoutes.use(authenticate);
-recordingsRoutes.get("/:id", asyncHandler(liveClassesController.getRecording));
+recordingsRoutes.get("/:id", recordingAccessRateLimiter, asyncHandler(liveClassesController.getRecording));
 recordingsRoutes.patch(
   "/:id/archive",
-  authorize("ADMIN", "TEACHER"),
+  authorize("TEACHER", "ADMIN", "OWNER"),
   asyncHandler(liveClassesController.archiveRecording),
 );
 recordingsRoutes.delete(
   "/:id",
-  authorize("ADMIN", "TEACHER"),
+  authorize("TEACHER", "ADMIN", "OWNER"),
   asyncHandler(liveClassesController.deleteRecording),
 );

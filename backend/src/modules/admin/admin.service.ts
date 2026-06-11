@@ -21,6 +21,7 @@ import type {
   SuspendUserInput,
 } from "./admin.validation.js";
 import { notifyAccountCredentials } from "./credentials.helper.js";
+import { canCreateAdmin, canModifyTargetUser, isAdminRole } from "../../utils/roles.js";
 
 const teacherSelect = {
   id: true,
@@ -82,19 +83,29 @@ async function getUserOrThrow(userId: string) {
 }
 
 async function assertLastAdminGuard(target: { id: string; role: Role }, action: string) {
-  if (target.role !== "ADMIN") return;
+  if (!isAdminRole(target.role)) return;
   const adminCount = await prisma.user.count({
-    where: { role: "ADMIN", suspended: false },
+    where: { role: { in: ["ADMIN", "OWNER"] }, suspended: false },
   });
   if (adminCount <= 1) {
     throw ApiError.forbidden(`Cannot ${action} the last active administrator`);
   }
 }
 
+async function getActorRole(actorId: string): Promise<Role> {
+  const actor = await prisma.user.findUnique({ where: { id: actorId }, select: { role: true } });
+  if (!actor) throw ApiError.unauthorized();
+  return actor.role;
+}
+
 async function assertCanModifyUser(actorId: string, target: { id: string; role: Role }) {
+  const actorRole = await getActorRole(actorId);
   assertNotSelf(actorId, target.id, "modify");
-  if (target.role === "ADMIN") {
-    throw ApiError.forbidden("Admin accounts cannot be modified through this panel");
+  if (target.role === "OWNER") {
+    throw ApiError.forbidden("Owner accounts cannot be modified");
+  }
+  if (!canModifyTargetUser(actorRole, target.role)) {
+    throw ApiError.forbidden("You do not have permission to modify this user");
   }
 }
 
@@ -313,6 +324,10 @@ export async function createTeacher(actorId: string, input: CreateTeacherInput) 
 }
 
 export async function createAdmin(actorId: string, input: CreateAdminInput) {
+  const actorRole = await getActorRole(actorId);
+  if (!canCreateAdmin(actorRole)) {
+    throw ApiError.forbidden("Only the platform owner can create admin accounts");
+  }
   const user = await createInstituteUser(actorId, input, "ADMIN");
 
   const delivery = await notifyAccountCredentials({
@@ -328,14 +343,25 @@ export async function createAdmin(actorId: string, input: CreateAdminInput) {
 }
 
 export async function changeUserRole(actorId: string, userId: string, input: ChangeRoleInput) {
+  const actorRole = await getActorRole(actorId);
   const target = await getUserOrThrow(userId);
   assertNotSelf(actorId, target.id, "change the role of");
+
+  if (target.role === "OWNER" || input.role === "OWNER") {
+    throw ApiError.forbidden("Owner role cannot be assigned or changed through this panel");
+  }
+  if (input.role === "ADMIN" && actorRole !== "OWNER") {
+    throw ApiError.forbidden("Only the platform owner can promote users to admin");
+  }
+  if (target.role === "ADMIN" && actorRole !== "OWNER") {
+    throw ApiError.forbidden("Only the platform owner can modify admin accounts");
+  }
 
   if (target.role === input.role) {
     throw ApiError.badRequest(`User is already a ${input.role.toLowerCase()}`);
   }
 
-  if (target.role === "ADMIN" && input.role !== "ADMIN") {
+  if (isAdminRole(target.role) && !isAdminRole(input.role)) {
     await assertLastAdminGuard(target, "demote");
   }
 

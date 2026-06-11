@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
-import { authorize } from "../../middleware/authorize.js";
+import { authorize, authorizeAdmin } from "../../middleware/authorize.js";
 import { validateBody } from "../../middleware/validate.js";
 import { assignBatchCourseSchema, assignStudentCourseSchema } from "./course-access.validation.js";
 import * as accessController from "./course-access.controller.js";
@@ -17,26 +17,26 @@ courseAccessRoutes.get(
   asyncHandler(accessController.myAccessStatus),
 );
 
-courseAccessRoutes.get("/", authorize("ADMIN"), asyncHandler(accessController.listAccess));
+courseAccessRoutes.get("/", authorizeAdmin(), asyncHandler(accessController.listAccess));
 courseAccessRoutes.post(
   "/assign",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   validateBody(assignStudentCourseSchema),
   asyncHandler(accessController.assignStudent),
 );
 courseAccessRoutes.post(
   "/batches/:batchId/courses",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   validateBody(assignBatchCourseSchema),
   asyncHandler(accessController.assignBatch),
 );
 courseAccessRoutes.delete(
   "/:studentId/:courseId",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(accessController.revoke),
 );
 courseAccessRoutes.post(
   "/:studentId/:courseId/lifetime",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(accessController.grantLifetime),
 );

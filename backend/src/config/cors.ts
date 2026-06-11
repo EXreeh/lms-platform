@@ -10,8 +10,11 @@ const allowedOriginSet = new Set(corsOrigins);
 export function getCorsOptions(): CorsOptions {
   return {
     origin(origin, callback) {
-      // Server-to-server, curl, or same-origin requests without Origin header
       if (!origin) {
+        if (env.NODE_ENV === "production") {
+          callback(new Error("CORS blocked: missing Origin header"));
+          return;
+        }
         callback(null, true);
         return;
       }

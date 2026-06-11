@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
-import { authorize } from "../../middleware/authorize.js";
+import { authorize, authorizeAdmin } from "../../middleware/authorize.js";
 import { validateBody } from "../../middleware/validate.js";
 import {
   batchStudentsSchema,
@@ -23,12 +23,12 @@ batchesRoutes.get(
 
 batchesRoutes.get(
   "/",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(batchesController.listAdmin),
 );
 batchesRoutes.post(
   "/",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   validateBody(createBatchSchema),
   asyncHandler(batchesController.create),
 );
@@ -41,23 +41,23 @@ batchesRoutes.get(
 batchesRoutes.get("/:batchId", asyncHandler(batchesController.getOne));
 batchesRoutes.patch(
   "/:batchId",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   validateBody(updateBatchSchema),
   asyncHandler(batchesController.update),
 );
 batchesRoutes.post(
   "/:batchId/students",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   validateBody(batchStudentsSchema),
   asyncHandler(batchesController.addStudents),
 );
 batchesRoutes.delete(
   "/:batchId/students/:studentId",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(batchesController.removeStudent),
 );
 batchesRoutes.delete(
   "/:batchId",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(batchesController.removeBatch),
 );

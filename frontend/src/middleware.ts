@@ -6,7 +6,7 @@ import { DASHBOARD_PATHS, type Role } from "@/types/auth";
 
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
 const PUBLIC_EXACT = ["/", "/login", "/register", "/forgot-password"];
-const VALID_ROLES: Role[] = ["STUDENT", "TEACHER", "ADMIN"];
+const VALID_ROLES: Role[] = ["STUDENT", "TEACHER", "ADMIN", "OWNER"];
 
 function isPublicCatalogPath(pathname: string): boolean {
   if (pathname === "/courses") return true;
@@ -62,14 +62,17 @@ export function middleware(request: NextRequest) {
       STUDENT: "/dashboard/student",
       TEACHER: "/dashboard/teacher",
       ADMIN: "/dashboard/admin",
+      OWNER: "/dashboard/owner",
     };
     const allowedBase = roleBase[role];
+    const isInstituteAdmin = role === "ADMIN" || role === "OWNER";
     const canAccess =
       pathname.startsWith("/dashboard/profile") ||
       pathname.startsWith(allowedBase) ||
-      (role === "ADMIN" &&
+      (isInstituteAdmin &&
         (pathname.startsWith("/dashboard/teacher") ||
-          pathname.startsWith("/dashboard/admin")));
+          pathname.startsWith("/dashboard/admin"))) ||
+      (role === "OWNER" && pathname.startsWith("/dashboard/owner"));
 
     if (!canAccess) {
       return NextResponse.redirect(new URL(getRoleDashboard(role), request.url));

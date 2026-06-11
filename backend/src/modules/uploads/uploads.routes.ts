@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
+import { uploadRateLimiter } from "../../middleware/rate-limit.js";
 import {
   uploadVideoMiddleware,
   uploadResourceMiddleware,
@@ -13,7 +14,7 @@ import * as uploadsController from "./uploads.controller.js";
 
 export const uploadsRoutes = Router();
 
-uploadsRoutes.use(authenticate);
+uploadsRoutes.use(authenticate, uploadRateLimiter);
 
 function withUpload(
   middleware: (req: Request, res: Response, cb: (err?: unknown) => void) => void,

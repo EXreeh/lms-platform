@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
-import { authorize } from "../../middleware/authorize.js";
+import { authorizeAdmin } from "../../middleware/authorize.js";
 import { validateBody } from "../../middleware/validate.js";
 import {
   createAdminSchema,
@@ -15,7 +15,7 @@ import * as adminController from "./admin.controller.js";
 
 export const adminRoutes = Router();
 
-adminRoutes.use(authenticate, authorize("ADMIN"));
+adminRoutes.use(authenticate, authorizeAdmin());
 
 adminRoutes.get("/stats", asyncHandler(adminController.platformStats));
 adminRoutes.get("/analytics/student-growth", asyncHandler(adminController.studentGrowth));

@@ -53,10 +53,7 @@ export async function hasActiveCourseAccess(studentId: string, courseId: string)
     return true;
   } catch (error) {
     logPrismaRouteError("/api/course-access", error, "hasActiveCourseAccess");
-    const enrollment = await prisma.enrollment.findUnique({
-      where: { studentId_courseId: { studentId, courseId } },
-    });
-    return Boolean(enrollment);
+    return false;
   }
 }
 

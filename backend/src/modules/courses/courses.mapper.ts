@@ -14,6 +14,27 @@ function decimalToNumber(value: Decimal | number): number {
   return typeof value === "number" ? value : Number(value);
 }
 
+export function mapLessonCatalog(lesson: Lesson) {
+  const hasVideo = Boolean(lesson.videoUrl?.trim() || lesson.videoStorageKey?.trim());
+  return {
+    id: lesson.id,
+    title: lesson.title,
+    description: lesson.description,
+    videoUrl: null,
+    videoFileName: null,
+    videoMimeType: null,
+    videoSize: null,
+    videoStorageProvider: null,
+    videoStorageKey: null,
+    hasVideo,
+    duration: lesson.duration,
+    order: lesson.order,
+    moduleId: lesson.moduleId,
+    deleteStatus: lesson.deleteStatus,
+    createdAt: lesson.createdAt,
+  };
+}
+
 export function mapLesson(lesson: Lesson) {
   return {
     id: lesson.id,
@@ -42,6 +63,28 @@ export function mapModule(module: Module & { lessons?: Lesson[] }) {
     deleteStatus: module.deleteStatus,
     createdAt: module.createdAt,
     lessons: module.lessons?.sort((a, b) => a.order - b.order).map(mapLesson) ?? [],
+  };
+}
+
+export function mapModuleCatalog(module: Module & { lessons?: Lesson[] }) {
+  return {
+    id: module.id,
+    title: module.title,
+    order: module.order,
+    courseId: module.courseId,
+    deleteStatus: module.deleteStatus,
+    createdAt: module.createdAt,
+    lessons: module.lessons?.sort((a, b) => a.order - b.order).map(mapLessonCatalog) ?? [],
+  };
+}
+
+export function mapCourseCatalog(course: CourseWithRelations) {
+  const base = buildBase(course);
+  return {
+    ...base,
+    modules: course.modules
+      ? course.modules.sort((a, b) => a.order - b.order).map(mapModuleCatalog)
+      : [],
   };
 }
 

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
-import { authorize } from "../../middleware/authorize.js";
+import { authorize, authorizeAdmin } from "../../middleware/authorize.js";
 import { validateBody } from "../../middleware/validate.js";
 import { validateQuery } from "../../middleware/validate-query.js";
 import {
@@ -42,39 +42,39 @@ teacherAttendanceRoutes.get(
 
 teacherAttendanceRoutes.get(
   "/summary",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(controller.adminSummary),
 );
 teacherAttendanceRoutes.get(
   "/",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   validateQuery(listAttendanceQuerySchema),
   asyncHandler(controller.adminList),
 );
 teacherAttendanceRoutes.patch(
   "/:attendanceId",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   validateBody(adminUpdateAttendanceSchema),
   asyncHandler(controller.adminUpdate),
 );
 teacherAttendanceRoutes.get(
   "/leave",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(controller.adminLeaveList),
 );
 teacherAttendanceRoutes.post(
   "/leave/:leaveId/approve",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(controller.adminApproveLeave),
 );
 teacherAttendanceRoutes.post(
   "/leave/:leaveId/reject",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(controller.adminRejectLeave),
 );
 teacherAttendanceRoutes.post(
   "/mark-missing-absent",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   validateBody(markMissingAbsentSchema),
   asyncHandler(controller.adminMarkMissingAbsent),
 );

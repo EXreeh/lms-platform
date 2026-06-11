@@ -73,7 +73,44 @@ const envSchema = z.object({
   R2_BUCKET: z.string().optional(),
   R2_ENDPOINT: z.string().optional(),
   R2_PUBLIC_URL: z.string().optional(),
+  SEED_DEMO_DATA: z
+    .string()
+    .optional()
+    .transform((v) => v === "true"),
 }).superRefine((data, ctx) => {
+  const weakJwtPatterns = ["changeme", "your-secret", "jwt-secret", "supersecret", "password"];
+  if (data.NODE_ENV === "production") {
+    const jwtLower = data.JWT_SECRET.toLowerCase();
+    if (weakJwtPatterns.some((p) => jwtLower.includes(p)) || data.JWT_SECRET.length < 48) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "JWT_SECRET must be a strong unique value in production (min 48 chars)",
+        path: ["JWT_SECRET"],
+      });
+    }
+    if (data.OTP_SECRET === "cognitiax-otp-secret-key") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "OTP_SECRET must be changed in production",
+        path: ["OTP_SECRET"],
+      });
+    }
+    if (data.STORAGE_PROVIDER !== "r2") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "STORAGE_PROVIDER must be r2 in production",
+        path: ["STORAGE_PROVIDER"],
+      });
+    }
+    if (!data.ALLOWED_ORIGINS?.trim() && !data.CORS_ORIGIN?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "ALLOWED_ORIGINS is required in production",
+        path: ["ALLOWED_ORIGINS"],
+      });
+    }
+  }
+
   if (data.STORAGE_PROVIDER === "r2") {
     const required: (keyof typeof data)[] = [
       "R2_ACCOUNT_ID",
@@ -120,11 +157,18 @@ function parseOriginList(raw: string | undefined): string[] {
 }
 
 /** Exact origins for CORS (credentials). FRONTEND_URL is always included. */
+const PRODUCTION_CORS_ORIGINS = [
+  "https://www.cognitiaxai.com",
+  "https://lmsplatform-mu.vercel.app",
+];
+
 export const corsOrigins = Array.from(
   new Set([
     ...parseOriginList(env.ALLOWED_ORIGINS),
     ...parseOriginList(env.CORS_ORIGIN),
     env.FRONTEND_URL.trim().replace(/\/$/, ""),
+    ...(env.NODE_ENV === "production" ? PRODUCTION_CORS_ORIGINS : []),
+    ...(env.NODE_ENV === "development" ? ["http://localhost:3000", "http://127.0.0.1:3000"] : []),
   ].filter(Boolean)),
 );
 

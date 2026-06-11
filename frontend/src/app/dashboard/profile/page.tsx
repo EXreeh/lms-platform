@@ -23,6 +23,7 @@ const ROLE_LABELS: Record<Role, string> = {
   STUDENT: "Student",
   TEACHER: "Teacher",
   ADMIN: "Administrator",
+  OWNER: "Platform Owner",
 };
 
 function statEntries(role: Role, stats: Record<string, number>): { label: string; value: number | string; icon: string }[] {

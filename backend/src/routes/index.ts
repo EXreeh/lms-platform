@@ -11,6 +11,7 @@ import { certificatesRoutes } from "../modules/certificates/certificates.routes.
 import { paymentsRoutes } from "../modules/payments/payments.routes.js";
 import { uploadsRoutes } from "../modules/uploads/uploads.routes.js";
 import { adminRoutes } from "../modules/admin/admin.routes.js";
+import { ownerRoutes } from "../modules/owner/owner.routes.js";
 import { feesRoutes } from "../modules/fees/fees.routes.js";
 import { batchesRoutes } from "../modules/batches/batches.routes.js";
 import { messagesRoutes } from "../modules/messages/messages.routes.js";
@@ -66,6 +67,7 @@ apiRouter.use("/certificates", certificatesRoutes);
 apiRouter.use("/payments", paymentsRoutes);
 apiRouter.use("/uploads", uploadsRoutes);
 apiRouter.use("/admin", adminRoutes);
+apiRouter.use("/owner", ownerRoutes);
 apiRouter.use("/fees", feesRoutes);
 apiRouter.use("/batches", batchesRoutes);
 apiRouter.use("/messages", messagesRoutes);

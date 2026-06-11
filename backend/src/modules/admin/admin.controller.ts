@@ -13,9 +13,11 @@ import {
   listActivityQuerySchema,
 } from "./admin.validation.js";
 
+import { isAdminRole } from "../../utils/roles.js";
+
 function requireAdmin(req: Request) {
   if (!req.user) throw ApiError.unauthorized();
-  if (req.user.role !== "ADMIN") {
+  if (!isAdminRole(req.user.role)) {
     throw ApiError.forbidden("Admin access required");
   }
   return req.user;

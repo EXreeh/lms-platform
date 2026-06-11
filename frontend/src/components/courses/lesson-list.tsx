@@ -162,7 +162,7 @@ export function LessonList({ lessons, editable, onDeleteLesson, onUpdateLesson }
                             {lesson.videoSize ? ` · ${formatFileSize(lesson.videoSize)}` : ""}
                           </span>
                         </div>
-                        {uploaded && lesson.videoUrl && (
+                        {editable && uploaded && lesson.videoUrl && (
                           <ProtectedVideo
                             src={lesson.videoUrl}
                             videoStorageKey={lesson.videoStorageKey}

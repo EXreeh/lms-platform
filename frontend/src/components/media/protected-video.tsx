@@ -146,12 +146,14 @@ export const ProtectedVideo = forwardRef<HTMLVideoElement, ProtectedVideoProps>(
     useEffect(() => {
       setLoadAttempted(false);
       setHasError(false);
-      console.info("[CognitiaX video] playback", {
-        lessonVideoUrl: src,
-        playbackSrc,
-        videoStorageKey,
-        videoStorageProvider: videoStorageProvider ?? storageProvider,
-      });
+      if (process.env.NODE_ENV !== "production") {
+        console.info("[CognitiaX video] playback", {
+          lessonVideoUrl: src,
+          playbackSrc,
+          videoStorageKey,
+          videoStorageProvider: videoStorageProvider ?? storageProvider,
+        });
+      }
       logVideoDebug("video src", {
         src,
         playbackSrc,

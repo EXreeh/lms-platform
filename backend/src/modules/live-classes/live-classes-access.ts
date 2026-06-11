@@ -1,6 +1,7 @@
 import type { Role } from "@lms/database";
 import { prisma } from "../../config/database.js";
 import { ApiError } from "../../utils/api-error.js";
+import { isAdminRole } from "../../utils/roles.js";
 import { hasActiveCourseAccess } from "../course-access/course-access.service.js";
 
 export async function getBatchOrThrow(batchId: string) {
@@ -77,7 +78,7 @@ export async function assertCanAccessLiveClass(
   userId: string,
   liveClass: { batchId: string; teacherId: string; courseId: string },
 ) {
-  if (role === "ADMIN") return;
+  if (isAdminRole(role)) return;
   if (role === "TEACHER") {
     const batch = await getBatchOrThrow(liveClass.batchId);
     if (batch.teacherId !== userId) {
@@ -105,7 +106,7 @@ export async function assertCanAccessRecording(
   if (recording.status === "DELETED") {
     throw ApiError.notFound("Recording not found");
   }
-  if (role === "ADMIN") return;
+  if (isAdminRole(role)) return;
   if (role === "TEACHER") {
     const batch = await getBatchOrThrow(recording.batchId);
     if (batch.teacherId !== userId) {

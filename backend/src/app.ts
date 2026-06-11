@@ -22,6 +22,8 @@ export function createApp() {
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: "cross-origin" },
+      contentSecurityPolicy: false,
+      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     }),
   );
   app.use(cors(getCorsOptions()));
@@ -30,15 +32,17 @@ export function createApp() {
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
 
-  app.use(
-    "/uploads",
-    express.static(getUploadsBasePath(), {
-      maxAge: env.NODE_ENV === "production" ? "1d" : 0,
-      setHeaders(res, filePath) {
-        setUploadStaticHeaders(res, filePath);
-      },
-    }),
-  );
+  if (env.STORAGE_PROVIDER === "local" || env.NODE_ENV !== "production") {
+    app.use(
+      "/uploads",
+      express.static(getUploadsBasePath(), {
+        maxAge: env.NODE_ENV === "production" ? "1d" : 0,
+        setHeaders(res, filePath) {
+          setUploadStaticHeaders(res, filePath);
+        },
+      }),
+    );
+  }
 
   app.use("/api", apiRouter);
 

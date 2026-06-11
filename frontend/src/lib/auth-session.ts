@@ -4,7 +4,7 @@ import { clearAuthClientCaches } from "@/lib/auth-storage";
 import { logAuth } from "@/lib/auth-debug";
 import { ApiClientError } from "@/lib/api";
 
-export const VALID_ROLES: Role[] = ["STUDENT", "TEACHER", "ADMIN"];
+export const VALID_ROLES: Role[] = ["STUDENT", "TEACHER", "ADMIN", "OWNER"];
 
 export function isValidRole(role: unknown): role is Role {
   return typeof role === "string" && VALID_ROLES.includes(role as Role);

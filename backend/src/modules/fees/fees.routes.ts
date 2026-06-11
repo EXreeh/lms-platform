@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../../utils/async-handler.js";
 import { authenticate } from "../../middleware/authenticate.js";
-import { authorize } from "../../middleware/authorize.js";
+import { authorize, authorizeAdmin } from "../../middleware/authorize.js";
 import { validateBody } from "../../middleware/validate.js";
 import {
   addFeePaymentSchema,
@@ -17,32 +17,32 @@ feesRoutes.use(authenticate);
 feesRoutes.get("/me", authorize("STUDENT"), asyncHandler(feesController.studentDashboard));
 feesRoutes.get(
   "/student-access/:studentId",
-  authorize("TEACHER", "ADMIN"),
+  authorize("TEACHER", "ADMIN", "OWNER"),
   asyncHandler(feesController.studentAccess),
 );
 
 feesRoutes.get(
   "/analytics",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(feesController.analytics),
 );
-feesRoutes.get("/", authorize("ADMIN"), asyncHandler(feesController.listAdmin));
+feesRoutes.get("/", authorizeAdmin(), asyncHandler(feesController.listAdmin));
 feesRoutes.post(
   "/",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   validateBody(createFeePlanSchema),
   asyncHandler(feesController.create),
 );
-feesRoutes.get("/:feePlanId", authorize("ADMIN"), asyncHandler(feesController.getOne));
+feesRoutes.get("/:feePlanId", authorizeAdmin(), asyncHandler(feesController.getOne));
 feesRoutes.post(
   "/:feePlanId/payments",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   validateBody(addFeePaymentSchema),
   asyncHandler(feesController.addPayment),
 );
 feesRoutes.post(
   "/:feePlanId/reminders",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   validateBody(sendFeeReminderSchema),
   asyncHandler(feesController.sendReminder),
 );

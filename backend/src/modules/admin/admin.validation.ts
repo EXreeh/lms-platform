@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const roleEnum = z.enum(["STUDENT", "TEACHER", "ADMIN"]);
+export const roleEnum = z.enum(["STUDENT", "TEACHER", "ADMIN", "OWNER"]);
 
 export const listUsersQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

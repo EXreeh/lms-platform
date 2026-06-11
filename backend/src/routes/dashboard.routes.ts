@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { asyncHandler } from "../utils/async-handler.js";
 import { authenticate } from "../middleware/authenticate.js";
-import { authorize } from "../middleware/authorize.js";
+import { authorize, authorizeAdmin } from "../middleware/authorize.js";
 import * as dashboardController from "../modules/dashboard/dashboard.controller.js";
 
 export const dashboardRoutes = Router();
@@ -16,7 +16,7 @@ dashboardRoutes.get(
 
 dashboardRoutes.get(
   "/admin",
-  authorize("ADMIN"),
+  authorizeAdmin(),
   asyncHandler(dashboardController.admin),
 );
 

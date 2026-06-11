@@ -1,4 +1,4 @@
-export type Role = "STUDENT" | "TEACHER" | "ADMIN";
+export type Role = "STUDENT" | "TEACHER" | "ADMIN" | "OWNER";
 
 export interface User {
   id: string;
@@ -52,4 +52,5 @@ export const DASHBOARD_PATHS: Record<Role, string> = {
   STUDENT: "/dashboard/student",
   TEACHER: "/dashboard/teacher",
   ADMIN: "/dashboard/admin",
+  OWNER: "/dashboard/owner",
 };

@@ -107,7 +107,7 @@ export function createTeacherAccount(
   });
 }
 
-export function changeUserRole(userId: string, role: "STUDENT" | "TEACHER" | "ADMIN") {
+export function changeUserRole(userId: string, role: import("@/types/auth").Role) {
   return apiRequest<{ success: boolean; data: { user: AdminUser } }>(
     `/admin/users/${userId}/role`,
     { method: "PATCH", body: { role }, auth: true },

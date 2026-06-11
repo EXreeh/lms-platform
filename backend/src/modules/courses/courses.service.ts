@@ -13,7 +13,8 @@ import {
   getActiveCourseWhereClause,
   isCatalogVisible,
 } from "./courses.helpers.js";
-import { mapCourse } from "./courses.mapper.js";
+import { mapCourse, mapCourseCatalog } from "./courses.mapper.js";
+import { isAdminRole } from "../../utils/roles.js";
 import { logAction } from "../../utils/logger.js";
 import type {
   CreateCourseInput,
@@ -344,33 +345,33 @@ export async function getCourse(idOrSlug: string, userId?: string, role?: Role) 
 
   if (!course) throw ApiError.notFound("Course not found");
 
-  const isOwner = userId ? course.teacherId === userId : false;
-  const isAdmin = role === "ADMIN";
+  const isCourseOwner = userId ? course.teacherId === userId : false;
+  const isAdmin = isAdminRole(role);
   const catalogVisible = isCatalogVisible(course.status, course.deleteStatus);
 
-  if (!catalogVisible && !isAdmin && !isOwner) {
+  if (!catalogVisible && !isAdmin && !isCourseOwner) {
     if (role === "TEACHER") {
       const publicCourse = await prisma.course.findFirst({
         where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }], status: "APPROVED", deleteStatus: "ACTIVE" },
         include: buildCourseInclude("public"),
       });
       if (publicCourse) {
-        return { ...mapCourse(publicCourse, true), isOwner: false, readOnly: true };
+        return { ...mapCourseCatalog(publicCourse), isOwner: false, readOnly: true };
       }
     }
     throw ApiError.notFound("Course not found");
   }
 
-  const visibility = catalogVisible && !isOwner && !isAdmin ? "public" : "manage";
+  const useCatalogMapper = catalogVisible && !isCourseOwner && !isAdmin;
   const fullCourse =
-    visibility === "public"
+    useCatalogMapper
       ? await prisma.course.findFirstOrThrow({
           where: { id: course.id },
           include: buildCourseInclude("public"),
         })
       : course;
 
-  const mapped = mapCourse(fullCourse, true);
+  const mapped = useCatalogMapper ? mapCourseCatalog(fullCourse) : mapCourse(fullCourse, true);
 
   if (isAdmin) {
     return { ...mapped, adminPreview: true, canAccessLearn: true, isOwner: false, readOnly: false };
@@ -381,11 +382,17 @@ export async function getCourse(idOrSlug: string, userId?: string, role?: Role) 
       "../course-access/course-access.service.js"
     );
     const flags = await getStudentCourseAccessFlags(userId, course.id, role);
+    if (!flags.canLearn) {
+      throw ApiError.forbidden(
+        "You do not have access to this course. Contact your institute admin.",
+        "COURSE_ACCESS_DENIED",
+      );
+    }
     const enrollment = await prisma.enrollment.findUnique({
       where: { studentId_courseId: { studentId: userId, courseId: course.id } },
     });
     return {
-      ...mapped,
+      ...mapCourseCatalog(fullCourse),
       assigned: flags.assigned,
       accessLabel: flags.accessLabel,
       enrolled: flags.canLearn,
@@ -396,10 +403,14 @@ export async function getCourse(idOrSlug: string, userId?: string, role?: Role) 
     };
   }
 
+  if (useCatalogMapper) {
+    return { ...mapped, isOwner: false, readOnly: true };
+  }
+
   return {
     ...mapped,
-    isOwner,
-    readOnly: role === "TEACHER" && !isOwner,
+    isOwner: isCourseOwner,
+    readOnly: role === "TEACHER" && !isCourseOwner,
   };
 }
 

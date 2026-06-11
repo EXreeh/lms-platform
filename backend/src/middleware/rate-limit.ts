@@ -120,5 +120,41 @@ export const checkEmailRateLimiter = rateLimit({
   },
 });
 
+/** Upload APIs — 30 uploads per 15 minutes per user/IP. */
+export const uploadRateLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => `${req.ip}:${req.user?.id ?? "anon"}`,
+  handler: (req, res) => {
+    logRateLimitHit(req, "upload");
+    sendRateLimitResponse(res, "Too many uploads. Please wait before trying again.");
+  },
+});
+
+/** Live class join — 60 per 15 minutes per user. */
+export const liveClassJoinRateLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  keyGenerator: (req) => `${req.ip}:${req.user?.id ?? "anon"}`,
+  handler: (req, res) => {
+    logRateLimitHit(req, "live-class-join");
+    sendRateLimitResponse(res);
+  },
+});
+
+/** Recording access — 120 per 15 minutes per user. */
+export const recordingAccessRateLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: 15 * 60 * 1000,
+  max: 120,
+  keyGenerator: (req) => `${req.ip}:${req.user?.id ?? "anon"}`,
+  handler: (req, res) => {
+    logRateLimitHit(req, "recording-access");
+    sendRateLimitResponse(res);
+  },
+});
+
 /** @deprecated Use generalApiRateLimiter */
 export const generalWriteRateLimiter = generalApiRateLimiter;
